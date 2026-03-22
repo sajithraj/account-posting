@@ -1,6 +1,7 @@
 # Data Flow Diagram
 
-Shows how data transforms as it travels through the system — from inbound HTTP request through entity persistence, external system interaction, leg updates, response assembly, and MDC context propagation.
+Shows how data transforms as it travels through the system — from inbound HTTP request through entity persistence,
+external system interaction, leg updates, response assembly, and MDC context propagation.
 
 ---
 
@@ -175,10 +176,10 @@ flowchart LR
 
 ## Key Notes
 
-| Serialization point | Why it matters |
-|--------------------|----------------|
-| `AccountPosting.requestPayload` (JSONB) | The retry processor reads this to reconstruct the full `AccountPostingRequest` without needing the original HTTP request |
-| `AccountPostingLeg.requestPayload` / `responsePayload` (JSONB) | Full audit trail of exactly what was sent to and received from each external system |
-| `AccountPosting.responsePayload` (JSONB) | Stores the aggregated response after all legs complete — queryable from the UI |
-| **MDC thread isolation** | Because `retryExecutor` uses a thread pool, MDC context is **not** inherited. `PostingRetryProcessor` explicitly seeds MDC at the start of each task and clears it at the end. |
-| **MapStruct at compile time** | All mapping code is generated at build time. Zero reflection overhead. Mapping errors surface as compilation failures, not runtime exceptions. |
+| Serialization point                                            | Why it matters                                                                                                                                                                 |
+|----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `AccountPosting.requestPayload` (JSONB)                        | The retry processor reads this to reconstruct the full `AccountPostingRequest` without needing the original HTTP request                                                       |
+| `AccountPostingLeg.requestPayload` / `responsePayload` (JSONB) | Full audit trail of exactly what was sent to and received from each external system                                                                                            |
+| `AccountPosting.responsePayload` (JSONB)                       | Stores the aggregated response after all legs complete — queryable from the UI                                                                                                 |
+| **MDC thread isolation**                                       | Because `retryExecutor` uses a thread pool, MDC context is **not** inherited. `PostingRetryProcessor` explicitly seeds MDC at the start of each task and clears it at the end. |
+| **MapStruct at compile time**                                  | All mapping code is generated at build time. Zero reflection overhead. Mapping errors surface as compilation failures, not runtime exceptions.                                 |

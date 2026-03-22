@@ -4,15 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Account Posting Orchestrator — accepts posting requests from upstream systems, delivers to a core banking orchestrator, tracks every response leg, and provides a UI with retry.
+Account Posting Orchestrator — accepts posting requests from upstream systems, delivers to a core banking orchestrator,
+tracks every response leg, and provides a UI with retry.
 
 ## Three Project Directories
 
-| Directory | What it is | Port |
-|-----------|-----------|------|
-| `account-posting/` | Spring Boot 3.2, Java 21, Maven | 8080 |
-| `db/` | Flyway migration scripts + Maven plugin | — |
-| `ui/` | React 18, TypeScript, Vite | 3000 |
+| Directory          | What it is                              | Port |
+|--------------------|-----------------------------------------|------|
+| `account-posting/` | Spring Boot 3.2, Java 21, Maven         | 8080 |
+| `db/`              | Flyway migration scripts + Maven plugin | —    |
+| `ui/`              | React 18, TypeScript, Vite              | 3000 |
 
 ---
 
@@ -74,6 +75,7 @@ com.accountposting
 ### Key Flows
 
 **POST /account-posting:**
+
 1. Idempotency guard on `endToEndReferenceId`
 2. Save `AccountPosting` (PENDING) + `AccountPostingRequestPayload`
 3. `CoreBankingClient.submit()` stub
@@ -81,6 +83,7 @@ com.accountposting
 5. Update status (SUCCESS/FAILED) + save `AccountPostingResponsePayload`
 
 **POST /account-posting/retry:**
+
 1. Resolve target postingIds (all non-SUCCESS if none supplied)
 2. `legService.lockLegsForRetry()` — single atomic `@Modifying` UPDATE acquires the pessimistic lock
 3. For each locked leg → `CoreBankingClient.submitSingleLeg()` stub → `legService.updateLeg()`
@@ -92,9 +95,12 @@ com.accountposting
 ### Design Notes
 
 - **Payload tables** use `@MapsId` — same PK as parent row, 1:1, keeps `account_posting` lightweight.
-- **Leg decoupling** — `AccountPostingLeg.postingId` is a plain `Long` column, not a JPA `@ManyToOne`. The `leg` package never imports from `posting`.
-- **Retry lock** — `retry_locked_until TIMESTAMPTZ` + single `@Modifying` JPQL in `lockForRetry()`. `@Version` adds optimistic locking at the JPA layer on top.
-- **No HTTP between posting and leg** — both packages are in the same process; `AccountPostingServiceImpl` injects `AccountPostingLegService` directly.
+- **Leg decoupling** — `AccountPostingLeg.postingId` is a plain `Long` column, not a JPA `@ManyToOne`. The `leg` package
+  never imports from `posting`.
+- **Retry lock** — `retry_locked_until TIMESTAMPTZ` + single `@Modifying` JPQL in `lockForRetry()`. `@Version` adds
+  optimistic locking at the JPA layer on top.
+- **No HTTP between posting and leg** — both packages are in the same process; `AccountPostingServiceImpl` injects
+  `AccountPostingLegService` directly.
 
 ---
 
@@ -121,7 +127,8 @@ mvn flyway:repair      # fix checksum mismatches
 ### Migration Files
 
 Scripts live in `db/src/main/resources/db/migration/`.
-Run migrations via the `db/` module before starting the Spring Boot service. The app has no Flyway dependency — it connects to an already-migrated database.
+Run migrations via the `db/` module before starting the Spring Boot service. The app has no Flyway dependency — it
+connects to an already-migrated database.
 
 Naming: `V{number}__{description}.sql` — never edit an already-applied migration.
 

@@ -6,15 +6,15 @@ services:
     container_name: account_posting_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB:       account_posting_db
-      POSTGRES_USER:     postgres
+      POSTGRES_DB: account_posting_db
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d account_posting_db"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d account_posting_db" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -50,9 +50,9 @@ services:
       flyway:
         condition: service_completed_successfully
     environment:
-      DB_HOST:     postgres
-      DB_PORT:     5432
-      DB_NAME:     account_posting_db
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: account_posting_db
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       SERVER_PORT: 8080
@@ -60,7 +60,7 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep -q UP || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep -q UP || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 12

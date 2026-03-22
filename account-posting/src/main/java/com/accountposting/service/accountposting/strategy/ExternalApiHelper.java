@@ -1,6 +1,8 @@
 package com.accountposting.service.accountposting.strategy;
 
+import com.accountposting.config.StubSimulatorConfig;
 import com.accountposting.dto.accountposting.AccountPostingRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -11,11 +13,17 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Builds external API request payloads and provides stub responses for CBS, GL, and OBPM.
- * Replace each call* method with the real HTTP integration when available.
+ * Builds outbound request payloads for each external system and holds stub call implementations.
+ * Each call* method must be replaced with the real HTTP client integration before go-live.
+ * <p>
+ * In non-prod environments, StubSimulatorConfig can force specific systems to return FAILED
+ * so failure paths can be tested end-to-end and persisted to the database.
  */
 @Component
+@RequiredArgsConstructor
 public class ExternalApiHelper {
+
+    private final StubSimulatorConfig stubSimulatorConfig;
 
     // ── CBS ───────────────────────────────────────────────────────────────────
 
@@ -33,13 +41,15 @@ public class ExternalApiHelper {
         return req;
     }
 
-    /**
-     * Stub — replace with real CBS HTTP call. Response: { transaction_index, status: SUCCESS|FAILURE }
-     */
+    // TODO: replace with real CBS HTTP client
     public Map<String, Object> callCbs(Map<String, Object> cbsRequest, String transactionIndex) {
-        // TODO: replace with actual CBS HTTP integration
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
+        if (stubSimulatorConfig.shouldFail("CBS_POSTING")) {
+            response.put("status", "FAILED");
+            response.put("reason", "Simulated CBS failure — configured via /test/stub/configure");
+            return response;
+        }
         response.put("status", "SUCCESS");
         return response;
     }
@@ -58,13 +68,15 @@ public class ExternalApiHelper {
         return req;
     }
 
-    /**
-     * Stub — replace with real GL HTTP call. Response: { responder_ref_id, status: SUCCESS|FAILURE }
-     */
+    // TODO: replace with real GL HTTP client
     public Map<String, Object> callGl(Map<String, Object> glRequest) {
-        // TODO: replace with actual GL HTTP integration
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("responder_ref_id", UUID.randomUUID().toString());
+        if (stubSimulatorConfig.shouldFail("GL_POSTING")) {
+            response.put("status", "FAILED");
+            response.put("reason", "Simulated GL failure — configured via /test/stub/configure");
+            return response;
+        }
         response.put("status", "SUCCESS");
         return response;
     }
@@ -84,15 +96,17 @@ public class ExternalApiHelper {
         return req;
     }
 
-    /**
-     * Stub — replace with real OBPM HTTP call. Response: { transaction_id, status: SUCCESS|FAILURE }
-     */
+    // TODO: replace with real OBPM HTTP client
     public Map<String, Object> callObpm(Map<String, Object> obpmRequest) {
-        // TODO: replace with actual OBPM HTTP integration
         String transactionId = "TRAN" + DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")
                 .format(LocalDateTime.now());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_id", transactionId);
+        if (stubSimulatorConfig.shouldFail("OBPM_POSTING")) {
+            response.put("status", "FAILED");
+            response.put("reason", "Simulated OBPM failure — configured via /test/stub/configure");
+            return response;
+        }
         response.put("status", "SUCCESS");
         return response;
     }

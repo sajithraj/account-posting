@@ -5,4 +5,5 @@ ALTER TABLE account_posting
     ADD COLUMN retry_locked_until TIMESTAMPTZ;
 
 ALTER TABLE account_posting_leg
-    DROP COLUMN retry_locked_until;
+DROP
+COLUMN retry_locked_until;

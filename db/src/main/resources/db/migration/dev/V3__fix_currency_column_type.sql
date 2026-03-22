@@ -5,4 +5,5 @@
 -- =============================================================================
 
 ALTER TABLE account_posting
-    ALTER COLUMN currency TYPE VARCHAR(3);
+ALTER
+COLUMN currency TYPE VARCHAR(3);

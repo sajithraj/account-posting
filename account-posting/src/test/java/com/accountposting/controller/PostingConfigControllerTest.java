@@ -6,7 +6,6 @@ import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.service.config.PostingConfigService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,15 +33,11 @@ class PostingConfigControllerTest {
     @Autowired
     MockMvc mockMvc;
 
-    @MockBean
-    PostingConfigService service;
-
+    @Autowired
     ObjectMapper objectMapper;
 
-    @BeforeEach
-    void setUp() {
-        objectMapper = new ObjectMapper();
-    }
+    @MockBean
+    PostingConfigService service;
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -80,8 +75,8 @@ class PostingConfigControllerTest {
             mockMvc.perform(get("/account-posting/config"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(2)))
-                    .andExpect(jsonPath("$[0].configId").value(1))
-                    .andExpect(jsonPath("$[0].requestType").value("CBS_GL"));
+                    .andExpect(jsonPath("$[0].config_id").value(1))
+                    .andExpect(jsonPath("$[0].request_type").value("CBS_GL"));
         }
 
         @Test
@@ -150,9 +145,9 @@ class PostingConfigControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.configId").value(10))
-                    .andExpect(jsonPath("$.targetSystem").value("CBS"))
-                    .andExpect(jsonPath("$.orderSeq").value(1));
+                    .andExpect(jsonPath("$.config_id").value(10))
+                    .andExpect(jsonPath("$.target_system").value("CBS"))
+                    .andExpect(jsonPath("$.order_seq").value(1));
         }
 
         @Test
@@ -246,8 +241,8 @@ class PostingConfigControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.configId").value(5))
-                    .andExpect(jsonPath("$.orderSeq").value(2));
+                    .andExpect(jsonPath("$.config_id").value(5))
+                    .andExpect(jsonPath("$.order_seq").value(2));
         }
 
         @Test

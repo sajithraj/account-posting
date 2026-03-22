@@ -74,7 +74,11 @@ C4Container
 
 ## Notes
 
-- **Vite proxy**: In development, the Vite dev server proxies all `/api` requests to `http://localhost:8080`, eliminating CORS issues.
-- **Kafka conditional**: The `PostingEventPublisher` bean is only registered when `kafka.enabled=true`. When disabled, no Kafka dependency is required at runtime.
-- **External system stubs**: CBS, GL, and OBPM clients are currently stubs (`CoreBankingClient` / strategy impls). Replace with real HTTP clients for production.
-- **Single JVM**: The `posting` and `leg` packages both run inside the Spring Boot JVM and communicate via direct Java method calls — no inter-service HTTP.
+- **Vite proxy**: In development, the Vite dev server proxies all `/api` requests to `http://localhost:8080`,
+  eliminating CORS issues.
+- **Kafka conditional**: The `PostingEventPublisher` bean is only registered when `kafka.enabled=true`. When disabled,
+  no Kafka dependency is required at runtime.
+- **External system stubs**: CBS, GL, and OBPM clients are currently stubs (`CoreBankingClient` / strategy impls).
+  Replace with real HTTP clients for production.
+- **Single JVM**: The `posting` and `leg` packages both run inside the Spring Boot JVM and communicate via direct Java
+  method calls — no inter-service HTTP.

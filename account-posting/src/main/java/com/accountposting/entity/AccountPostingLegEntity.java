@@ -77,9 +77,6 @@ public class AccountPostingLegEntity extends BaseEntity {
     @Builder.Default
     private LegMode mode = LegMode.NORM;
 
-    /**
-     * Posting operation type — POSTING / ADD_HOLD / CANCEL_HOLD.
-     */
     @Column(name = "operation", nullable = false, length = 20)
     @Builder.Default
     private String operation = "POSTING";

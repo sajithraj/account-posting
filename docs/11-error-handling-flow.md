@@ -1,6 +1,7 @@
 # Error Handling Flow
 
-Shows how exceptions are caught and translated, what happens when external systems fail, how duplicate submissions are handled, and how the retry lock expiry path works.
+Shows how exceptions are caught and translated, what happens when external systems fail, how duplicate submissions are
+handled, and how the retry lock expiry path works.
 
 ---
 
@@ -224,27 +225,27 @@ sequenceDiagram
 
 ## Error Handling Summary Table
 
-| Scenario | Exception | HTTP Status | Error Code | Leg Effect | Posting Effect |
-|----------|-----------|-------------|------------|------------|----------------|
-| Duplicate `endToEndReferenceId` | `BusinessException` | 422 | `DUPLICATE_REFERENCE` | None created | None created |
-| Request field validation failure | `MethodArgumentNotValidException` | 400 | `VALIDATION_ERROR` | None created | None created |
-| Malformed JSON body | `HttpMessageNotReadableException` | 400 | `BAD_REQUEST` | None created | None created |
-| Posting not found by ID | `ResourceNotFoundException` | 404 | `NOT_FOUND` | No change | No change |
-| External system returns failure | Caught in strategy, returns `ExternalCallResult{success=false}` | 200 (normal flow continues) | N/A | `status=FAILED` | `status=PENDING` |
-| External system throws exception | Caught in strategy, logged, treated as failure | 200 (normal flow continues) | N/A | `status=FAILED` | `status=PENDING` |
-| All legs succeed | No exception | 200 | N/A | `status=SUCCESS` | `status=SUCCESS` |
-| Retry — posting already locked | No exception, skipped | 200 | N/A | No change | No change |
-| Kafka publish failure | Logged at ERROR, not rethrown | 200 (posting already SUCCESS) | N/A | No change | Remains SUCCESS |
-| Unhandled runtime exception | `Exception` | 500 | `INTERNAL_ERROR` | Varies | Varies (transaction rollback) |
+| Scenario                         | Exception                                                       | HTTP Status                   | Error Code            | Leg Effect       | Posting Effect                |
+|----------------------------------|-----------------------------------------------------------------|-------------------------------|-----------------------|------------------|-------------------------------|
+| Duplicate `endToEndReferenceId`  | `BusinessException`                                             | 422                           | `DUPLICATE_REFERENCE` | None created     | None created                  |
+| Request field validation failure | `MethodArgumentNotValidException`                               | 400                           | `VALIDATION_ERROR`    | None created     | None created                  |
+| Malformed JSON body              | `HttpMessageNotReadableException`                               | 400                           | `BAD_REQUEST`         | None created     | None created                  |
+| Posting not found by ID          | `ResourceNotFoundException`                                     | 404                           | `NOT_FOUND`           | No change        | No change                     |
+| External system returns failure  | Caught in strategy, returns `ExternalCallResult{success=false}` | 200 (normal flow continues)   | N/A                   | `status=FAILED`  | `status=PENDING`              |
+| External system throws exception | Caught in strategy, logged, treated as failure                  | 200 (normal flow continues)   | N/A                   | `status=FAILED`  | `status=PENDING`              |
+| All legs succeed                 | No exception                                                    | 200                           | N/A                   | `status=SUCCESS` | `status=SUCCESS`              |
+| Retry — posting already locked   | No exception, skipped                                           | 200                           | N/A                   | No change        | No change                     |
+| Kafka publish failure            | Logged at ERROR, not rethrown                                   | 200 (posting already SUCCESS) | N/A                   | No change        | Remains SUCCESS               |
+| Unhandled runtime exception      | `Exception`                                                     | 500                           | `INTERNAL_ERROR`      | Varies           | Varies (transaction rollback) |
 
 ---
 
 ## Key Notes
 
-| Design Decision | Rationale |
-|-----------------|-----------|
-| **Strategy catches external exceptions** | External system failures must not propagate up and roll back the entire transaction. The strategy catches all exceptions, logs them, and returns a `FAILED` result so the posting stays `PENDING` for retry. |
-| **Loop 2 continues after failure** | All legs are attempted regardless of whether a previous leg failed. This ensures the maximum number of legs are processed in each invocation. |
-| **UNIQUE DB constraint as backup** | Even if the `existsByEndToEndReferenceId` check passes in a race condition (two simultaneous requests), the DB UNIQUE constraint on `end_to_end_reference_id` guarantees only one INSERT succeeds. The resulting `DataIntegrityViolationException` should be caught and mapped to 422 in production. |
-| **Kafka failure non-blocking** | A Kafka publish failure after a SUCCESS posting should not roll back the posting. Log at ERROR and alert ops, but the posting data is already safely in PostgreSQL. |
-| **Transaction scope** | `AccountPostingServiceImpl` methods are `@Transactional`. If an unhandled exception bubbles up, the entire create/update rolls back. Pre-inserted legs are also rolled back in this case — a clean state. |
+| Design Decision                          | Rationale                                                                                                                                                                                                                                                                                            |
+|------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Strategy catches external exceptions** | External system failures must not propagate up and roll back the entire transaction. The strategy catches all exceptions, logs them, and returns a `FAILED` result so the posting stays `PENDING` for retry.                                                                                         |
+| **Loop 2 continues after failure**       | All legs are attempted regardless of whether a previous leg failed. This ensures the maximum number of legs are processed in each invocation.                                                                                                                                                        |
+| **UNIQUE DB constraint as backup**       | Even if the `existsByEndToEndReferenceId` check passes in a race condition (two simultaneous requests), the DB UNIQUE constraint on `end_to_end_reference_id` guarantees only one INSERT succeeds. The resulting `DataIntegrityViolationException` should be caught and mapped to 422 in production. |
+| **Kafka failure non-blocking**           | A Kafka publish failure after a SUCCESS posting should not roll back the posting. Log at ERROR and alert ops, but the posting data is already safely in PostgreSQL.                                                                                                                                  |
+| **Transaction scope**                    | `AccountPostingServiceImpl` methods are `@Transactional`. If an unhandled exception bubbles up, the entire create/update rolls back. Pre-inserted legs are also rolled back in this case — a clean state.                                                                                            |

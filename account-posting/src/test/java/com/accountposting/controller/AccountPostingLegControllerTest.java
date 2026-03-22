@@ -10,8 +10,6 @@ import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.service.accountpostingleg.AccountPostingLegService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,15 +36,11 @@ class AccountPostingLegControllerTest {
     @Autowired
     MockMvc mockMvc;
 
-    @MockitoBean
-    AccountPostingLegService service;
-
+    @Autowired
     ObjectMapper objectMapper;
 
-    @BeforeEach
-    void setUp() {
-        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-    }
+    @MockitoBean
+    AccountPostingLegService service;
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -83,8 +77,8 @@ class AccountPostingLegControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validLegRequest())))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.postingLegId").value(100))
-                    .andExpect(jsonPath("$.postingId").value(10))
+                    .andExpect(jsonPath("$.posting_leg_id").value(100))
+                    .andExpect(jsonPath("$.posting_id").value(10))
                     .andExpect(jsonPath("$.status").value("SUCCESS"));
         }
 
@@ -161,8 +155,8 @@ class AccountPostingLegControllerTest {
             mockMvc.perform(get("/account-posting/10/leg"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(2)))
-                    .andExpect(jsonPath("$[0].postingLegId").value(100))
-                    .andExpect(jsonPath("$[1].postingLegId").value(101));
+                    .andExpect(jsonPath("$[0].posting_leg_id").value(100))
+                    .andExpect(jsonPath("$[1].posting_leg_id").value(101));
         }
 
         @Test
@@ -195,9 +189,9 @@ class AccountPostingLegControllerTest {
 
             mockMvc.perform(get("/account-posting/10/leg/100"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.postingLegId").value(100))
-                    .andExpect(jsonPath("$.legOrder").value(1))
-                    .andExpect(jsonPath("$.targetSystem").value("CBS"));
+                    .andExpect(jsonPath("$.posting_leg_id").value(100))
+                    .andExpect(jsonPath("$.leg_order").value(1))
+                    .andExpect(jsonPath("$.target_system").value("CBS"));
         }
 
         @Test
@@ -240,8 +234,8 @@ class AccountPostingLegControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.postingLegId").value(100))
-                    .andExpect(jsonPath("$.referenceId").value("REF-001"));
+                    .andExpect(jsonPath("$.posting_leg_id").value(100))
+                    .andExpect(jsonPath("$.reference_id").value("REF-001"));
         }
 
         @Test
@@ -313,7 +307,7 @@ class AccountPostingLegControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"status\": \"SUCCESS\"}"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.postingLegId").value(100))
+                    .andExpect(jsonPath("$.posting_leg_id").value(100))
                     .andExpect(jsonPath("$.mode").value("MANUAL"));
         }
 

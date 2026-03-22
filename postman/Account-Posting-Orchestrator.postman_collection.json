@@ -1,0 +1,2999 @@
+{
+  "info": {
+    "name": "Account Posting Orchestrator",
+    "description": "Complete test suite. Run in order using the Collection Runner — the first CREATE request sets collection variables (postingId, legId, configId) used by all subsequent requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "postingId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "legId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "configId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "e2eRef",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "srcRef",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Create Posting (Happy Paths)",
+      "item": [
+        {
+          "name": "DMS - CBS_GL (sets postingId)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('e2eRef', 'E2E-DMS-CBS-' + ts);",
+                  "pm.collectionVariables.set('srcRef', 'SRC-DMS-' + ts);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('end_to_end_reference_id matches', () => pm.expect(b.end_to_end_reference_id).to.eql(pm.collectionVariables.get('e2eRef')));",
+                  "pm.test('Has 2 legs (CBS + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('All legs SUCCESS', () => b.responses.forEach(l => pm.expect(l.status).to.eql('SUCCESS')));",
+                  "pm.test('processed_at present', () => pm.expect(b.processed_at).to.not.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Salary payment DMS CBS_GL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Extract postingId via Search",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Found 1 result', () => pm.expect(b.content).to.have.lengthOf(1));",
+                  "const posting = b.content[0];",
+                  "pm.collectionVariables.set('postingId', posting.posting_id);",
+                  "pm.test('postingId extracted', () => pm.expect(posting.posting_id).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?end_to_end_reference_id={{e2eRef}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "end_to_end_reference_id",
+                  "value": "{{e2eRef}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DMS - OBPM",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-DMS-OBPM-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-DMS-OBPM-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 1 leg (OBPM)', () => pm.expect(b.responses).to.have.lengthOf(1));",
+                  "pm.test('Leg is OBPM_POSTING', () => pm.expect(b.responses[0].name).to.eql('OBPM_POSTING'));",
+                  "pm.test('Leg is SUCCESS', () => pm.expect(b.responses[0].status).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 2000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"DMS OBPM payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "RMS - EFD_RETURN",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-RMS-EFD-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-RMS-EFD-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 2 legs (CBS + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('First leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));",
+                  "pm.test('Second leg is GL_POSTING', () => pm.expect(b.responses[1].name).to.eql('GL_POSTING'));",
+                  "pm.test('All legs SUCCESS', () => b.responses.forEach(l => pm.expect(l.status).to.eql('SUCCESS')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"EFD_RETURN\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "RMS - USDNT_GL_RETURN",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-RMS-USDNT-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-RMS-USDNT-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 1 leg (GL only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
+                  "pm.test('Leg is GL_POSTING', () => pm.expect(b.responses[0].name).to.eql('GL_POSTING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"USDNT_GL_RETURN\",\n  \"amount\": 750.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "USDNT - GL_RETURN",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-USDNT-GL-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-USDNT-GL-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 1 leg (GL only)', () => pm.expect(b.responses).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"USDNT\",\n  \"request_type\": \"GL_RETURN\",\n  \"amount\": 300.00,\n  \"currency\": \"EUR\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "LCD - USDNT_GL",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-LCD-USDNT-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-LCD-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 2 legs (OBPM + CBS)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('First leg is OBPM_POSTING', () => pm.expect(b.responses[0].name).to.eql('OBPM_POSTING'));",
+                  "pm.test('Second leg is CBS_POSTING', () => pm.expect(b.responses[1].name).to.eql('CBS_POSTING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"LCD\",\n  \"request_type\": \"USDNT_GL\",\n  \"amount\": 10000.00,\n  \"currency\": \"GBP\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "NPSS - NPSS_PAYMENT",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-NPSS-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-NPSS-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 2 legs (CBS + OBPM)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('First leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));",
+                  "pm.test('Second leg is OBPM_POSTING', () => pm.expect(b.responses[1].name).to.eql('OBPM_POSTING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"NPSS\",\n  \"request_type\": \"NPSS_PAYMENT\",\n  \"amount\": 5000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DBA - DBA_ACCOUNT_HOLD",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-DBA-HOLD-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-DBA-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 1 leg (CBS only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
+                  "pm.test('Leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DBA\",\n  \"request_type\": \"DBA_ACCOUNT_HOLD\",\n  \"amount\": 999.99,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "STABLECOIN - BNK_CUSTOMER",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-BNK-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-BNK-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 2 legs (OBPM + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('First leg is OBPM_POSTING', () => pm.expect(b.responses[0].name).to.eql('OBPM_POSTING'));",
+                  "pm.test('Second leg is GL_POSTING', () => pm.expect(b.responses[1].name).to.eql('GL_POSTING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BNK_CUSTOMER\",\n  \"amount\": 25000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "STABLECOIN - BNK_CANCEL_HOLD",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-CANCEL-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-CANCEL-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 1 leg (CBS only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
+                  "pm.test('Leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BNK_CANCEL_HOLD\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Create Posting (Validation Errors)",
+      "item": [
+        {
+          "name": "Error - Missing source_reference_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Error name present', () => pm.expect(b.name).to.be.a('string'));",
+                  "pm.test('Has message', () => pm.expect(b.message).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Missing end_to_end_reference_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has error name', () => pm.expect(b.name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Missing source_name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-002\",\n  \"end_to_end_reference_id\": \"E2E-ERR-002\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Missing request_type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-003\",\n  \"end_to_end_reference_id\": \"E2E-ERR-003\",\n  \"source_name\": \"DMS\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Amount is zero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 422', () => pm.expect([400,422]).to.include(pm.response.code));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-004\",\n  \"end_to_end_reference_id\": \"E2E-ERR-004\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 0,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Amount negative",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 422', () => pm.expect([400,422]).to.include(pm.response.code));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-005\",\n  \"end_to_end_reference_id\": \"E2E-ERR-005\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": -500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Currency exceeds 3 chars",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 422', () => pm.expect([400,422]).to.include(pm.response.code));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-006\",\n  \"end_to_end_reference_id\": \"E2E-ERR-006\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USDT\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Invalid credit_debit_indicator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 422', () => pm.expect([400,422]).to.include(pm.response.code));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-007\",\n  \"end_to_end_reference_id\": \"E2E-ERR-007\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CRDT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Invalid source_name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 422', () => pm.expect([400,422]).to.include(pm.response.code));",
+                  "const b = pm.response.json();",
+                  "pm.test('Error is INVALID_ENUM_VALUE or VALIDATION_FAILED', () => pm.expect(['INVALID_ENUM_VALUE','VALIDATION_FAILED']).to.include(b.name));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-008\",\n  \"end_to_end_reference_id\": \"E2E-ERR-008\",\n  \"source_name\": \"UNKNOWN_SRC\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Invalid request_type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 422', () => pm.expect([400,422]).to.include(pm.response.code));",
+                  "const b = pm.response.json();",
+                  "pm.test('Error is INVALID_ENUM_VALUE or VALIDATION_FAILED', () => pm.expect(['INVALID_ENUM_VALUE','VALIDATION_FAILED']).to.include(b.name));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-009\",\n  \"end_to_end_reference_id\": \"E2E-ERR-009\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Missing debtor_account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-010\",\n  \"end_to_end_reference_id\": \"E2E-ERR-010\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Missing requested_execution_date",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Has error name', () => pm.expect(pm.response.json().name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-011\",\n  \"end_to_end_reference_id\": \"E2E-ERR-011\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Malformed JSON body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error is INVALID_REQUEST_BODY', () => pm.expect(pm.response.json().name).to.eql('INVALID_REQUEST_BODY'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ this is not valid json }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Duplicate end_to_end_reference_id",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-DUP-FIXED-001');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "if (status === 201) {",
+                  "  pm.test('First call succeeded — re-run this request to get 422', () => pm.expect(status).to.eql(201));",
+                  "} else {",
+                  "  pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "  pm.test('Error is DUPLICATE_E2E_REF', () => pm.expect(pm.response.json().name).to.eql('DUPLICATE_E2E_REF'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-DUP-001\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Search Postings",
+      "item": [
+        {
+          "name": "Get all - no filters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has content array', () => pm.expect(b.content).to.be.an('array'));",
+                  "pm.test('Has total_elements', () => pm.expect(b.total_elements).to.be.a('number'));",
+                  "pm.test('Has total_pages', () => pm.expect(b.total_pages).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by status=SUCCESS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('All results have status SUCCESS', () => b.content.forEach(p => pm.expect(p.posting_status).to.eql('SUCCESS')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?status=SUCCESS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "SUCCESS"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by status=PENDING",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has content array', () => pm.expect(b.content).to.be.an('array'));",
+                  "pm.test('All results PENDING', () => b.content.forEach(p => pm.expect(p.posting_status).to.eql('PENDING')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?status=PENDING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by status=FAILED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has content array', () => pm.expect(b.content).to.be.an('array'));",
+                  "pm.test('All results FAILED', () => b.content.forEach(p => pm.expect(p.posting_status).to.eql('FAILED')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?status=FAILED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "FAILED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by source_name=DMS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('All results have source_name DMS', () => b.content.forEach(p => pm.expect(p.source_name).to.eql('DMS')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?sourceName=DMS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "sourceName",
+                  "value": "DMS"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by request_type=CBS_GL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('All results have request_type CBS_GL', () => b.content.forEach(p => pm.expect(p.request_type).to.eql('CBS_GL')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?requestType=CBS_GL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "requestType",
+                  "value": "CBS_GL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by end_to_end_reference_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Exactly 1 result', () => pm.expect(b.content).to.have.lengthOf(1));",
+                  "pm.test('postingId matches saved', () => pm.expect(b.content[0].posting_id).to.eql(parseInt(pm.collectionVariables.get('postingId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId=E2E-DMS-CBS-{{postingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "endToEndReferenceId",
+                  "value": "{{e2eRef}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by target_system=CBS_POSTING",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has content array', () => pm.expect(b.content).to.be.an('array'));",
+                  "pm.test('All results have CBS in target_systems', () => b.content.forEach(p => pm.expect(p.target_systems).to.include('CBS')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?targetSystem=CBS_POSTING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "targetSystem",
+                  "value": "CBS_POSTING"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by date range",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has content array', () => pm.expect(b.content).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?fromDate=2026-01-01&toDate=2026-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "fromDate",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "toDate",
+                  "value": "2026-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pagination - page 0 size 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Page size respected', () => pm.expect(b.content.length).to.be.at.most(3));",
+                  "pm.test('Is first page', () => pm.expect(b.number).to.eql(0));",
+                  "pm.test('Size is 3', () => pm.expect(b.size).to.eql(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?page=0&size=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "3"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multiple filters - status=SUCCESS source_name=DMS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('All results SUCCESS and DMS', () => b.content.forEach(p => {",
+                  "  pm.expect(p.posting_status).to.eql('SUCCESS');",
+                  "  pm.expect(p.source_name).to.eql('DMS');",
+                  "}));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?status=SUCCESS&sourceName=DMS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "SUCCESS"
+                },
+                {
+                  "key": "sourceName",
+                  "value": "DMS"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Get Posting by ID",
+      "item": [
+        {
+          "name": "Get existing posting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_id matches', () => pm.expect(b.posting_id).to.eql(parseInt(pm.collectionVariables.get('postingId'))));",
+                  "pm.test('Has source_reference_id', () => pm.expect(b.source_reference_id).to.be.a('string'));",
+                  "pm.test('Has posting_status', () => pm.expect(['PENDING','SUCCESS','FAILED']).to.include(b.posting_status));",
+                  "pm.test('Has responses array', () => pm.expect(b.responses).to.be.an('array'));",
+                  "pm.test('Has created_at', () => pm.expect(b.created_at).to.not.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get non-existent posting (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error is NOT_FOUND', () => pm.expect(pm.response.json().name).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "999999"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Retry",
+      "item": [
+        {
+          "name": "Retry all PENDING (no body)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has total_legs_retried', () => pm.expect(b.total_legs_retried).to.be.a('number'));",
+                  "pm.test('Has success_count', () => pm.expect(b.success_count).to.be.a('number'));",
+                  "pm.test('Has failed_count', () => pm.expect(b.failed_count).to.be.a('number'));",
+                  "pm.test('success + failed = total', () => pm.expect(b.success_count + b.failed_count).to.eql(b.total_legs_retried));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "retry"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retry all - empty postingIds array",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has total_legs_retried', () => pm.expect(b.total_legs_retried).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posting_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "retry"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retry specific posting ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has total_legs_retried', () => pm.expect(b.total_legs_retried).to.be.a('number'));",
+                  "pm.test('Has results array', () => pm.expect(b.results).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posting_ids\": [{{postingId}}]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "retry"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Posting Legs",
+      "item": [
+        {
+          "name": "List all legs for posting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Response is an array', () => pm.expect(b).to.be.an('array'));",
+                  "pm.test('Has at least 1 leg', () => pm.expect(b.length).to.be.at.least(1));",
+                  "if (b.length > 0) {",
+                  "  pm.collectionVariables.set('legId', b[0].posting_leg_id);",
+                  "  pm.test('First leg has posting_leg_id', () => pm.expect(b[0].posting_leg_id).to.be.a('number'));",
+                  "  pm.test('First leg has target_system', () => pm.expect(b[0].target_system).to.be.a('string'));",
+                  "  pm.test('First leg has status', () => pm.expect(['PENDING','SUCCESS','FAILED']).to.include(b[0].status));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get single leg",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_leg_id matches', () => pm.expect(b.posting_leg_id).to.eql(parseInt(pm.collectionVariables.get('legId'))));",
+                  "pm.test('posting_id matches', () => pm.expect(b.posting_id).to.eql(parseInt(pm.collectionVariables.get('postingId'))));",
+                  "pm.test('Has target_system', () => pm.expect(b.target_system).to.be.a('string'));",
+                  "pm.test('Has mode', () => pm.expect(['NORM','RETRY','MANUAL']).to.include(b.mode));",
+                  "pm.test('Has attempt_number', () => pm.expect(b.attempt_number).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add leg manually",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has posting_leg_id', () => pm.expect(b.posting_leg_id).to.be.a('number'));",
+                  "pm.test('posting_id matches', () => pm.expect(b.posting_id).to.eql(parseInt(pm.collectionVariables.get('postingId'))));",
+                  "pm.test('target_system is CBS_POSTING', () => pm.expect(b.target_system).to.eql('CBS_POSTING'));",
+                  "pm.test('status is PENDING', () => pm.expect(b.status).to.eql('PENDING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leg_order\": 99,\n  \"target_system\": \"CBS_POSTING\",\n  \"account\": \"9876543210\",\n  \"status\": \"PENDING\",\n  \"mode\": \"NORM\",\n  \"operation\": \"POSTING\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update leg (PUT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_leg_id matches', () => pm.expect(b.posting_leg_id).to.eql(parseInt(pm.collectionVariables.get('legId'))));",
+                  "pm.test('status updated to SUCCESS', () => pm.expect(b.status).to.eql('SUCCESS'));",
+                  "pm.test('reference_id updated', () => pm.expect(b.reference_id).to.eql('REF-UPDATED-001'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SUCCESS\",\n  \"reference_id\": \"REF-UPDATED-001\",\n  \"reason\": \"Updated via PUT test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Manual status override (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('mode is MANUAL', () => pm.expect(b.mode).to.eql('MANUAL'));",
+                  "pm.test('status is FAILED', () => pm.expect(b.status).to.eql('FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"FAILED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get leg - not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error is NOT_FOUND', () => pm.expect(pm.response.json().name).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get leg - wrong posting ID (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error is NOT_FOUND', () => pm.expect(pm.response.json().name).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/999999/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "999999",
+                "leg",
+                "{{legId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Posting Config",
+      "item": [
+        {
+          "name": "Get all configs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Response is an array', () => pm.expect(b).to.be.an('array'));",
+                  "pm.test('Has at least 15 seed entries', () => pm.expect(b.length).to.be.at.least(15));",
+                  "pm.test('Each entry has config_id', () => b.forEach(c => pm.expect(c.config_id).to.be.a('number')));",
+                  "pm.test('Each entry has request_type', () => b.forEach(c => pm.expect(c.request_type).to.be.a('string')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get config by request type - CBS_GL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Response is an array', () => pm.expect(b).to.be.an('array'));",
+                  "pm.test('Has 2 entries for CBS_GL', () => pm.expect(b.length).to.eql(2));",
+                  "pm.test('All entries have request_type CBS_GL', () => b.forEach(c => pm.expect(c.request_type).to.eql('CBS_GL')));",
+                  "pm.test('Ordered by order_seq', () => { pm.expect(b[0].order_seq).to.eql(1); pm.expect(b[1].order_seq).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/CBS_GL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "CBS_GL"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get config by request type - NPSS_PAYMENT",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has 2 entries for NPSS_PAYMENT', () => pm.expect(b.length).to.eql(2));",
+                  "pm.test('First is CBS (order 1)', () => { pm.expect(b[0].target_system).to.eql('CBS_POSTING'); pm.expect(b[0].order_seq).to.eql(1); });",
+                  "pm.test('Second is OBPM (order 2)', () => { pm.expect(b[1].target_system).to.eql('OBPM_POSTING'); pm.expect(b[1].order_seq).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/NPSS_PAYMENT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "NPSS_PAYMENT"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get config - request type not found (empty array)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Returns empty array for unknown type', () => pm.expect(b).to.be.an('array').that.is.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/UNKNOWN_TYPE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "UNKNOWN_TYPE"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create new config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has config_id', () => pm.expect(b.config_id).to.be.a('number'));",
+                  "pm.collectionVariables.set('configId', b.config_id);",
+                  "pm.test('source_name matches', () => pm.expect(b.source_name).to.eql('DMS'));",
+                  "pm.test('request_type matches', () => pm.expect(b.request_type).to.eql('TEST_TYPE'));",
+                  "pm.test('order_seq matches', () => pm.expect(b.order_seq).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"CBS_POSTING\",\n  \"operation\": \"CBS_PROCESS\",\n  \"order_seq\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('config_id matches', () => pm.expect(b.config_id).to.eql(parseInt(pm.collectionVariables.get('configId'))));",
+                  "pm.test('target_system updated', () => pm.expect(b.target_system).to.eql('GL_POSTING'));",
+                  "pm.test('operation updated', () => pm.expect(b.operation).to.eql('GL_PROCESS'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"GL_POSTING\",\n  \"operation\": \"GL_PROCESS\",\n  \"order_seq\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "{{configId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Error - Duplicate order_seq for same request_type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error is DUPLICATE_CONFIG_ORDER', () => pm.expect(pm.response.json().name).to.eql('DUPLICATE_CONFIG_ORDER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"target_system\": \"CBS_POSTING\",\n  \"operation\": \"CBS_PROCESS\",\n  \"order_seq\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Flush config cache",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/cache/flush",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "cache",
+                "flush"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "{{configId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete config - verify gone (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error is NOT_FOUND', () => pm.expect(pm.response.json().name).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "{{configId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Failure Simulation (Leg-level)",
+      "description": "Uses StubSimulatorController (POST /test/stub/configure) to force specific systems to return FAILED. All results persist to DB — posting ends up PENDING (retryable), failed legs end up FAILED.",
+      "item": [
+        {
+          "name": "[Setup] Clear simulator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('No failing systems', () => pm.expect(pm.response.json().failing_systems).to.be.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/test/stub/clear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "test",
+                "stub",
+                "clear"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Setup] Check simulator status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('failing_systems present in response', () => pm.expect(pm.response.json()).to.have.property('failing_systems'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/test/stub/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "test",
+                "stub",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Leg 1 fails (CBS_POSTING) — DMS CBS_GL",
+          "description": "CBS leg (leg 1) fails, GL leg (leg 2) succeeds. Posting saved as PENDING. Both legs persisted to DB.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Configure CBS to fail before this request",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "pm.sendRequest({",
+                  "  url: baseUrl + '/test/stub/configure',",
+                  "  method: 'POST',",
+                  "  header: [{ key: 'Content-Type', value: 'application/json' }],",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['CBS_POSTING'] }) }",
+                  "}, (err, res) => { if (err) console.error(err); });",
+                  "pm.collectionVariables.set('e2eRef', 'E2E-FAIL-CBS-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-FAIL-CBS-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is PENDING (retryable, not all legs succeeded)', () => pm.expect(b.posting_status).to.eql('PENDING'));",
+                  "pm.test('Has 2 legs', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('CBS leg (leg 1) is FAILED', () => pm.expect(b.responses[0].status).to.eql('FAILED'));",
+                  "pm.test('GL leg (leg 2) is SUCCESS', () => pm.expect(b.responses[1].status).to.eql('SUCCESS'));",
+                  "pm.test('CBS leg has failure reason', () => pm.expect(b.responses[0].reason).to.include('CBS'));",
+                  "// Save postingId for follow-up verification",
+                  "pm.collectionVariables.set('failedPostingE2e', b.end_to_end_reference_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — CBS leg failure\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Leg 1 fail — posting in DB as PENDING",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Clear simulator after previous test",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "pm.sendRequest({ url: baseUrl + '/test/stub/clear', method: 'POST' }, () => {});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Exactly 1 result', () => pm.expect(b.content).to.have.lengthOf(1));",
+                  "const p = b.content[0];",
+                  "pm.test('Posting persisted as PENDING', () => pm.expect(p.posting_status).to.eql('PENDING'));",
+                  "pm.test('Legs persisted', () => pm.expect(p.responses).to.have.lengthOf(2));",
+                  "pm.test('Leg 1 FAILED in DB', () => pm.expect(p.responses[0].status).to.eql('FAILED'));",
+                  "pm.test('Leg 2 SUCCESS in DB', () => pm.expect(p.responses[1].status).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('pendingPostingId', p.posting_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId={{failedPostingE2e}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "endToEndReferenceId",
+                  "value": "{{failedPostingE2e}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Leg 2 fails (GL_POSTING) — DMS CBS_GL",
+          "description": "CBS leg (leg 1) succeeds, GL leg (leg 2) fails. Posting saved as PENDING.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "pm.sendRequest({",
+                  "  url: baseUrl + '/test/stub/configure',",
+                  "  method: 'POST',",
+                  "  header: [{ key: 'Content-Type', value: 'application/json' }],",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['GL_POSTING'] }) }",
+                  "}, (err, res) => { if (err) console.error(err); });",
+                  "pm.collectionVariables.set('e2eRef', 'E2E-FAIL-GL-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-FAIL-GL-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is PENDING', () => pm.expect(b.posting_status).to.eql('PENDING'));",
+                  "pm.test('Has 2 legs', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('CBS leg (leg 1) is SUCCESS', () => pm.expect(b.responses[0].status).to.eql('SUCCESS'));",
+                  "pm.test('GL leg (leg 2) is FAILED', () => pm.expect(b.responses[1].status).to.eql('FAILED'));",
+                  "pm.test('GL leg has failure reason', () => pm.expect(b.responses[1].reason).to.include('GL'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — GL leg failure\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "All legs fail (CBS + GL) — DMS CBS_GL",
+          "description": "Both CBS and GL legs fail. Posting saved as PENDING. All legs FAILED in DB.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "pm.sendRequest({",
+                  "  url: baseUrl + '/test/stub/configure',",
+                  "  method: 'POST',",
+                  "  header: [{ key: 'Content-Type', value: 'application/json' }],",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['CBS_POSTING', 'GL_POSTING'] }) }",
+                  "}, (err, res) => { if (err) console.error(err); });",
+                  "pm.collectionVariables.set('e2eRef', 'E2E-FAIL-ALL-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-FAIL-ALL-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is PENDING (all legs failed)', () => pm.expect(b.posting_status).to.eql('PENDING'));",
+                  "pm.test('Has 2 legs', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('All legs FAILED', () => b.responses.forEach(l => pm.expect(l.status).to.eql('FAILED')));",
+                  "pm.test('CBS leg reason present', () => pm.expect(b.responses[0].reason).to.be.a('string').and.not.empty);",
+                  "pm.test('GL leg reason present', () => pm.expect(b.responses[1].reason).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — all legs fail\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Single-leg failure — OBPM (DMS OBPM)",
+          "description": "OBPM is the only leg and it fails. Posting saved as PENDING.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "pm.sendRequest({",
+                  "  url: baseUrl + '/test/stub/configure',",
+                  "  method: 'POST',",
+                  "  header: [{ key: 'Content-Type', value: 'application/json' }],",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['OBPM_POSTING'] }) }",
+                  "}, (err, res) => { if (err) console.error(err); });",
+                  "pm.collectionVariables.set('e2eRef', 'E2E-FAIL-OBPM-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-FAIL-OBPM-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is PENDING', () => pm.expect(b.posting_status).to.eql('PENDING'));",
+                  "pm.test('Has 1 leg (OBPM)', () => pm.expect(b.responses).to.have.lengthOf(1));",
+                  "pm.test('OBPM leg is FAILED', () => pm.expect(b.responses[0].status).to.eql('FAILED'));",
+                  "pm.test('OBPM leg has reason', () => pm.expect(b.responses[0].reason).to.include('OBPM'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — OBPM single leg failure\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retry after leg failure — restores SUCCESS",
+          "description": "Clear the simulator so stubs succeed again, then retry the PENDING posting from the CBS failure test. Legs should go SUCCESS and posting promoted to SUCCESS.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Clear simulator — stubs will return SUCCESS on retry",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "pm.sendRequest({ url: baseUrl + '/test/stub/clear', method: 'POST' }, () => {});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has total_legs_retried', () => pm.expect(b.total_legs_retried).to.be.a('number'));",
+                  "pm.test('At least 1 leg retried', () => pm.expect(b.total_legs_retried).to.be.at.least(1));",
+                  "pm.test('success_count > 0', () => pm.expect(b.success_count).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posting_ids\": [{{pendingPostingId}}]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "retry"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Validation error — invalid source_name (persists FAILED to DB)",
+          "description": "Posting is saved as PENDING first, then fails validation and is updated to FAILED in DB. The FAILED record is retrievable via GET.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Make sure simulator is clear",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "pm.sendRequest({ url: baseUrl + '/test/stub/clear', method: 'POST' }, () => {});",
+                  "pm.collectionVariables.set('validationFailE2e', 'E2E-VAL-FAIL-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const b = pm.response.json();",
+                  "pm.test('Error is INVALID_ENUM_VALUE or VALIDATION_FAILED', () => pm.expect(['INVALID_ENUM_VALUE','VALIDATION_FAILED']).to.include(b.name));",
+                  "pm.test('Message mentions sourceName', () => pm.expect(b.message.toLowerCase()).to.include('sourcename'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-VAL-FAIL\",\n  \"end_to_end_reference_id\": \"{{validationFailE2e}}\",\n  \"source_name\": \"BAD_SOURCE\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify validation failure persisted as FAILED in DB",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Found the FAILED posting', () => pm.expect(b.content).to.have.lengthOf(1));",
+                  "const p = b.content[0];",
+                  "pm.test('Persisted as FAILED in DB', () => pm.expect(p.posting_status).to.eql('FAILED'));",
+                  "pm.test('reason captured', () => pm.expect(p.reason).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId={{validationFailE2e}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "endToEndReferenceId",
+                  "value": "{{validationFailE2e}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "No config found — persists FAILED to DB",
+          "description": "source_name and request_type are valid enums but no posting_config row exists for this combination. Posting saved as FAILED.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('noConfigE2e', 'E2E-NO-CFG-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error is NO_CONFIG_FOUND', () => pm.expect(pm.response.json().name).to.eql('NO_CONFIG_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"SRC-NO-CFG\",\n  \"end_to_end_reference_id\": \"{{noConfigE2e}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"USDNT_GL_RETURN\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify no-config failure persisted as FAILED in DB",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Found the FAILED posting', () => pm.expect(b.content).to.have.lengthOf(1));",
+                  "const p = b.content[0];",
+                  "pm.test('Persisted as FAILED in DB', () => pm.expect(p.posting_status).to.eql('FAILED'));",
+                  "pm.test('reason mentions config', () => pm.expect(p.reason.toLowerCase()).to.include('config'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId={{noConfigE2e}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "endToEndReferenceId",
+                  "value": "{{noConfigE2e}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Teardown] Clear simulator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Simulator cleared', () => pm.expect(pm.response.json().failing_systems).to.be.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/test/stub/clear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "test",
+                "stub",
+                "clear"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Health & Actuator",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "metrics"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

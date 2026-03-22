@@ -1,12 +1,65 @@
+app:
+  kafka:
+    enabled: true
+    topic:
+      posting-success: account-posting-success
+
 spring:
+  application:
+    name: account-posting
+
   datasource:
-    url: jdbc:postgresql://localhost:5433/account_posting_dev
+    url: jdbc:postgresql://localhost:5432/account_posting_db
     username: postgres
     password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
   jpa:
-    show-sql: true
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: public
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
 
 logging:
   level:
+    root: INFO
     com.accountposting: DEBUG
     org.hibernate.SQL: DEBUG

@@ -15,9 +15,6 @@ public class AccountPostingSearchRequest {
     private String sourceName;
     private String requestType;
 
-    /**
-     * Substring match against the target_systems column (e.g. "CBS" matches "CBS_GL").
-     */
     private String targetSystem;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)

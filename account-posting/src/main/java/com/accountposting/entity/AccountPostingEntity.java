@@ -86,15 +86,9 @@ public class AccountPostingEntity extends BaseEntity {
     @Column(name = "retry_locked_until")
     private Instant retryLockedUntil;
 
-    /**
-     * Target systems derived from config, joined by "_" in orderSeq order (e.g. "CBS_GL").
-     */
     @Column(name = "target_systems", length = 500)
     private String targetSystems;
 
-    /**
-     * Final processing outcome: "Request processed successfully" or the last failed leg reason.
-     */
     @Column(name = "reason", length = 1000)
     private String reason;
 }

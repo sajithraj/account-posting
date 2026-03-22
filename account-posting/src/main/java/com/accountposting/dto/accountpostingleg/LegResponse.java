@@ -8,13 +8,7 @@ import java.time.Instant;
 public class LegResponse {
     private Long postingLegId;
     private Integer legOrder;
-    /**
-     * Target system name — CBS / GL / OBPM
-     */
     private String name;
-    /**
-     * Operation type — POSTING / ADD_HOLD / CANCEL_HOLD
-     */
     private String type;
     private String account;
     private String referenceId;

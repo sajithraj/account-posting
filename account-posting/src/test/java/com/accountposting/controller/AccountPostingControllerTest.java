@@ -14,8 +14,6 @@ import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.service.accountposting.AccountPostingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,15 +46,11 @@ class AccountPostingControllerTest {
     @Autowired
     MockMvc mockMvc;
 
-    @MockitoBean
-    AccountPostingService service;
-
+    @Autowired
     ObjectMapper objectMapper;
 
-    @BeforeEach
-    void setUp() {
-        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-    }
+    @MockitoBean
+    AccountPostingService service;
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -105,9 +99,9 @@ class AccountPostingControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.sourceReferenceId").value("SRC-001"))
-                    .andExpect(jsonPath("$.endToEndReferenceId").value("E2E-001"))
-                    .andExpect(jsonPath("$.postingStatus").value("SUCCESS"));
+                    .andExpect(jsonPath("$.source_reference_id").value("SRC-001"))
+                    .andExpect(jsonPath("$.end_to_end_reference_id").value("E2E-001"))
+                    .andExpect(jsonPath("$.posting_status").value("SUCCESS"));
         }
 
         @Test
@@ -275,7 +269,7 @@ class AccountPostingControllerTest {
             mockMvc.perform(get("/account-posting"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content", hasSize(2)))
-                    .andExpect(jsonPath("$.totalElements").value(2));
+                    .andExpect(jsonPath("$.total_elements").value(2));
         }
 
         @Test
@@ -331,10 +325,10 @@ class AccountPostingControllerTest {
 
             mockMvc.perform(get("/account-posting/42"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.postingId").value(42))
+                    .andExpect(jsonPath("$.posting_id").value(42))
                     .andExpect(jsonPath("$.responses", hasSize(1)))
                     .andExpect(jsonPath("$.responses[0].name").value("CBS"))
-                    .andExpect(jsonPath("$.responses[0].legOrder").value(1));
+                    .andExpect(jsonPath("$.responses[0].leg_order").value(1));
         }
 
         @Test
@@ -379,9 +373,9 @@ class AccountPostingControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.totalLegsRetried").value(2))
-                    .andExpect(jsonPath("$.successCount").value(2))
-                    .andExpect(jsonPath("$.failedCount").value(0));
+                    .andExpect(jsonPath("$.total_legs_retried").value(2))
+                    .andExpect(jsonPath("$.success_count").value(2))
+                    .andExpect(jsonPath("$.failed_count").value(0));
         }
 
         @Test
@@ -397,7 +391,7 @@ class AccountPostingControllerTest {
             mockMvc.perform(post("/account-posting/retry")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.totalLegsRetried").value(3));
+                    .andExpect(jsonPath("$.total_legs_retried").value(3));
         }
 
         @Test

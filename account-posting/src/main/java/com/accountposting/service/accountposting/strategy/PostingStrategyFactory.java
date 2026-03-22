@@ -8,12 +8,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Resolves the correct {@link PostingStrategy} by posting flow key.
- * All {@code PostingStrategy} beans are auto-collected by Spring and indexed
- * by {@link PostingStrategy#getPostingFlow()} (e.g. {@code CBS_POSTING}),
- * which must match {@code target_system + "_" + operation} in the {@code posting_config} table.
- */
 @Slf4j
 @Component
 public class PostingStrategyFactory {

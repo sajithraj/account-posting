@@ -1,863 +1,954 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Account Posting — UI Wireframes</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f0f2f5;
-      color: #222;
-    }
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Account Posting — UI Wireframes</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #f0f2f5;
+          color: #222;
+        }
 
-    /* ── Outer tabs ── */
-    .tabs-bar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: #1a2a3a;
-      display: flex;
-      gap: 2px;
-      padding: 0 24px;
-    }
-    .tab-btn {
-      padding: 12px 20px;
-      background: transparent;
-      border: none;
-      border-bottom: 3px solid transparent;
-      color: #90caf9;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .tab-btn.active {
-      color: white;
-      border-bottom-color: white;
-      font-weight: 700;
-    }
+        /* ── Outer tabs ── */
+        .tabs-bar {
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          background: #1a2a3a;
+          display: flex;
+          gap: 2px;
+          padding: 0 24px;
+        }
+        .tab-btn {
+          padding: 12px 20px;
+          background: transparent;
+          border: none;
+          border-bottom: 3px solid transparent;
+          color: #90caf9;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .tab-btn.active {
+          color: white;
+          border-bottom-color: white;
+          font-weight: 700;
+        }
 
-    .page { display: none; padding: 32px; max-width: 1200px; margin: 0 auto; }
-    .page.active { display: block; }
+        .page { display: none; padding: 32px; max-width: 1200px; margin: 0 auto; }
+        .page.active { display: block; }
 
-    h1 { font-size: 18px; color: #1a2a3a; margin-bottom: 6px; }
-    .subtitle { font-size: 13px; color: #666; margin-bottom: 28px; }
+        h1 { font-size: 18px; color: #1a2a3a; margin-bottom: 6px; }
+        .subtitle { font-size: 13px; color: #666; margin-bottom: 28px; }
 
-    /* ── Screen frame ── */
-    .screen-wrap {
-      background: white;
-      border: 1px solid #dde2ea;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-      margin-bottom: 40px;
-    }
-    .screen-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: #888;
-      padding: 10px 20px;
-      background: #f9fafb;
-      border-bottom: 1px solid #eee;
-    }
+        /* ── Screen frame ── */
+        .screen-wrap {
+          background: white;
+          border: 1px solid #dde2ea;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+          margin-bottom: 40px;
+        }
+        .screen-label {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+          color: #888;
+          padding: 10px 20px;
+          background: #f9fafb;
+          border-bottom: 1px solid #eee;
+        }
 
-    /* ── SVG wireframe elements (re-used via CSS on inline SVG) ── */
-    svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        /* ── SVG wireframe elements (re-used via CSS on inline SVG) ── */
+        svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
-    /* ── Legend ── */
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-bottom: 32px;
-      padding: 16px 20px;
-      background: white;
-      border: 1px solid #dde2ea;
-      border-radius: 8px;
-    }
-    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; }
-    .legend-swatch { width: 18px; height: 14px; border-radius: 2px; }
-  </style>
+        /* ── Legend ── */
+        .legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          margin-bottom: 32px;
+          padding: 16px 20px;
+          background: white;
+          border: 1px solid #dde2ea;
+          border-radius: 8px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; }
+        .legend-swatch { width: 18px; height: 14px; border-radius: 2px; }
+    </style>
 </head>
 <body>
 
 <!-- ── Tab bar ── -->
 <div class="tabs-bar">
-  <button class="tab-btn active" onclick="showTab(0)">Dashboard</button>
-  <button class="tab-btn"        onclick="showTab(1)">Search / List</button>
-  <button class="tab-btn"        onclick="showTab(2)">Posting Detail</button>
-  <button class="tab-btn"        onclick="showTab(3)">Config</button>
-  <button class="tab-btn"        onclick="showTab(4)">Navigation Flow</button>
+    <button class="tab-btn active" onclick="showTab(0)">Dashboard</button>
+    <button class="tab-btn" onclick="showTab(1)">Search / List</button>
+    <button class="tab-btn" onclick="showTab(2)">Posting Detail</button>
+    <button class="tab-btn" onclick="showTab(3)">Config</button>
+    <button class="tab-btn" onclick="showTab(4)">Navigation Flow</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      PAGE 0 — Dashboard
      ══════════════════════════════════════════════════════════ -->
 <div class="page active" id="p0">
-  <h1>Dashboard</h1>
-  <p class="subtitle">Route: /dashboard — shows posting counts per source/target system with a date range filter.</p>
+    <h1>Dashboard</h1>
+    <p class="subtitle">Route: /dashboard — shows posting counts per source/target system with a date range filter.</p>
 
-  <div class="legend">
-    <div class="legend-item"><div class="legend-swatch" style="background:#003b5c"></div>Nav bar</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#e8edf2;border:1px solid #c5cdd8"></div>Filter / controls</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#1e3a5f"></div>System panel header</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#fffbeb;border:1px solid #fcd34d"></div>PENDING counter</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#f0fdf4;border:1px solid #86efac"></div>SUCCESS counter</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#fff1f2;border:1px solid #fca5a5"></div>FAILED counter</div>
-  </div>
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#003b5c"></div>
+            Nav bar
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#e8edf2;border:1px solid #c5cdd8"></div>
+            Filter / controls
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#1e3a5f"></div>
+            System panel header
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#fffbeb;border:1px solid #fcd34d"></div>
+            PENDING counter
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#f0fdf4;border:1px solid #86efac"></div>
+            SUCCESS counter
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#fff1f2;border:1px solid #fca5a5"></div>
+            FAILED counter
+        </div>
+    </div>
 
-  <div class="screen-wrap">
-    <div class="screen-label">Dashboard · /dashboard</div>
-    <svg viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg" width="100%">
+    <div class="screen-wrap">
+        <div class="screen-label">Dashboard · /dashboard</div>
+        <svg viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg" width="100%">
 
-      <!-- Nav -->
-      <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
-      <text x="20" y="26" fill="#90caf9" font-size="13" font-weight="700">Dashboard</text>
-      <text x="110" y="26" fill="#90caf9" font-size="13">Search</text>
-      <text x="170" y="26" fill="#90caf9" font-size="13">Config</text>
-      <line x1="0" y1="44" x2="960" y2="44" stroke="white" stroke-width="2" opacity="0.3"/>
-      <line x1="0" y1="44" x2="80" y2="44" stroke="white" stroke-width="2"/>
+            <!-- Nav -->
+            <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
+            <text x="20" y="26" fill="#90caf9" font-size="13" font-weight="700">Dashboard</text>
+            <text x="110" y="26" fill="#90caf9" font-size="13">Search</text>
+            <text x="170" y="26" fill="#90caf9" font-size="13">Config</text>
+            <line x1="0" y1="44" x2="960" y2="44" stroke="white" stroke-width="2" opacity="0.3"/>
+            <line x1="0" y1="44" x2="80" y2="44" stroke="white" stroke-width="2"/>
 
-      <!-- Header row -->
-      <text x="20" y="76" fill="#1a2a3a" font-size="18" font-weight="700">Dashboard</text>
-      <!-- Date range selector -->
-      <rect x="700" y="56" width="140" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="714" y="74" fill="#333" font-size="12">This Month</text>
-      <text x="826" y="74" fill="#888" font-size="12">▼</text>
-      <rect x="852" y="56" width="92" height="28" rx="4" fill="#f4f6f9" stroke="#dde2ea"/>
-      <text x="862" y="74" fill="#666" font-size="11">2026-03-01 – today</text>
+            <!-- Header row -->
+            <text x="20" y="76" fill="#1a2a3a" font-size="18" font-weight="700">Dashboard</text>
+            <!-- Date range selector -->
+            <rect x="700" y="56" width="140" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="714" y="74" fill="#333" font-size="12">This Month</text>
+            <text x="826" y="74" fill="#888" font-size="12">▼</text>
+            <rect x="852" y="56" width="92" height="28" rx="4" fill="#f4f6f9" stroke="#dde2ea"/>
+            <text x="862" y="74" fill="#666" font-size="11">2026-03-01 – today</text>
 
-      <!-- Section label: By Source System -->
-      <text x="20" y="106" fill="#444" font-size="11" font-weight="700" letter-spacing="0.8">BY SOURCE SYSTEM</text>
-      <line x1="20" y1="110" x2="940" y2="110" stroke="#dde2ea" stroke-width="2"/>
+            <!-- Section label: By Source System -->
+            <text x="20" y="106" fill="#444" font-size="11" font-weight="700" letter-spacing="0.8">BY SOURCE SYSTEM
+            </text>
+            <line x1="20" y1="110" x2="940" y2="110" stroke="#dde2ea" stroke-width="2"/>
 
-      <!-- Source panels: IMX, RMS, STABLECOIN -->
-      <!-- IMX -->
-      <rect x="20" y="120" width="280" height="100" rx="8" fill="white" stroke="#dde2ea"/>
-      <rect x="20" y="120" width="280" height="40" rx="8" fill="#2d3a8c"/>
-      <rect x="20" y="144" width="280" height="16" fill="#2d3a8c"/>
-      <text x="34" y="146" fill="white" font-size="14" font-weight="700">IMX</text>
-      <text x="240" y="146" fill="rgba(255,255,255,0.7)" font-size="11">42 total</text>
-      <!-- counters -->
-      <rect x="20" y="160" width="93" height="60" fill="#fffbeb"/>
-      <text x="66" y="188" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">8</text>
-      <text x="66" y="204" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
-      <rect x="113" y="160" width="94" height="60" fill="#f0fdf4"/>
-      <text x="160" y="188" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">30</text>
-      <text x="160" y="204" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
-      <rect x="207" y="160" width="93" height="60" fill="#fff1f2"/>
-      <text x="253" y="188" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">4</text>
-      <text x="253" y="204" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
-      <line x1="113" y1="160" x2="113" y2="220" stroke="#eef1f5"/>
-      <line x1="207" y1="160" x2="207" y2="220" stroke="#eef1f5"/>
+            <!-- Source panels: IMX, RMS, STABLECOIN -->
+            <!-- IMX -->
+            <rect x="20" y="120" width="280" height="100" rx="8" fill="white" stroke="#dde2ea"/>
+            <rect x="20" y="120" width="280" height="40" rx="8" fill="#2d3a8c"/>
+            <rect x="20" y="144" width="280" height="16" fill="#2d3a8c"/>
+            <text x="34" y="146" fill="white" font-size="14" font-weight="700">IMX</text>
+            <text x="240" y="146" fill="rgba(255,255,255,0.7)" font-size="11">42 total</text>
+            <!-- counters -->
+            <rect x="20" y="160" width="93" height="60" fill="#fffbeb"/>
+            <text x="66" y="188" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">8</text>
+            <text x="66" y="204" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
+            <rect x="113" y="160" width="94" height="60" fill="#f0fdf4"/>
+            <text x="160" y="188" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">30</text>
+            <text x="160" y="204" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
+            <rect x="207" y="160" width="93" height="60" fill="#fff1f2"/>
+            <text x="253" y="188" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">4</text>
+            <text x="253" y="204" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
+            <line x1="113" y1="160" x2="113" y2="220" stroke="#eef1f5"/>
+            <line x1="207" y1="160" x2="207" y2="220" stroke="#eef1f5"/>
 
-      <!-- RMS -->
-      <rect x="320" y="120" width="280" height="100" rx="8" fill="white" stroke="#dde2ea"/>
-      <rect x="320" y="120" width="280" height="40" rx="8" fill="#1a5c4a"/>
-      <rect x="320" y="144" width="280" height="16" fill="#1a5c4a"/>
-      <text x="334" y="146" fill="white" font-size="14" font-weight="700">RMS</text>
-      <text x="538" y="146" fill="rgba(255,255,255,0.7)" font-size="11">17 total</text>
-      <rect x="320" y="160" width="93" height="60" fill="#fffbeb"/>
-      <text x="366" y="188" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">3</text>
-      <text x="366" y="204" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
-      <rect x="413" y="160" width="94" height="60" fill="#f0fdf4"/>
-      <text x="460" y="188" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">14</text>
-      <text x="460" y="204" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
-      <rect x="507" y="160" width="93" height="60" fill="#fff1f2"/>
-      <text x="553" y="188" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">0</text>
-      <text x="553" y="204" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
-      <line x1="413" y1="160" x2="413" y2="220" stroke="#eef1f5"/>
-      <line x1="507" y1="160" x2="507" y2="220" stroke="#eef1f5"/>
+            <!-- RMS -->
+            <rect x="320" y="120" width="280" height="100" rx="8" fill="white" stroke="#dde2ea"/>
+            <rect x="320" y="120" width="280" height="40" rx="8" fill="#1a5c4a"/>
+            <rect x="320" y="144" width="280" height="16" fill="#1a5c4a"/>
+            <text x="334" y="146" fill="white" font-size="14" font-weight="700">RMS</text>
+            <text x="538" y="146" fill="rgba(255,255,255,0.7)" font-size="11">17 total</text>
+            <rect x="320" y="160" width="93" height="60" fill="#fffbeb"/>
+            <text x="366" y="188" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">3</text>
+            <text x="366" y="204" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
+            <rect x="413" y="160" width="94" height="60" fill="#f0fdf4"/>
+            <text x="460" y="188" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">14</text>
+            <text x="460" y="204" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
+            <rect x="507" y="160" width="93" height="60" fill="#fff1f2"/>
+            <text x="553" y="188" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">0</text>
+            <text x="553" y="204" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
+            <line x1="413" y1="160" x2="413" y2="220" stroke="#eef1f5"/>
+            <line x1="507" y1="160" x2="507" y2="220" stroke="#eef1f5"/>
 
-      <!-- STABLECOIN -->
-      <rect x="620" y="120" width="300" height="100" rx="8" fill="white" stroke="#dde2ea"/>
-      <rect x="620" y="120" width="300" height="40" rx="8" fill="#6b2d8c"/>
-      <rect x="620" y="144" width="300" height="16" fill="#6b2d8c"/>
-      <text x="634" y="146" fill="white" font-size="14" font-weight="700">STABLECOIN</text>
-      <text x="866" y="146" fill="rgba(255,255,255,0.7)" font-size="11">9 total</text>
-      <rect x="620" y="160" width="100" height="60" fill="#fffbeb"/>
-      <text x="670" y="188" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">2</text>
-      <text x="670" y="204" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
-      <rect x="720" y="160" width="100" height="60" fill="#f0fdf4"/>
-      <text x="770" y="188" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">5</text>
-      <text x="770" y="204" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
-      <rect x="820" y="160" width="100" height="60" fill="#fff1f2"/>
-      <text x="870" y="188" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">2</text>
-      <text x="870" y="204" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
-      <line x1="720" y1="160" x2="720" y2="220" stroke="#eef1f5"/>
-      <line x1="820" y1="160" x2="820" y2="220" stroke="#eef1f5"/>
+            <!-- STABLECOIN -->
+            <rect x="620" y="120" width="300" height="100" rx="8" fill="white" stroke="#dde2ea"/>
+            <rect x="620" y="120" width="300" height="40" rx="8" fill="#6b2d8c"/>
+            <rect x="620" y="144" width="300" height="16" fill="#6b2d8c"/>
+            <text x="634" y="146" fill="white" font-size="14" font-weight="700">STABLECOIN</text>
+            <text x="866" y="146" fill="rgba(255,255,255,0.7)" font-size="11">9 total</text>
+            <rect x="620" y="160" width="100" height="60" fill="#fffbeb"/>
+            <text x="670" y="188" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">2</text>
+            <text x="670" y="204" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
+            <rect x="720" y="160" width="100" height="60" fill="#f0fdf4"/>
+            <text x="770" y="188" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">5</text>
+            <text x="770" y="204" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
+            <rect x="820" y="160" width="100" height="60" fill="#fff1f2"/>
+            <text x="870" y="188" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">2</text>
+            <text x="870" y="204" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
+            <line x1="720" y1="160" x2="720" y2="220" stroke="#eef1f5"/>
+            <line x1="820" y1="160" x2="820" y2="220" stroke="#eef1f5"/>
 
-      <!-- Section label: By Target System -->
-      <text x="20" y="254" fill="#444" font-size="11" font-weight="700" letter-spacing="0.8">BY TARGET SYSTEM</text>
-      <line x1="20" y1="258" x2="940" y2="258" stroke="#dde2ea" stroke-width="2"/>
+            <!-- Section label: By Target System -->
+            <text x="20" y="254" fill="#444" font-size="11" font-weight="700" letter-spacing="0.8">BY TARGET SYSTEM
+            </text>
+            <line x1="20" y1="258" x2="940" y2="258" stroke="#dde2ea" stroke-width="2"/>
 
-      <!-- Target panels: CBS, GL, OBPM -->
-      <!-- CBS -->
-      <rect x="20" y="268" width="290" height="100" rx="8" fill="white" stroke="#dde2ea"/>
-      <rect x="20" y="268" width="290" height="40" rx="8" fill="#1e3a5f"/>
-      <rect x="20" y="292" width="290" height="16" fill="#1e3a5f"/>
-      <text x="34" y="294" fill="white" font-size="14" font-weight="700">CBS</text>
-      <text x="253" y="294" fill="rgba(255,255,255,0.7)" font-size="11">28 total</text>
-      <rect x="20"  y="308" width="97" height="60" fill="#fffbeb"/>
-      <text x="68"  y="336" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">5</text>
-      <text x="68"  y="352" fill="#856404" font-size="9"  font-weight="700" text-anchor="middle">PENDING</text>
-      <rect x="117" y="308" width="96" height="60" fill="#f0fdf4"/>
-      <text x="165" y="336" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">20</text>
-      <text x="165" y="352" fill="#0a3622" font-size="9"  font-weight="700" text-anchor="middle">SUCCESS</text>
-      <rect x="213" y="308" width="97" height="60" fill="#fff1f2"/>
-      <text x="261" y="336" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">3</text>
-      <text x="261" y="352" fill="#58151c" font-size="9"  font-weight="700" text-anchor="middle">FAILED</text>
-      <line x1="117" y1="308" x2="117" y2="368" stroke="#eef1f5"/>
-      <line x1="213" y1="308" x2="213" y2="368" stroke="#eef1f5"/>
+            <!-- Target panels: CBS, GL, OBPM -->
+            <!-- CBS -->
+            <rect x="20" y="268" width="290" height="100" rx="8" fill="white" stroke="#dde2ea"/>
+            <rect x="20" y="268" width="290" height="40" rx="8" fill="#1e3a5f"/>
+            <rect x="20" y="292" width="290" height="16" fill="#1e3a5f"/>
+            <text x="34" y="294" fill="white" font-size="14" font-weight="700">CBS</text>
+            <text x="253" y="294" fill="rgba(255,255,255,0.7)" font-size="11">28 total</text>
+            <rect x="20" y="308" width="97" height="60" fill="#fffbeb"/>
+            <text x="68" y="336" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">5</text>
+            <text x="68" y="352" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
+            <rect x="117" y="308" width="96" height="60" fill="#f0fdf4"/>
+            <text x="165" y="336" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">20</text>
+            <text x="165" y="352" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
+            <rect x="213" y="308" width="97" height="60" fill="#fff1f2"/>
+            <text x="261" y="336" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">3</text>
+            <text x="261" y="352" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
+            <line x1="117" y1="308" x2="117" y2="368" stroke="#eef1f5"/>
+            <line x1="213" y1="308" x2="213" y2="368" stroke="#eef1f5"/>
 
-      <!-- GL -->
-      <rect x="330" y="268" width="290" height="100" rx="8" fill="white" stroke="#dde2ea"/>
-      <rect x="330" y="268" width="290" height="40" rx="8" fill="#1a4731"/>
-      <rect x="330" y="292" width="290" height="16" fill="#1a4731"/>
-      <text x="344" y="294" fill="white" font-size="14" font-weight="700">GL</text>
-      <text x="563" y="294" fill="rgba(255,255,255,0.7)" font-size="11">21 total</text>
-      <rect x="330"  y="308" width="97" height="60" fill="#fffbeb"/>
-      <text x="378"  y="336" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">4</text>
-      <text x="378"  y="352" fill="#856404" font-size="9"  font-weight="700" text-anchor="middle">PENDING</text>
-      <rect x="427" y="308" width="96" height="60" fill="#f0fdf4"/>
-      <text x="475" y="336" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">15</text>
-      <text x="475" y="352" fill="#0a3622" font-size="9"  font-weight="700" text-anchor="middle">SUCCESS</text>
-      <rect x="523" y="308" width="97" height="60" fill="#fff1f2"/>
-      <text x="571" y="336" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">2</text>
-      <text x="571" y="352" fill="#58151c" font-size="9"  font-weight="700" text-anchor="middle">FAILED</text>
-      <line x1="427" y1="308" x2="427" y2="368" stroke="#eef1f5"/>
-      <line x1="523" y1="308" x2="523" y2="368" stroke="#eef1f5"/>
+            <!-- GL -->
+            <rect x="330" y="268" width="290" height="100" rx="8" fill="white" stroke="#dde2ea"/>
+            <rect x="330" y="268" width="290" height="40" rx="8" fill="#1a4731"/>
+            <rect x="330" y="292" width="290" height="16" fill="#1a4731"/>
+            <text x="344" y="294" fill="white" font-size="14" font-weight="700">GL</text>
+            <text x="563" y="294" fill="rgba(255,255,255,0.7)" font-size="11">21 total</text>
+            <rect x="330" y="308" width="97" height="60" fill="#fffbeb"/>
+            <text x="378" y="336" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">4</text>
+            <text x="378" y="352" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
+            <rect x="427" y="308" width="96" height="60" fill="#f0fdf4"/>
+            <text x="475" y="336" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">15</text>
+            <text x="475" y="352" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
+            <rect x="523" y="308" width="97" height="60" fill="#fff1f2"/>
+            <text x="571" y="336" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">2</text>
+            <text x="571" y="352" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
+            <line x1="427" y1="308" x2="427" y2="368" stroke="#eef1f5"/>
+            <line x1="523" y1="308" x2="523" y2="368" stroke="#eef1f5"/>
 
-      <!-- OBPM -->
-      <rect x="640" y="268" width="290" height="100" rx="8" fill="white" stroke="#dde2ea"/>
-      <rect x="640" y="268" width="290" height="40" rx="8" fill="#5f2a1e"/>
-      <rect x="640" y="292" width="290" height="16" fill="#5f2a1e"/>
-      <text x="654" y="294" fill="white" font-size="14" font-weight="700">OBPM</text>
-      <text x="872" y="294" fill="rgba(255,255,255,0.7)" font-size="11">19 total</text>
-      <rect x="640"  y="308" width="97" height="60" fill="#fffbeb"/>
-      <text x="688"  y="336" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">2</text>
-      <text x="688"  y="352" fill="#856404" font-size="9"  font-weight="700" text-anchor="middle">PENDING</text>
-      <rect x="737" y="308" width="96" height="60" fill="#f0fdf4"/>
-      <text x="785" y="336" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">16</text>
-      <text x="785" y="352" fill="#0a3622" font-size="9"  font-weight="700" text-anchor="middle">SUCCESS</text>
-      <rect x="833" y="308" width="97" height="60" fill="#fff1f2"/>
-      <text x="881" y="336" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">1</text>
-      <text x="881" y="352" fill="#58151c" font-size="9"  font-weight="700" text-anchor="middle">FAILED</text>
-      <line x1="737" y1="308" x2="737" y2="368" stroke="#eef1f5"/>
-      <line x1="833" y1="308" x2="833" y2="368" stroke="#eef1f5"/>
+            <!-- OBPM -->
+            <rect x="640" y="268" width="290" height="100" rx="8" fill="white" stroke="#dde2ea"/>
+            <rect x="640" y="268" width="290" height="40" rx="8" fill="#5f2a1e"/>
+            <rect x="640" y="292" width="290" height="16" fill="#5f2a1e"/>
+            <text x="654" y="294" fill="white" font-size="14" font-weight="700">OBPM</text>
+            <text x="872" y="294" fill="rgba(255,255,255,0.7)" font-size="11">19 total</text>
+            <rect x="640" y="308" width="97" height="60" fill="#fffbeb"/>
+            <text x="688" y="336" fill="#856404" font-size="22" font-weight="700" text-anchor="middle">2</text>
+            <text x="688" y="352" fill="#856404" font-size="9" font-weight="700" text-anchor="middle">PENDING</text>
+            <rect x="737" y="308" width="96" height="60" fill="#f0fdf4"/>
+            <text x="785" y="336" fill="#0a3622" font-size="22" font-weight="700" text-anchor="middle">16</text>
+            <text x="785" y="352" fill="#0a3622" font-size="9" font-weight="700" text-anchor="middle">SUCCESS</text>
+            <rect x="833" y="308" width="97" height="60" fill="#fff1f2"/>
+            <text x="881" y="336" fill="#58151c" font-size="22" font-weight="700" text-anchor="middle">1</text>
+            <text x="881" y="352" fill="#58151c" font-size="9" font-weight="700" text-anchor="middle">FAILED</text>
+            <line x1="737" y1="308" x2="737" y2="368" stroke="#eef1f5"/>
+            <line x1="833" y1="308" x2="833" y2="368" stroke="#eef1f5"/>
 
-      <!-- Annotation callouts -->
-      <rect x="20" y="400" width="920" height="72" rx="6" fill="#f8f9fb" stroke="#dde2ea"/>
-      <text x="36" y="422" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
-      <text x="36" y="440" fill="#555" font-size="11">• Date range preset (Today / This Week / This Month / This Quarter / This Year / Custom) filters all counts simultaneously</text>
-      <text x="36" y="456" fill="#555" font-size="11">• Custom range shows two date pickers; preset range shows a label badge</text>
-      <text x="36" y="472" fill="#555" font-size="11">• Source system panels are generated dynamically from the Config table — adding a config entry adds a new panel automatically</text>
-    </svg>
-  </div>
+            <!-- Annotation callouts -->
+            <rect x="20" y="400" width="920" height="72" rx="6" fill="#f8f9fb" stroke="#dde2ea"/>
+            <text x="36" y="422" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
+            <text x="36" y="440" fill="#555" font-size="11">• Date range preset (Today / This Week / This Month / This
+                Quarter / This Year / Custom) filters all counts simultaneously
+            </text>
+            <text x="36" y="456" fill="#555" font-size="11">• Custom range shows two date pickers; preset range shows a
+                label badge
+            </text>
+            <text x="36" y="472" fill="#555" font-size="11">• Source system panels are generated dynamically from the
+                Config table — adding a config entry adds a new panel automatically
+            </text>
+        </svg>
+    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      PAGE 1 — Posting List / Search
      ══════════════════════════════════════════════════════════ -->
 <div class="page" id="p1">
-  <h1>Search / List</h1>
-  <p class="subtitle">Route: / — search + paginated table, inline leg expand, retry actions.</p>
+    <h1>Search / List</h1>
+    <p class="subtitle">Route: / — search + paginated table, inline leg expand, retry actions.</p>
 
-  <div class="legend">
-    <div class="legend-item"><div class="legend-swatch" style="background:#f4f6f9;border:1px solid #dde2ea"></div>Filter bar</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#eef1f5;border:1px solid #c5cdd8"></div>Table header</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#eef2ff;border:1px solid #c5cdd8"></div>Expanded row</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#f4f7ff;border:1px solid #c5cdd8"></div>Leg sub-table</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#003b5c"></div>Primary button</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:white;border:1px solid #003b5c"></div>Outline button</div>
-  </div>
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#f4f6f9;border:1px solid #dde2ea"></div>
+            Filter bar
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#eef1f5;border:1px solid #c5cdd8"></div>
+            Table header
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#eef2ff;border:1px solid #c5cdd8"></div>
+            Expanded row
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#f4f7ff;border:1px solid #c5cdd8"></div>
+            Leg sub-table
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#003b5c"></div>
+            Primary button
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:white;border:1px solid #003b5c"></div>
+            Outline button
+        </div>
+    </div>
 
-  <div class="screen-wrap">
-    <div class="screen-label">Account Posting Search · /</div>
-    <svg viewBox="0 0 960 760" xmlns="http://www.w3.org/2000/svg" width="100%">
+    <div class="screen-wrap">
+        <div class="screen-label">Account Posting Search · /</div>
+        <svg viewBox="0 0 960 760" xmlns="http://www.w3.org/2000/svg" width="100%">
 
-      <!-- Nav -->
-      <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
-      <text x="20" y="26" fill="#90caf9" font-size="13">Dashboard</text>
-      <text x="108" y="26" fill="white" font-size="13" font-weight="700">Search</text>
-      <text x="168" y="26" fill="#90caf9" font-size="13">Config</text>
-      <line x1="96" y1="44" x2="160" y2="44" stroke="white" stroke-width="2"/>
+            <!-- Nav -->
+            <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
+            <text x="20" y="26" fill="#90caf9" font-size="13">Dashboard</text>
+            <text x="108" y="26" fill="white" font-size="13" font-weight="700">Search</text>
+            <text x="168" y="26" fill="#90caf9" font-size="13">Config</text>
+            <line x1="96" y1="44" x2="160" y2="44" stroke="white" stroke-width="2"/>
 
-      <!-- Page header -->
-      <text x="20" y="76" fill="#1a2a3a" font-size="18" font-weight="700">Account Posting Search</text>
-      <!-- Header buttons -->
-      <rect x="554" y="56" width="110" height="28" rx="4" fill="white" stroke="#003b5c"/>
-      <text x="570" y="74" fill="#003b5c" font-size="11" font-weight="500">✕ CLEAR FILTERS</text>
-      <rect x="672" y="56" width="118" height="28" rx="4" fill="white" stroke="#003b5c" opacity="0.4"/>
-      <text x="686" y="74" fill="#003b5c" font-size="11" font-weight="500" opacity="0.4">⟳ RETRY SELECTED</text>
-      <rect x="798" y="56" width="142" height="28" rx="4" fill="#003b5c"/>
-      <text x="818" y="74" fill="white" font-size="11" font-weight="500">⟳ RETRY ALL PENDING</text>
+            <!-- Page header -->
+            <text x="20" y="76" fill="#1a2a3a" font-size="18" font-weight="700">Account Posting Search</text>
+            <!-- Header buttons -->
+            <rect x="554" y="56" width="110" height="28" rx="4" fill="white" stroke="#003b5c"/>
+            <text x="570" y="74" fill="#003b5c" font-size="11" font-weight="500">✕ CLEAR FILTERS</text>
+            <rect x="672" y="56" width="118" height="28" rx="4" fill="white" stroke="#003b5c" opacity="0.4"/>
+            <text x="686" y="74" fill="#003b5c" font-size="11" font-weight="500" opacity="0.4">⟳ RETRY SELECTED</text>
+            <rect x="798" y="56" width="142" height="28" rx="4" fill="#003b5c"/>
+            <text x="818" y="74" fill="white" font-size="11" font-weight="500">⟳ RETRY ALL PENDING</text>
 
-      <!-- Filter bar -->
-      <rect x="0" y="90" width="960" height="54" fill="#f4f6f9" stroke="#dde2ea" stroke-width="1"/>
-      <!-- inputs -->
-      <rect x="12" y="103" width="140" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="22" y="121" fill="#aaa" font-size="11">End to End Reference</text>
-      <rect x="160" y="103" width="120" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="170" y="121" fill="#aaa" font-size="11">Source Reference</text>
-      <rect x="288" y="103" width="108" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="298" y="121" fill="#aaa" font-size="11">Source Name ▼</text>
-      <rect x="404" y="103" width="108" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="414" y="121" fill="#aaa" font-size="11">Target System ▼</text>
-      <rect x="520" y="103" width="108" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="530" y="121" fill="#aaa" font-size="11">Status ▼</text>
-      <rect x="636" y="103" width="118" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="646" y="121" fill="#aaa" font-size="11">Request Type ▼</text>
-      <rect x="762" y="103" width="86" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="772" y="121" fill="#aaa" font-size="11">From date</text>
-      <text x="853" y="121" fill="#aaa" font-size="11">–</text>
-      <rect x="862" y="103" width="72" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="872" y="121" fill="#aaa" font-size="11">To date</text>
-      <rect x="938" y="103" width="14" height="28" rx="4" fill="#003b5c"/>
-      <text x="942" y="121" fill="white" font-size="12">🔍</text>
+            <!-- Filter bar -->
+            <rect x="0" y="90" width="960" height="54" fill="#f4f6f9" stroke="#dde2ea" stroke-width="1"/>
+            <!-- inputs -->
+            <rect x="12" y="103" width="140" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="22" y="121" fill="#aaa" font-size="11">End to End Reference</text>
+            <rect x="160" y="103" width="120" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="170" y="121" fill="#aaa" font-size="11">Source Reference</text>
+            <rect x="288" y="103" width="108" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="298" y="121" fill="#aaa" font-size="11">Source Name ▼</text>
+            <rect x="404" y="103" width="108" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="414" y="121" fill="#aaa" font-size="11">Target System ▼</text>
+            <rect x="520" y="103" width="108" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="530" y="121" fill="#aaa" font-size="11">Status ▼</text>
+            <rect x="636" y="103" width="118" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="646" y="121" fill="#aaa" font-size="11">Request Type ▼</text>
+            <rect x="762" y="103" width="86" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="772" y="121" fill="#aaa" font-size="11">From date</text>
+            <text x="853" y="121" fill="#aaa" font-size="11">–</text>
+            <rect x="862" y="103" width="72" height="28" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="872" y="121" fill="#aaa" font-size="11">To date</text>
+            <rect x="938" y="103" width="14" height="28" rx="4" fill="#003b5c"/>
+            <text x="942" y="121" fill="white" font-size="12">🔍</text>
 
-      <!-- Table header -->
-      <rect x="0" y="144" width="960" height="36" fill="#eef1f5" stroke="#dde2ea"/>
-      <rect x="12" y="156" width="14" height="14" rx="2" fill="white" stroke="#c5cdd8"/>
-      <text x="36"  y="167" fill="#444" font-size="11" font-weight="600">Reference Number</text>
-      <text x="178" y="167" fill="#444" font-size="11" font-weight="600">Src Reference</text>
-      <text x="300" y="167" fill="#444" font-size="11" font-weight="600">Source</text>
-      <text x="370" y="167" fill="#444" font-size="11" font-weight="600">Request Type</text>
-      <text x="480" y="167" fill="#444" font-size="11" font-weight="600">Target Systems</text>
-      <text x="590" y="167" fill="#444" font-size="11" font-weight="600">Exec. Date</text>
-      <text x="680" y="167" fill="#444" font-size="11" font-weight="600">Amount</text>
-      <text x="760" y="167" fill="#444" font-size="11" font-weight="600">Status</text>
-      <text x="830" y="167" fill="#444" font-size="11" font-weight="600">Reason</text>
-      <line x1="0" y1="180" x2="960" y2="180" stroke="#c5cdd8" stroke-width="2"/>
+            <!-- Table header -->
+            <rect x="0" y="144" width="960" height="36" fill="#eef1f5" stroke="#dde2ea"/>
+            <rect x="12" y="156" width="14" height="14" rx="2" fill="white" stroke="#c5cdd8"/>
+            <text x="36" y="167" fill="#444" font-size="11" font-weight="600">Reference Number</text>
+            <text x="178" y="167" fill="#444" font-size="11" font-weight="600">Src Reference</text>
+            <text x="300" y="167" fill="#444" font-size="11" font-weight="600">Source</text>
+            <text x="370" y="167" fill="#444" font-size="11" font-weight="600">Request Type</text>
+            <text x="480" y="167" fill="#444" font-size="11" font-weight="600">Target Systems</text>
+            <text x="590" y="167" fill="#444" font-size="11" font-weight="600">Exec. Date</text>
+            <text x="680" y="167" fill="#444" font-size="11" font-weight="600">Amount</text>
+            <text x="760" y="167" fill="#444" font-size="11" font-weight="600">Status</text>
+            <text x="830" y="167" fill="#444" font-size="11" font-weight="600">Reason</text>
+            <line x1="0" y1="180" x2="960" y2="180" stroke="#c5cdd8" stroke-width="2"/>
 
-      <!-- Row 1 — expanded -->
-      <rect x="0" y="180" width="960" height="36" fill="#eef2ff"/>
-      <rect x="12" y="191" width="14" height="14" rx="2" fill="#003b5c" stroke="#003b5c"/>
-      <text x="36"  y="203" fill="#0072ce" font-size="11" font-weight="500">E2E-2024-001</text>
-      <text x="178" y="203" fill="#333" font-size="11">SRC-001</text>
-      <text x="300" y="203" fill="#333" font-size="11">IMX</text>
-      <text x="370" y="203" fill="#333" font-size="11">IMX_CBS_GL</text>
-      <text x="480" y="203" fill="#333" font-size="11">CBS, GL</text>
-      <text x="590" y="203" fill="#333" font-size="11">2026-03-10</text>
-      <text x="680" y="203" fill="#333" font-size="11">5,000 USD</text>
-      <rect x="754" y="191" width="56" height="16" rx="8" fill="#fef3c7"/>
-      <text x="782" y="203" fill="#856404" font-size="10" font-weight="700" text-anchor="middle">PENDING</text>
-      <text x="830" y="203" fill="#555" font-size="10">Awaiting CBS...</text>
-      <!-- row actions -->
-      <rect x="902" y="191" width="22" height="16" rx="3" fill="white" stroke="#003b5c"/>
-      <text x="913" y="202" fill="#003b5c" font-size="10" font-weight="700" text-anchor="middle">⟳</text>
-      <rect x="928" y="191" width="22" height="16" rx="3" fill="#e8eeff" stroke="#7b9ef0"/>
-      <text x="939" y="202" fill="#1a3fa8" font-size="9" text-anchor="middle">▲</text>
-      <line x1="0" y1="216" x2="960" y2="216" stroke="#eef1f5"/>
+            <!-- Row 1 — expanded -->
+            <rect x="0" y="180" width="960" height="36" fill="#eef2ff"/>
+            <rect x="12" y="191" width="14" height="14" rx="2" fill="#003b5c" stroke="#003b5c"/>
+            <text x="36" y="203" fill="#0072ce" font-size="11" font-weight="500">E2E-2024-001</text>
+            <text x="178" y="203" fill="#333" font-size="11">SRC-001</text>
+            <text x="300" y="203" fill="#333" font-size="11">IMX</text>
+            <text x="370" y="203" fill="#333" font-size="11">IMX_CBS_GL</text>
+            <text x="480" y="203" fill="#333" font-size="11">CBS, GL</text>
+            <text x="590" y="203" fill="#333" font-size="11">2026-03-10</text>
+            <text x="680" y="203" fill="#333" font-size="11">5,000 USD</text>
+            <rect x="754" y="191" width="56" height="16" rx="8" fill="#fef3c7"/>
+            <text x="782" y="203" fill="#856404" font-size="10" font-weight="700" text-anchor="middle">PENDING</text>
+            <text x="830" y="203" fill="#555" font-size="10">Awaiting CBS...</text>
+            <!-- row actions -->
+            <rect x="902" y="191" width="22" height="16" rx="3" fill="white" stroke="#003b5c"/>
+            <text x="913" y="202" fill="#003b5c" font-size="10" font-weight="700" text-anchor="middle">⟳</text>
+            <rect x="928" y="191" width="22" height="16" rx="3" fill="#e8eeff" stroke="#7b9ef0"/>
+            <text x="939" y="202" fill="#1a3fa8" font-size="9" text-anchor="middle">▲</text>
+            <line x1="0" y1="216" x2="960" y2="216" stroke="#eef1f5"/>
 
-      <!-- Expanded legs sub-row -->
-      <rect x="0" y="216" width="960" height="116" fill="#f4f7ff"/>
-      <text x="28" y="233" fill="#666" font-size="10" font-weight="700" letter-spacing="0.5">POSTING LEGS</text>
-      <!-- leg table header -->
-      <rect x="20" y="238" width="920" height="24" fill="#eef1f5"/>
-      <text x="30"  y="254" fill="#444" font-size="10" font-weight="600">Order</text>
-      <text x="80"  y="254" fill="#444" font-size="10" font-weight="600">Target System</text>
-      <text x="190" y="254" fill="#444" font-size="10" font-weight="600">Operation</text>
-      <text x="290" y="254" fill="#444" font-size="10" font-weight="600">Account</text>
-      <text x="400" y="254" fill="#444" font-size="10" font-weight="600">Reference ID</text>
-      <text x="510" y="254" fill="#444" font-size="10" font-weight="600">Status</text>
-      <text x="590" y="254" fill="#444" font-size="10" font-weight="600">Mode</text>
-      <text x="660" y="254" fill="#444" font-size="10" font-weight="600">Posted Time</text>
-      <text x="780" y="254" fill="#444" font-size="10" font-weight="600">Reason</text>
-      <!-- leg row 1 -->
-      <rect x="20" y="262" width="920" height="24" fill="white"/>
-      <text x="36"  y="278" fill="#333" font-size="10" font-weight="600" text-anchor="middle">1</text>
-      <text x="80"  y="278" fill="#333" font-size="10">CBS</text>
-      <text x="190" y="278" fill="#333" font-size="10">CREDIT_DEBIT</text>
-      <text x="290" y="278" fill="#333" font-size="10">ACC-001</text>
-      <text x="400" y="278" fill="#333" font-size="10">—</text>
-      <text x="510" y="278" fill="#856404" font-size="10" font-weight="600">PENDING</text>
-      <rect x="585" y="265" width="36" height="14" rx="2" fill="#f3f4f6"/>
-      <text x="603" y="276" fill="#374151" font-size="9" font-weight="600" text-anchor="middle">NORM</text>
-      <text x="660" y="278" fill="#333" font-size="10">—</text>
-      <text x="780" y="278" fill="#555" font-size="10">—</text>
-      <line x1="20" y1="286" x2="940" y2="286" stroke="#eef1f5"/>
-      <!-- leg row 2 -->
-      <rect x="20" y="286" width="920" height="24" fill="white"/>
-      <text x="36"  y="302" fill="#333" font-size="10" font-weight="600" text-anchor="middle">2</text>
-      <text x="80"  y="302" fill="#333" font-size="10">GL</text>
-      <text x="190" y="302" fill="#333" font-size="10">GL_ENTRY</text>
-      <text x="290" y="302" fill="#333" font-size="10">GL-002</text>
-      <text x="400" y="302" fill="#333" font-size="10">—</text>
-      <text x="510" y="302" fill="#856404" font-size="10" font-weight="600">PENDING</text>
-      <rect x="585" y="289" width="36" height="14" rx="2" fill="#f3f4f6"/>
-      <text x="603" y="300" fill="#374151" font-size="9" font-weight="600" text-anchor="middle">NORM</text>
-      <text x="660" y="302" fill="#333" font-size="10">—</text>
-      <text x="780" y="302" fill="#555" font-size="10">—</text>
-      <line x1="20" y1="310" x2="940" y2="310" stroke="#dde2ea" stroke-width="2"/>
+            <!-- Expanded legs sub-row -->
+            <rect x="0" y="216" width="960" height="116" fill="#f4f7ff"/>
+            <text x="28" y="233" fill="#666" font-size="10" font-weight="700" letter-spacing="0.5">POSTING LEGS</text>
+            <!-- leg table header -->
+            <rect x="20" y="238" width="920" height="24" fill="#eef1f5"/>
+            <text x="30" y="254" fill="#444" font-size="10" font-weight="600">Order</text>
+            <text x="80" y="254" fill="#444" font-size="10" font-weight="600">Target System</text>
+            <text x="190" y="254" fill="#444" font-size="10" font-weight="600">Operation</text>
+            <text x="290" y="254" fill="#444" font-size="10" font-weight="600">Account</text>
+            <text x="400" y="254" fill="#444" font-size="10" font-weight="600">Reference ID</text>
+            <text x="510" y="254" fill="#444" font-size="10" font-weight="600">Status</text>
+            <text x="590" y="254" fill="#444" font-size="10" font-weight="600">Mode</text>
+            <text x="660" y="254" fill="#444" font-size="10" font-weight="600">Posted Time</text>
+            <text x="780" y="254" fill="#444" font-size="10" font-weight="600">Reason</text>
+            <!-- leg row 1 -->
+            <rect x="20" y="262" width="920" height="24" fill="white"/>
+            <text x="36" y="278" fill="#333" font-size="10" font-weight="600" text-anchor="middle">1</text>
+            <text x="80" y="278" fill="#333" font-size="10">CBS</text>
+            <text x="190" y="278" fill="#333" font-size="10">CREDIT_DEBIT</text>
+            <text x="290" y="278" fill="#333" font-size="10">ACC-001</text>
+            <text x="400" y="278" fill="#333" font-size="10">—</text>
+            <text x="510" y="278" fill="#856404" font-size="10" font-weight="600">PENDING</text>
+            <rect x="585" y="265" width="36" height="14" rx="2" fill="#f3f4f6"/>
+            <text x="603" y="276" fill="#374151" font-size="9" font-weight="600" text-anchor="middle">NORM</text>
+            <text x="660" y="278" fill="#333" font-size="10">—</text>
+            <text x="780" y="278" fill="#555" font-size="10">—</text>
+            <line x1="20" y1="286" x2="940" y2="286" stroke="#eef1f5"/>
+            <!-- leg row 2 -->
+            <rect x="20" y="286" width="920" height="24" fill="white"/>
+            <text x="36" y="302" fill="#333" font-size="10" font-weight="600" text-anchor="middle">2</text>
+            <text x="80" y="302" fill="#333" font-size="10">GL</text>
+            <text x="190" y="302" fill="#333" font-size="10">GL_ENTRY</text>
+            <text x="290" y="302" fill="#333" font-size="10">GL-002</text>
+            <text x="400" y="302" fill="#333" font-size="10">—</text>
+            <text x="510" y="302" fill="#856404" font-size="10" font-weight="600">PENDING</text>
+            <rect x="585" y="289" width="36" height="14" rx="2" fill="#f3f4f6"/>
+            <text x="603" y="300" fill="#374151" font-size="9" font-weight="600" text-anchor="middle">NORM</text>
+            <text x="660" y="302" fill="#333" font-size="10">—</text>
+            <text x="780" y="302" fill="#555" font-size="10">—</text>
+            <line x1="20" y1="310" x2="940" y2="310" stroke="#dde2ea" stroke-width="2"/>
 
-      <!-- Row 2 -->
-      <rect x="0" y="332" width="960" height="36" fill="white"/>
-      <rect x="12" y="343" width="14" height="14" rx="2" fill="white" stroke="#c5cdd8"/>
-      <text x="36"  y="355" fill="#0072ce" font-size="11" font-weight="500">E2E-2024-002</text>
-      <text x="178" y="355" fill="#333" font-size="11">SRC-002</text>
-      <text x="300" y="355" fill="#333" font-size="11">RMS</text>
-      <text x="370" y="355" fill="#333" font-size="11">FED_RETURN</text>
-      <text x="480" y="355" fill="#333" font-size="11">OBPM</text>
-      <text x="590" y="355" fill="#333" font-size="11">2026-03-11</text>
-      <text x="680" y="355" fill="#333" font-size="11">12,000 USD</text>
-      <rect x="754" y="343" width="54" height="16" rx="8" fill="#f0fdf4"/>
-      <text x="781" y="355" fill="#0a3622" font-size="10" font-weight="700" text-anchor="middle">SUCCESS</text>
-      <text x="830" y="355" fill="#555" font-size="10">Processed OK</text>
-      <rect x="928" y="343" width="22" height="16" rx="3" fill="white" stroke="#c5cdd8"/>
-      <text x="939" y="354" fill="#555" font-size="9" text-anchor="middle">▼</text>
-      <line x1="0" y1="368" x2="960" y2="368" stroke="#eef1f5"/>
+            <!-- Row 2 -->
+            <rect x="0" y="332" width="960" height="36" fill="white"/>
+            <rect x="12" y="343" width="14" height="14" rx="2" fill="white" stroke="#c5cdd8"/>
+            <text x="36" y="355" fill="#0072ce" font-size="11" font-weight="500">E2E-2024-002</text>
+            <text x="178" y="355" fill="#333" font-size="11">SRC-002</text>
+            <text x="300" y="355" fill="#333" font-size="11">RMS</text>
+            <text x="370" y="355" fill="#333" font-size="11">FED_RETURN</text>
+            <text x="480" y="355" fill="#333" font-size="11">OBPM</text>
+            <text x="590" y="355" fill="#333" font-size="11">2026-03-11</text>
+            <text x="680" y="355" fill="#333" font-size="11">12,000 USD</text>
+            <rect x="754" y="343" width="54" height="16" rx="8" fill="#f0fdf4"/>
+            <text x="781" y="355" fill="#0a3622" font-size="10" font-weight="700" text-anchor="middle">SUCCESS</text>
+            <text x="830" y="355" fill="#555" font-size="10">Processed OK</text>
+            <rect x="928" y="343" width="22" height="16" rx="3" fill="white" stroke="#c5cdd8"/>
+            <text x="939" y="354" fill="#555" font-size="9" text-anchor="middle">▼</text>
+            <line x1="0" y1="368" x2="960" y2="368" stroke="#eef1f5"/>
 
-      <!-- Row 3 -->
-      <rect x="0" y="368" width="960" height="36" fill="white"/>
-      <rect x="12" y="379" width="14" height="14" rx="2" fill="white" stroke="#c5cdd8"/>
-      <text x="36"  y="391" fill="#0072ce" font-size="11" font-weight="500">E2E-2024-003</text>
-      <text x="178" y="391" fill="#333" font-size="11">SRC-003</text>
-      <text x="300" y="391" fill="#333" font-size="11">IMX</text>
-      <text x="370" y="391" fill="#333" font-size="11">IMX_OBPM</text>
-      <text x="480" y="391" fill="#333" font-size="11">OBPM</text>
-      <text x="590" y="391" fill="#333" font-size="11">2026-03-12</text>
-      <text x="680" y="391" fill="#333" font-size="11">750 USD</text>
-      <rect x="754" y="379" width="48" height="16" rx="8" fill="#fff1f2"/>
-      <text x="778" y="391" fill="#58151c" font-size="10" font-weight="700" text-anchor="middle">FAILED</text>
-      <text x="830" y="391" fill="#555" font-size="10">OBPM timeout</text>
-      <rect x="928" y="379" width="22" height="16" rx="3" fill="white" stroke="#c5cdd8"/>
-      <text x="939" y="390" fill="#555" font-size="9" text-anchor="middle">▼</text>
-      <line x1="0" y1="404" x2="960" y2="404" stroke="#eef1f5"/>
+            <!-- Row 3 -->
+            <rect x="0" y="368" width="960" height="36" fill="white"/>
+            <rect x="12" y="379" width="14" height="14" rx="2" fill="white" stroke="#c5cdd8"/>
+            <text x="36" y="391" fill="#0072ce" font-size="11" font-weight="500">E2E-2024-003</text>
+            <text x="178" y="391" fill="#333" font-size="11">SRC-003</text>
+            <text x="300" y="391" fill="#333" font-size="11">IMX</text>
+            <text x="370" y="391" fill="#333" font-size="11">IMX_OBPM</text>
+            <text x="480" y="391" fill="#333" font-size="11">OBPM</text>
+            <text x="590" y="391" fill="#333" font-size="11">2026-03-12</text>
+            <text x="680" y="391" fill="#333" font-size="11">750 USD</text>
+            <rect x="754" y="379" width="48" height="16" rx="8" fill="#fff1f2"/>
+            <text x="778" y="391" fill="#58151c" font-size="10" font-weight="700" text-anchor="middle">FAILED</text>
+            <text x="830" y="391" fill="#555" font-size="10">OBPM timeout</text>
+            <rect x="928" y="379" width="22" height="16" rx="3" fill="white" stroke="#c5cdd8"/>
+            <text x="939" y="390" fill="#555" font-size="9" text-anchor="middle">▼</text>
+            <line x1="0" y1="404" x2="960" y2="404" stroke="#eef1f5"/>
 
-      <!-- More rows placeholder -->
-      <rect x="0" y="404" width="960" height="24" fill="white"/>
-      <text x="480" y="420" fill="#bbb" font-size="12" text-anchor="middle">· · · more rows · · ·</text>
-      <line x1="0" y1="428" x2="960" y2="428" stroke="#eef1f5"/>
+            <!-- More rows placeholder -->
+            <rect x="0" y="404" width="960" height="24" fill="white"/>
+            <text x="480" y="420" fill="#bbb" font-size="12" text-anchor="middle">· · · more rows · · ·</text>
+            <line x1="0" y1="428" x2="960" y2="428" stroke="#eef1f5"/>
 
-      <!-- Pagination -->
-      <rect x="0" y="428" width="960" height="44" fill="white"/>
-      <text x="702" y="454" fill="#666" font-size="12">Rows per page:</text>
-      <rect x="788" y="440" width="42" height="24" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="806" y="456" fill="#333" font-size="12" text-anchor="middle">10 ▼</text>
-      <text x="842" y="454" fill="#666" font-size="12">1–10 of 68</text>
-      <rect x="898" y="440" width="24" height="24" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="910" y="456" fill="#333" font-size="14" text-anchor="middle">‹</text>
-      <rect x="930" y="440" width="24" height="24" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="942" y="456" fill="#333" font-size="14" text-anchor="middle">›</text>
+            <!-- Pagination -->
+            <rect x="0" y="428" width="960" height="44" fill="white"/>
+            <text x="702" y="454" fill="#666" font-size="12">Rows per page:</text>
+            <rect x="788" y="440" width="42" height="24" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="806" y="456" fill="#333" font-size="12" text-anchor="middle">10 ▼</text>
+            <text x="842" y="454" fill="#666" font-size="12">1–10 of 68</text>
+            <rect x="898" y="440" width="24" height="24" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="910" y="456" fill="#333" font-size="14" text-anchor="middle">‹</text>
+            <rect x="930" y="440" width="24" height="24" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="942" y="456" fill="#333" font-size="14" text-anchor="middle">›</text>
 
-      <!-- Annotations -->
-      <rect x="0" y="490" width="960" height="90" fill="#f8f9fb" stroke="#dde2ea"/>
-      <text x="20" y="510" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
-      <text x="20" y="528" fill="#555" font-size="11">• Clicking a row navigates to /postings/:id (Posting Detail page)</text>
-      <text x="20" y="544" fill="#555" font-size="11">• ▼ button in the last column expands an inline Leg sub-table (no navigation); ▲ collapses it</text>
-      <text x="20" y="560" fill="#555" font-size="11">• ⟳ row button retries a single PENDING posting; RETRY SELECTED retries checked rows; RETRY ALL PENDING retries every PENDING on the page</text>
-      <text x="20" y="576" fill="#555" font-size="11">• Checkbox header toggles all rows; status filter options: PENDING / SUCCESS / FAILED</text>
-    </svg>
-  </div>
+            <!-- Annotations -->
+            <rect x="0" y="490" width="960" height="90" fill="#f8f9fb" stroke="#dde2ea"/>
+            <text x="20" y="510" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
+            <text x="20" y="528" fill="#555" font-size="11">• Clicking a row navigates to /postings/:id (Posting Detail
+                page)
+            </text>
+            <text x="20" y="544" fill="#555" font-size="11">• ▼ button in the last column expands an inline Leg
+                sub-table (no navigation); ▲ collapses it
+            </text>
+            <text x="20" y="560" fill="#555" font-size="11">• ⟳ row button retries a single PENDING posting; RETRY
+                SELECTED retries checked rows; RETRY ALL PENDING retries every PENDING on the page
+            </text>
+            <text x="20" y="576" fill="#555" font-size="11">• Checkbox header toggles all rows; status filter options:
+                PENDING / SUCCESS / FAILED
+            </text>
+        </svg>
+    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      PAGE 2 — Posting Detail
      ══════════════════════════════════════════════════════════ -->
 <div class="page" id="p2">
-  <h1>Posting Detail</h1>
-  <p class="subtitle">Route: /postings/:postingId — full posting fields, leg table, manual leg status update.</p>
+    <h1>Posting Detail</h1>
+    <p class="subtitle">Route: /postings/:postingId — full posting fields, leg table, manual leg status update.</p>
 
-  <div class="legend">
-    <div class="legend-item"><div class="legend-swatch" style="background:#f9fafb;border:1px solid #dde2ea"></div>Detail grid</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#d1f0d8;border:1px solid #86efac"></div>Success banner</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:white;border:1px solid #003b5c"></div>Manual update controls (non-SUCCESS legs)</div>
-  </div>
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#f9fafb;border:1px solid #dde2ea"></div>
+            Detail grid
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:#d1f0d8;border:1px solid #86efac"></div>
+            Success banner
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background:white;border:1px solid #003b5c"></div>
+            Manual update controls (non-SUCCESS legs)
+        </div>
+    </div>
 
-  <div class="screen-wrap">
-    <div class="screen-label">Posting Detail · /postings/42</div>
-    <svg viewBox="0 0 960 700" xmlns="http://www.w3.org/2000/svg" width="100%">
+    <div class="screen-wrap">
+        <div class="screen-label">Posting Detail · /postings/42</div>
+        <svg viewBox="0 0 960 700" xmlns="http://www.w3.org/2000/svg" width="100%">
 
-      <!-- Nav -->
-      <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
-      <text x="20" y="26" fill="#90caf9" font-size="13">Dashboard</text>
-      <text x="108" y="26" fill="#90caf9" font-size="13">Search</text>
-      <text x="168" y="26" fill="#90caf9" font-size="13">Config</text>
+            <!-- Nav -->
+            <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
+            <text x="20" y="26" fill="#90caf9" font-size="13">Dashboard</text>
+            <text x="108" y="26" fill="#90caf9" font-size="13">Search</text>
+            <text x="168" y="26" fill="#90caf9" font-size="13">Config</text>
 
-      <!-- Page header -->
-      <rect x="20" y="58" width="70" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="55" y="74" fill="#333" font-size="12" text-anchor="middle">← Back</text>
-      <text x="106" y="76" fill="#1a2a3a" font-size="18" font-weight="600">Posting #42</text>
-      <rect x="810" y="56" width="130" height="28" rx="4" fill="#003b5c"/>
-      <text x="875" y="74" fill="white" font-size="12" font-weight="500" text-anchor="middle">⟳ Retry Failed Legs</text>
+            <!-- Page header -->
+            <rect x="20" y="58" width="70" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="55" y="74" fill="#333" font-size="12" text-anchor="middle">← Back</text>
+            <text x="106" y="76" fill="#1a2a3a" font-size="18" font-weight="600">Posting #42</text>
+            <rect x="810" y="56" width="130" height="28" rx="4" fill="#003b5c"/>
+            <text x="875" y="74" fill="white" font-size="12" font-weight="500" text-anchor="middle">⟳ Retry Failed
+                Legs
+            </text>
 
-      <!-- Success banner -->
-      <rect x="20" y="96" width="920" height="28" rx="4" fill="#d1f0d8"/>
-      <text x="34" y="114" fill="#0a3622" font-size="12">Retry completed — legs updated.</text>
+            <!-- Success banner -->
+            <rect x="20" y="96" width="920" height="28" rx="4" fill="#d1f0d8"/>
+            <text x="34" y="114" fill="#0a3622" font-size="12">Retry completed — legs updated.</text>
 
-      <!-- Detail grid (2 cols) -->
-      <rect x="20" y="136" width="920" height="220" rx="6" fill="#f9fafb" stroke="#dde2ea"/>
-      <!-- col 1 -->
-      <text x="40" y="162" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">STATUS</text>
-      <rect x="40" y="168" width="60" height="18" rx="9" fill="#fffbeb"/>
-      <text x="70" y="181" fill="#856404" font-size="10" font-weight="700" text-anchor="middle">PENDING</text>
+            <!-- Detail grid (2 cols) -->
+            <rect x="20" y="136" width="920" height="220" rx="6" fill="#f9fafb" stroke="#dde2ea"/>
+            <!-- col 1 -->
+            <text x="40" y="162" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">STATUS</text>
+            <rect x="40" y="168" width="60" height="18" rx="9" fill="#fffbeb"/>
+            <text x="70" y="181" fill="#856404" font-size="10" font-weight="700" text-anchor="middle">PENDING</text>
 
-      <text x="40" y="210" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">SOURCE</text>
-      <text x="40" y="224" fill="#222" font-size="12" font-weight="500">IMX</text>
+            <text x="40" y="210" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">SOURCE</text>
+            <text x="40" y="224" fill="#222" font-size="12" font-weight="500">IMX</text>
 
-      <text x="40" y="254" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">SOURCE REFERENCE</text>
-      <text x="40" y="268" fill="#222" font-size="12" font-weight="500">SRC-2024-001</text>
+            <text x="40" y="254" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">SOURCE REFERENCE
+            </text>
+            <text x="40" y="268" fill="#222" font-size="12" font-weight="500">SRC-2024-001</text>
 
-      <text x="40" y="298" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">END-TO-END REFERENCE</text>
-      <text x="40" y="312" fill="#222" font-size="12" font-weight="500">E2E-2024-001</text>
+            <text x="40" y="298" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">END-TO-END
+                REFERENCE
+            </text>
+            <text x="40" y="312" fill="#222" font-size="12" font-weight="500">E2E-2024-001</text>
 
-      <text x="40" y="342" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">REQUEST TYPE</text>
-      <text x="40" y="356" fill="#222" font-size="12" font-weight="500">IMX_CBS_GL</text>
+            <text x="40" y="342" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">REQUEST TYPE</text>
+            <text x="40" y="356" fill="#222" font-size="12" font-weight="500">IMX_CBS_GL</text>
 
-      <!-- col 2 -->
-      <text x="490" y="162" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">AMOUNT</text>
-      <text x="490" y="176" fill="#222" font-size="12" font-weight="500">5,000.00 USD (CREDIT)</text>
+            <!-- col 2 -->
+            <text x="490" y="162" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">AMOUNT</text>
+            <text x="490" y="176" fill="#222" font-size="12" font-weight="500">5,000.00 USD (CREDIT)</text>
 
-      <text x="490" y="210" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">DEBTOR ACCOUNT</text>
-      <text x="490" y="224" fill="#222" font-size="12" font-weight="500">ACC-DEBIT-001</text>
+            <text x="490" y="210" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">DEBTOR ACCOUNT
+            </text>
+            <text x="490" y="224" fill="#222" font-size="12" font-weight="500">ACC-DEBIT-001</text>
 
-      <text x="490" y="254" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">CREDITOR ACCOUNT</text>
-      <text x="490" y="268" fill="#222" font-size="12" font-weight="500">ACC-CREDIT-002</text>
+            <text x="490" y="254" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">CREDITOR ACCOUNT
+            </text>
+            <text x="490" y="268" fill="#222" font-size="12" font-weight="500">ACC-CREDIT-002</text>
 
-      <text x="490" y="298" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">EXECUTION DATE</text>
-      <text x="490" y="312" fill="#222" font-size="12" font-weight="500">2026-03-10</text>
+            <text x="490" y="298" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">EXECUTION DATE
+            </text>
+            <text x="490" y="312" fill="#222" font-size="12" font-weight="500">2026-03-10</text>
 
-      <text x="490" y="342" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">REMITTANCE</text>
-      <text x="490" y="356" fill="#222" font-size="12" font-weight="500">Payment for invoice #1234</text>
+            <text x="490" y="342" fill="#888" font-size="10" font-weight="600" letter-spacing="0.5">REMITTANCE</text>
+            <text x="490" y="356" fill="#222" font-size="12" font-weight="500">Payment for invoice #1234</text>
 
-      <!-- col separator -->
-      <line x1="480" y1="150" x2="480" y2="346" stroke="#eee"/>
+            <!-- col separator -->
+            <line x1="480" y1="150" x2="480" y2="346" stroke="#eee"/>
 
-      <!-- Legs section -->
-      <text x="20" y="386" fill="#1a2a3a" font-size="15" font-weight="600">Posting Legs</text>
+            <!-- Legs section -->
+            <text x="20" y="386" fill="#1a2a3a" font-size="15" font-weight="600">Posting Legs</text>
 
-      <!-- Leg table -->
-      <rect x="20" y="398" width="920" height="28" fill="#eef1f5"/>
-      <text x="40"  y="415" fill="#444" font-size="10" font-weight="600">Order</text>
-      <text x="90"  y="415" fill="#444" font-size="10" font-weight="600">Target System</text>
-      <text x="200" y="415" fill="#444" font-size="10" font-weight="600">Operation</text>
-      <text x="310" y="415" fill="#444" font-size="10" font-weight="600">Account</text>
-      <text x="420" y="415" fill="#444" font-size="10" font-weight="600">Reference ID</text>
-      <text x="520" y="415" fill="#444" font-size="10" font-weight="600">Status</text>
-      <text x="590" y="415" fill="#444" font-size="10" font-weight="600">Mode</text>
-      <text x="660" y="415" fill="#444" font-size="10" font-weight="600">Posted Time</text>
-      <text x="780" y="415" fill="#444" font-size="10" font-weight="600">Reason</text>
-      <text x="870" y="415" fill="#444" font-size="10" font-weight="600">Manual Update</text>
-      <line x1="20" y1="426" x2="940" y2="426" stroke="#c5cdd8" stroke-width="2"/>
+            <!-- Leg table -->
+            <rect x="20" y="398" width="920" height="28" fill="#eef1f5"/>
+            <text x="40" y="415" fill="#444" font-size="10" font-weight="600">Order</text>
+            <text x="90" y="415" fill="#444" font-size="10" font-weight="600">Target System</text>
+            <text x="200" y="415" fill="#444" font-size="10" font-weight="600">Operation</text>
+            <text x="310" y="415" fill="#444" font-size="10" font-weight="600">Account</text>
+            <text x="420" y="415" fill="#444" font-size="10" font-weight="600">Reference ID</text>
+            <text x="520" y="415" fill="#444" font-size="10" font-weight="600">Status</text>
+            <text x="590" y="415" fill="#444" font-size="10" font-weight="600">Mode</text>
+            <text x="660" y="415" fill="#444" font-size="10" font-weight="600">Posted Time</text>
+            <text x="780" y="415" fill="#444" font-size="10" font-weight="600">Reason</text>
+            <text x="870" y="415" fill="#444" font-size="10" font-weight="600">Manual Update</text>
+            <line x1="20" y1="426" x2="940" y2="426" stroke="#c5cdd8" stroke-width="2"/>
 
-      <!-- Leg row 1 — FAILED with manual update controls -->
-      <rect x="20" y="426" width="920" height="30" fill="white"/>
-      <text x="48"  y="446" fill="#333" font-size="11" font-weight="600" text-anchor="middle">1</text>
-      <text x="90"  y="446" fill="#333" font-size="11">CBS</text>
-      <text x="200" y="446" fill="#333" font-size="11">CREDIT_DEBIT</text>
-      <text x="310" y="446" fill="#333" font-size="11">ACC-001</text>
-      <text x="420" y="446" fill="#333" font-size="11">—</text>
-      <text x="520" y="446" fill="#58151c" font-size="11" font-weight="600">FAILED</text>
-      <rect x="585" y="432" width="36" height="16" rx="2" fill="#f3f4f6"/>
-      <text x="603" y="444" fill="#374151" font-size="9" font-weight="600" text-anchor="middle">NORM</text>
-      <text x="660" y="446" fill="#555" font-size="11">—</text>
-      <text x="780" y="446" fill="#555" font-size="11">CBS error</text>
-      <!-- Manual update controls -->
-      <rect x="862" y="432" width="56" height="18" rx="3" fill="white" stroke="#c5cdd8"/>
-      <text x="876" y="445" fill="#333" font-size="10">FAILED ▼</text>
-      <rect x="924" y="432" width="30" height="18" rx="3" fill="white" stroke="#003b5c"/>
-      <text x="939" y="445" fill="#003b5c" font-size="10" text-anchor="middle">Apply</text>
-      <line x1="20" y1="456" x2="940" y2="456" stroke="#eef1f5"/>
+            <!-- Leg row 1 — FAILED with manual update controls -->
+            <rect x="20" y="426" width="920" height="30" fill="white"/>
+            <text x="48" y="446" fill="#333" font-size="11" font-weight="600" text-anchor="middle">1</text>
+            <text x="90" y="446" fill="#333" font-size="11">CBS</text>
+            <text x="200" y="446" fill="#333" font-size="11">CREDIT_DEBIT</text>
+            <text x="310" y="446" fill="#333" font-size="11">ACC-001</text>
+            <text x="420" y="446" fill="#333" font-size="11">—</text>
+            <text x="520" y="446" fill="#58151c" font-size="11" font-weight="600">FAILED</text>
+            <rect x="585" y="432" width="36" height="16" rx="2" fill="#f3f4f6"/>
+            <text x="603" y="444" fill="#374151" font-size="9" font-weight="600" text-anchor="middle">NORM</text>
+            <text x="660" y="446" fill="#555" font-size="11">—</text>
+            <text x="780" y="446" fill="#555" font-size="11">CBS error</text>
+            <!-- Manual update controls -->
+            <rect x="862" y="432" width="56" height="18" rx="3" fill="white" stroke="#c5cdd8"/>
+            <text x="876" y="445" fill="#333" font-size="10">FAILED ▼</text>
+            <rect x="924" y="432" width="30" height="18" rx="3" fill="white" stroke="#003b5c"/>
+            <text x="939" y="445" fill="#003b5c" font-size="10" text-anchor="middle">Apply</text>
+            <line x1="20" y1="456" x2="940" y2="456" stroke="#eef1f5"/>
 
-      <!-- Leg row 2 — SUCCESS (no manual update) -->
-      <rect x="20" y="456" width="920" height="30" fill="white"/>
-      <text x="48"  y="476" fill="#333" font-size="11" font-weight="600" text-anchor="middle">2</text>
-      <text x="90"  y="476" fill="#333" font-size="11">GL</text>
-      <text x="200" y="476" fill="#333" font-size="11">GL_ENTRY</text>
-      <text x="310" y="476" fill="#333" font-size="11">GL-002</text>
-      <text x="420" y="476" fill="#333" font-size="11">REF-GL-9901</text>
-      <text x="520" y="476" fill="#0a3622" font-size="11" font-weight="600">SUCCESS</text>
-      <rect x="585" y="462" width="36" height="16" rx="2" fill="#dbeafe"/>
-      <text x="603" y="474" fill="#1e40af" font-size="9" font-weight="600" text-anchor="middle">RETRY</text>
-      <text x="660" y="476" fill="#555" font-size="11">2026-03-10 14:22</text>
-      <text x="780" y="476" fill="#555" font-size="11">OK</text>
-      <text x="892" y="476" fill="#aaa" font-size="12" text-anchor="middle">—</text>
-      <line x1="20" y1="486" x2="940" y2="486" stroke="#eef1f5"/>
+            <!-- Leg row 2 — SUCCESS (no manual update) -->
+            <rect x="20" y="456" width="920" height="30" fill="white"/>
+            <text x="48" y="476" fill="#333" font-size="11" font-weight="600" text-anchor="middle">2</text>
+            <text x="90" y="476" fill="#333" font-size="11">GL</text>
+            <text x="200" y="476" fill="#333" font-size="11">GL_ENTRY</text>
+            <text x="310" y="476" fill="#333" font-size="11">GL-002</text>
+            <text x="420" y="476" fill="#333" font-size="11">REF-GL-9901</text>
+            <text x="520" y="476" fill="#0a3622" font-size="11" font-weight="600">SUCCESS</text>
+            <rect x="585" y="462" width="36" height="16" rx="2" fill="#dbeafe"/>
+            <text x="603" y="474" fill="#1e40af" font-size="9" font-weight="600" text-anchor="middle">RETRY</text>
+            <text x="660" y="476" fill="#555" font-size="11">2026-03-10 14:22</text>
+            <text x="780" y="476" fill="#555" font-size="11">OK</text>
+            <text x="892" y="476" fill="#aaa" font-size="12" text-anchor="middle">—</text>
+            <line x1="20" y1="486" x2="940" y2="486" stroke="#eef1f5"/>
 
-      <!-- Annotations -->
-      <rect x="0" y="520" width="960" height="90" fill="#f8f9fb" stroke="#dde2ea"/>
-      <text x="20" y="540" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
-      <text x="20" y="558" fill="#555" font-size="11">• "Retry Failed Legs" button visible only when postingStatus = PENDING; triggers POST /account-posting/retry for this single ID</text>
-      <text x="20" y="574" fill="#555" font-size="11">• Manual Update column: status dropdown (PENDING / SUCCESS / FAILED) + Apply button shown for non-SUCCESS legs only</text>
-      <text x="20" y="590" fill="#555" font-size="11">• Apply sends PATCH /account-posting/{id}/leg/{legId} with selected status; when ALL legs reach SUCCESS the parent posting is promoted to SUCCESS automatically</text>
-      <text x="20" y="606" fill="#555" font-size="11">• Success banners appear at the top after successful retry or manual update; mode badge: NORM (grey) / RETRY (blue) / MANUAL (amber)</text>
-    </svg>
-  </div>
+            <!-- Annotations -->
+            <rect x="0" y="520" width="960" height="90" fill="#f8f9fb" stroke="#dde2ea"/>
+            <text x="20" y="540" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
+            <text x="20" y="558" fill="#555" font-size="11">• "Retry Failed Legs" button visible only when postingStatus
+                = PENDING; triggers POST /account-posting/retry for this single ID
+            </text>
+            <text x="20" y="574" fill="#555" font-size="11">• Manual Update column: status dropdown (PENDING / SUCCESS /
+                FAILED) + Apply button shown for non-SUCCESS legs only
+            </text>
+            <text x="20" y="590" fill="#555" font-size="11">• Apply sends PATCH /account-posting/{id}/leg/{legId} with
+                selected status; when ALL legs reach SUCCESS the parent posting is promoted to SUCCESS automatically
+            </text>
+            <text x="20" y="606" fill="#555" font-size="11">• Success banners appear at the top after successful retry
+                or manual update; mode badge: NORM (grey) / RETRY (blue) / MANUAL (amber)
+            </text>
+        </svg>
+    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      PAGE 3 — Config
      ══════════════════════════════════════════════════════════ -->
 <div class="page" id="p3">
-  <h1>Posting Configuration</h1>
-  <p class="subtitle">Route: /config — CRUD for posting_config rows that drive which target systems each source/requestType routes to.</p>
+    <h1>Posting Configuration</h1>
+    <p class="subtitle">Route: /config — CRUD for posting_config rows that drive which target systems each
+        source/requestType routes to.</p>
 
-  <div class="screen-wrap">
-    <div class="screen-label">Config · /config</div>
-    <svg viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" width="100%">
+    <div class="screen-wrap">
+        <div class="screen-label">Config · /config</div>
+        <svg viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" width="100%">
 
-      <!-- Nav -->
-      <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
-      <text x="20" y="26" fill="#90caf9" font-size="13">Dashboard</text>
-      <text x="108" y="26" fill="#90caf9" font-size="13">Search</text>
-      <text x="168" y="26" fill="white" font-size="13" font-weight="700">Config</text>
-      <line x1="155" y1="44" x2="212" y2="44" stroke="white" stroke-width="2"/>
+            <!-- Nav -->
+            <rect x="0" y="0" width="960" height="44" fill="#003b5c"/>
+            <text x="20" y="26" fill="#90caf9" font-size="13">Dashboard</text>
+            <text x="108" y="26" fill="#90caf9" font-size="13">Search</text>
+            <text x="168" y="26" fill="white" font-size="13" font-weight="700">Config</text>
+            <line x1="155" y1="44" x2="212" y2="44" stroke="white" stroke-width="2"/>
 
-      <!-- Page header -->
-      <text x="20" y="76" fill="#1a2a3a" font-size="18" font-weight="700">Posting Configuration</text>
-      <rect x="842" y="56" width="100" height="28" rx="4" fill="#003b5c"/>
-      <text x="892" y="74" fill="white" font-size="12" font-weight="500" text-anchor="middle">+ ADD CONFIG</text>
+            <!-- Page header -->
+            <text x="20" y="76" fill="#1a2a3a" font-size="18" font-weight="700">Posting Configuration</text>
+            <rect x="842" y="56" width="100" height="28" rx="4" fill="#003b5c"/>
+            <text x="892" y="74" fill="white" font-size="12" font-weight="500" text-anchor="middle">+ ADD CONFIG</text>
 
-      <!-- Table header -->
-      <rect x="20" y="94" width="920" height="34" fill="#eef1f5" stroke="#dde2ea"/>
-      <text x="40"  y="115" fill="#444" font-size="11" font-weight="600">Config ID</text>
-      <text x="130" y="115" fill="#444" font-size="11" font-weight="600">Source Name</text>
-      <text x="260" y="115" fill="#444" font-size="11" font-weight="600">Request Type</text>
-      <text x="420" y="115" fill="#444" font-size="11" font-weight="600">Target System</text>
-      <text x="560" y="115" fill="#444" font-size="11" font-weight="600">Operation</text>
-      <text x="700" y="115" fill="#444" font-size="11" font-weight="600">Order</text>
-      <text x="790" y="115" fill="#444" font-size="11" font-weight="600">Actions</text>
-      <line x1="20" y1="128" x2="940" y2="128" stroke="#c5cdd8" stroke-width="2"/>
+            <!-- Table header -->
+            <rect x="20" y="94" width="920" height="34" fill="#eef1f5" stroke="#dde2ea"/>
+            <text x="40" y="115" fill="#444" font-size="11" font-weight="600">Config ID</text>
+            <text x="130" y="115" fill="#444" font-size="11" font-weight="600">Source Name</text>
+            <text x="260" y="115" fill="#444" font-size="11" font-weight="600">Request Type</text>
+            <text x="420" y="115" fill="#444" font-size="11" font-weight="600">Target System</text>
+            <text x="560" y="115" fill="#444" font-size="11" font-weight="600">Operation</text>
+            <text x="700" y="115" fill="#444" font-size="11" font-weight="600">Order</text>
+            <text x="790" y="115" fill="#444" font-size="11" font-weight="600">Actions</text>
+            <line x1="20" y1="128" x2="940" y2="128" stroke="#c5cdd8" stroke-width="2"/>
 
-      <!-- Row 1 -->
-      <rect x="20" y="128" width="920" height="34" fill="white"/>
-      <text x="40"  y="150" fill="#333" font-size="11">1</text>
-      <text x="130" y="150" fill="#333" font-size="11">IMX</text>
-      <text x="260" y="150" fill="#333" font-size="11">IMX_CBS_GL</text>
-      <text x="420" y="150" fill="#333" font-size="11">CBS</text>
-      <text x="560" y="150" fill="#333" font-size="11">CREDIT_DEBIT</text>
-      <text x="710" y="150" fill="#333" font-size="11">1</text>
-      <rect x="790" y="135" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
-      <text x="812" y="148" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
-      <rect x="840" y="135" width="50" height="18" rx="3" fill="white" stroke="#c0392b"/>
-      <text x="865" y="148" fill="#c0392b" font-size="11" text-anchor="middle">Delete</text>
-      <line x1="20" y1="162" x2="940" y2="162" stroke="#eef1f5"/>
+            <!-- Row 1 -->
+            <rect x="20" y="128" width="920" height="34" fill="white"/>
+            <text x="40" y="150" fill="#333" font-size="11">1</text>
+            <text x="130" y="150" fill="#333" font-size="11">IMX</text>
+            <text x="260" y="150" fill="#333" font-size="11">IMX_CBS_GL</text>
+            <text x="420" y="150" fill="#333" font-size="11">CBS</text>
+            <text x="560" y="150" fill="#333" font-size="11">CREDIT_DEBIT</text>
+            <text x="710" y="150" fill="#333" font-size="11">1</text>
+            <rect x="790" y="135" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
+            <text x="812" y="148" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
+            <rect x="840" y="135" width="50" height="18" rx="3" fill="white" stroke="#c0392b"/>
+            <text x="865" y="148" fill="#c0392b" font-size="11" text-anchor="middle">Delete</text>
+            <line x1="20" y1="162" x2="940" y2="162" stroke="#eef1f5"/>
 
-      <!-- Row 2 -->
-      <rect x="20" y="162" width="920" height="34" fill="white"/>
-      <text x="40"  y="184" fill="#333" font-size="11">2</text>
-      <text x="130" y="184" fill="#333" font-size="11">IMX</text>
-      <text x="260" y="184" fill="#333" font-size="11">IMX_CBS_GL</text>
-      <text x="420" y="184" fill="#333" font-size="11">GL</text>
-      <text x="560" y="184" fill="#333" font-size="11">GL_ENTRY</text>
-      <text x="710" y="184" fill="#333" font-size="11">2</text>
-      <rect x="790" y="169" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
-      <text x="812" y="182" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
-      <rect x="840" y="169" width="50" height="18" rx="3" fill="white" stroke="#c0392b"/>
-      <text x="865" y="182" fill="#c0392b" font-size="11" text-anchor="middle">Delete</text>
-      <line x1="20" y1="196" x2="940" y2="196" stroke="#eef1f5"/>
+            <!-- Row 2 -->
+            <rect x="20" y="162" width="920" height="34" fill="white"/>
+            <text x="40" y="184" fill="#333" font-size="11">2</text>
+            <text x="130" y="184" fill="#333" font-size="11">IMX</text>
+            <text x="260" y="184" fill="#333" font-size="11">IMX_CBS_GL</text>
+            <text x="420" y="184" fill="#333" font-size="11">GL</text>
+            <text x="560" y="184" fill="#333" font-size="11">GL_ENTRY</text>
+            <text x="710" y="184" fill="#333" font-size="11">2</text>
+            <rect x="790" y="169" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
+            <text x="812" y="182" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
+            <rect x="840" y="169" width="50" height="18" rx="3" fill="white" stroke="#c0392b"/>
+            <text x="865" y="182" fill="#c0392b" font-size="11" text-anchor="middle">Delete</text>
+            <line x1="20" y1="196" x2="940" y2="196" stroke="#eef1f5"/>
 
-      <!-- Row 3 — delete confirm state -->
-      <rect x="20" y="196" width="920" height="34" fill="white"/>
-      <text x="40"  y="218" fill="#333" font-size="11">3</text>
-      <text x="130" y="218" fill="#333" font-size="11">IMX</text>
-      <text x="260" y="218" fill="#333" font-size="11">IMX_OBPM</text>
-      <text x="420" y="218" fill="#333" font-size="11">OBPM</text>
-      <text x="560" y="218" fill="#333" font-size="11">OBPM_SUBMIT</text>
-      <text x="710" y="218" fill="#333" font-size="11">1</text>
-      <rect x="790" y="203" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
-      <text x="812" y="216" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
-      <!-- delete confirm state -->
-      <rect x="840" y="203" width="52" height="18" rx="3" fill="#c0392b" stroke="#c0392b"/>
-      <text x="866" y="216" fill="white" font-size="11" text-anchor="middle">Confirm</text>
-      <rect x="898" y="203" width="22" height="18" rx="3" fill="white" stroke="#aaa"/>
-      <text x="909" y="216" fill="#555" font-size="11" text-anchor="middle">✕</text>
-      <line x1="20" y1="230" x2="940" y2="230" stroke="#eef1f5"/>
+            <!-- Row 3 — delete confirm state -->
+            <rect x="20" y="196" width="920" height="34" fill="white"/>
+            <text x="40" y="218" fill="#333" font-size="11">3</text>
+            <text x="130" y="218" fill="#333" font-size="11">IMX</text>
+            <text x="260" y="218" fill="#333" font-size="11">IMX_OBPM</text>
+            <text x="420" y="218" fill="#333" font-size="11">OBPM</text>
+            <text x="560" y="218" fill="#333" font-size="11">OBPM_SUBMIT</text>
+            <text x="710" y="218" fill="#333" font-size="11">1</text>
+            <rect x="790" y="203" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
+            <text x="812" y="216" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
+            <!-- delete confirm state -->
+            <rect x="840" y="203" width="52" height="18" rx="3" fill="#c0392b" stroke="#c0392b"/>
+            <text x="866" y="216" fill="white" font-size="11" text-anchor="middle">Confirm</text>
+            <rect x="898" y="203" width="22" height="18" rx="3" fill="white" stroke="#aaa"/>
+            <text x="909" y="216" fill="#555" font-size="11" text-anchor="middle">✕</text>
+            <line x1="20" y1="230" x2="940" y2="230" stroke="#eef1f5"/>
 
-      <!-- Row 4 -->
-      <rect x="20" y="230" width="920" height="34" fill="white"/>
-      <text x="40"  y="252" fill="#333" font-size="11">4</text>
-      <text x="130" y="252" fill="#333" font-size="11">RMS</text>
-      <text x="260" y="252" fill="#333" font-size="11">FED_RETURN</text>
-      <text x="420" y="252" fill="#333" font-size="11">CBS</text>
-      <text x="560" y="252" fill="#333" font-size="11">FED_RTN</text>
-      <text x="710" y="252" fill="#333" font-size="11">1</text>
-      <rect x="790" y="237" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
-      <text x="812" y="250" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
-      <rect x="840" y="237" width="50" height="18" rx="3" fill="white" stroke="#c0392b"/>
-      <text x="865" y="250" fill="#c0392b" font-size="11" text-anchor="middle">Delete</text>
-      <line x1="20" y1="264" x2="940" y2="264" stroke="#eef1f5"/>
+            <!-- Row 4 -->
+            <rect x="20" y="230" width="920" height="34" fill="white"/>
+            <text x="40" y="252" fill="#333" font-size="11">4</text>
+            <text x="130" y="252" fill="#333" font-size="11">RMS</text>
+            <text x="260" y="252" fill="#333" font-size="11">FED_RETURN</text>
+            <text x="420" y="252" fill="#333" font-size="11">CBS</text>
+            <text x="560" y="252" fill="#333" font-size="11">FED_RTN</text>
+            <text x="710" y="252" fill="#333" font-size="11">1</text>
+            <rect x="790" y="237" width="44" height="18" rx="3" fill="white" stroke="#0072ce"/>
+            <text x="812" y="250" fill="#0072ce" font-size="11" text-anchor="middle">Edit</text>
+            <rect x="840" y="237" width="50" height="18" rx="3" fill="white" stroke="#c0392b"/>
+            <text x="865" y="250" fill="#c0392b" font-size="11" text-anchor="middle">Delete</text>
+            <line x1="20" y1="264" x2="940" y2="264" stroke="#eef1f5"/>
 
-      <!-- Modal overlay (dimmed) -->
-      <rect x="0" y="270" width="960" height="250" fill="rgba(0,0,0,0.08)"/>
-      <!-- Modal box -->
-      <rect x="270" y="280" width="420" height="230" rx="8" fill="white" stroke="#dde2ea"
-            style="filter:drop-shadow(0 8px 24px rgba(0,0,0,0.15))"/>
-      <text x="290" y="308" fill="#1a2a3a" font-size="16" font-weight="600">Edit Config</text>
+            <!-- Modal overlay (dimmed) -->
+            <rect x="0" y="270" width="960" height="250" fill="rgba(0,0,0,0.08)"/>
+            <!-- Modal box -->
+            <rect x="270" y="280" width="420" height="230" rx="8" fill="white" stroke="#dde2ea"
+                  style="filter:drop-shadow(0 8px 24px rgba(0,0,0,0.15))"/>
+            <text x="290" y="308" fill="#1a2a3a" font-size="16" font-weight="600">Edit Config</text>
 
-      <text x="290" y="336" fill="#555" font-size="11" font-weight="600">Source Name *</text>
-      <rect x="290" y="342" width="380" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="304" y="359" fill="#333" font-size="12">IMX</text>
+            <text x="290" y="336" fill="#555" font-size="11" font-weight="600">Source Name *</text>
+            <rect x="290" y="342" width="380" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="304" y="359" fill="#333" font-size="12">IMX</text>
 
-      <text x="290" y="382" fill="#555" font-size="11" font-weight="600">Request Type *</text>
-      <rect x="290" y="388" width="380" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="304" y="405" fill="#333" font-size="12">IMX_OBPM</text>
+            <text x="290" y="382" fill="#555" font-size="11" font-weight="600">Request Type *</text>
+            <rect x="290" y="388" width="380" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="304" y="405" fill="#333" font-size="12">IMX_OBPM</text>
 
-      <text x="290" y="428" fill="#555" font-size="11" font-weight="600">Target System *</text>
-      <rect x="290" y="434" width="170" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="304" y="451" fill="#333" font-size="12">OBPM</text>
-      <text x="480" y="428" fill="#555" font-size="11" font-weight="600">Order Seq *</text>
-      <rect x="480" y="434" width="90" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
-      <text x="494" y="451" fill="#333" font-size="12">1</text>
+            <text x="290" y="428" fill="#555" font-size="11" font-weight="600">Target System *</text>
+            <rect x="290" y="434" width="170" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="304" y="451" fill="#333" font-size="12">OBPM</text>
+            <text x="480" y="428" fill="#555" font-size="11" font-weight="600">Order Seq *</text>
+            <rect x="480" y="434" width="90" height="26" rx="4" fill="white" stroke="#c5cdd8"/>
+            <text x="494" y="451" fill="#333" font-size="12">1</text>
 
-      <!-- Modal actions -->
-      <rect x="502" y="474" width="70" height="26" rx="4" fill="white" stroke="#b0bec5"/>
-      <text x="537" y="491" fill="#333" font-size="12" text-anchor="middle">Cancel</text>
-      <rect x="580" y="474" width="70" height="26" rx="4" fill="#003b5c"/>
-      <text x="615" y="491" fill="white" font-size="12" font-weight="500" text-anchor="middle">Update</text>
+            <!-- Modal actions -->
+            <rect x="502" y="474" width="70" height="26" rx="4" fill="white" stroke="#b0bec5"/>
+            <text x="537" y="491" fill="#333" font-size="12" text-anchor="middle">Cancel</text>
+            <rect x="580" y="474" width="70" height="26" rx="4" fill="#003b5c"/>
+            <text x="615" y="491" fill="white" font-size="12" font-weight="500" text-anchor="middle">Update</text>
 
-      <!-- Annotations -->
-      <rect x="0" y="530" width="960" height="50" fill="#f8f9fb" stroke="#dde2ea"/>
-      <text x="20" y="550" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
-      <text x="20" y="566" fill="#555" font-size="11">• ADD CONFIG / Edit open a modal overlay — Operation field is a free-text input (e.g. CREDIT_DEBIT, GL_ENTRY, OBPM_SUBMIT)</text>
-      <text x="20" y="580" fill="#555" font-size="11" display="none">• Delete shows inline Confirm / ✕ buttons before executing; modal has Cancel + Save/Update</text>
-    </svg>
-    <!-- second annotation line as HTML since SVG runs out of viewBox -->
-    <div style="padding:4px 20px 12px; font-size:11px; color:#555; background:#f8f9fb; border-top:1px solid #dde2ea;">
-      • Delete shows inline Confirm / ✕ buttons before executing the deletion — preventing accidental deletes
+            <!-- Annotations -->
+            <rect x="0" y="530" width="960" height="50" fill="#f8f9fb" stroke="#dde2ea"/>
+            <text x="20" y="550" fill="#555" font-size="12" font-weight="700">Key interactions:</text>
+            <text x="20" y="566" fill="#555" font-size="11">• ADD CONFIG / Edit open a modal overlay — Operation field
+                is a free-text input (e.g. CREDIT_DEBIT, GL_ENTRY, OBPM_SUBMIT)
+            </text>
+            <text x="20" y="580" fill="#555" font-size="11" display="none">• Delete shows inline Confirm / ✕ buttons
+                before executing; modal has Cancel + Save/Update
+            </text>
+        </svg>
+        <!-- second annotation line as HTML since SVG runs out of viewBox -->
+        <div style="padding:4px 20px 12px; font-size:11px; color:#555; background:#f8f9fb; border-top:1px solid #dde2ea;">
+            • Delete shows inline Confirm / ✕ buttons before executing the deletion — preventing accidental deletes
+        </div>
     </div>
-  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      PAGE 4 — Navigation Flow
      ══════════════════════════════════════════════════════════ -->
 <div class="page" id="p4">
-  <h1>Navigation Flow</h1>
-  <p class="subtitle">How the pages connect to each other.</p>
+    <h1>Navigation Flow</h1>
+    <p class="subtitle">How the pages connect to each other.</p>
 
-  <div class="screen-wrap">
-    <div class="screen-label">Navigation Flow Diagram</div>
-    <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" width="100%">
-      <defs>
-        <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
-        </marker>
-        <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#0072ce"/>
-        </marker>
-        <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#0a3622"/>
-        </marker>
-      </defs>
+    <div class="screen-wrap">
+        <div class="screen-label">Navigation Flow Diagram</div>
+        <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" width="100%">
+            <defs>
+                <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+                </marker>
+                <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#0072ce"/>
+                </marker>
+                <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#0a3622"/>
+                </marker>
+            </defs>
 
-      <!-- Nav bar strip -->
-      <rect x="0" y="0" width="960" height="40" fill="#003b5c"/>
-      <text x="20"  y="24" fill="white" font-size="12" font-weight="700">Nav Bar (persistent)</text>
-      <rect x="180" y="8" width="80" height="24" rx="4" fill="rgba(255,255,255,0.15)"/>
-      <text x="220" y="24" fill="white" font-size="11" text-anchor="middle">Dashboard</text>
-      <rect x="270" y="8" width="60" height="24" rx="4" fill="rgba(255,255,255,0.15)"/>
-      <text x="300" y="24" fill="white" font-size="11" text-anchor="middle">Search</text>
-      <rect x="340" y="8" width="60" height="24" rx="4" fill="rgba(255,255,255,0.15)"/>
-      <text x="370" y="24" fill="white" font-size="11" text-anchor="middle">Config</text>
+            <!-- Nav bar strip -->
+            <rect x="0" y="0" width="960" height="40" fill="#003b5c"/>
+            <text x="20" y="24" fill="white" font-size="12" font-weight="700">Nav Bar (persistent)</text>
+            <rect x="180" y="8" width="80" height="24" rx="4" fill="rgba(255,255,255,0.15)"/>
+            <text x="220" y="24" fill="white" font-size="11" text-anchor="middle">Dashboard</text>
+            <rect x="270" y="8" width="60" height="24" rx="4" fill="rgba(255,255,255,0.15)"/>
+            <text x="300" y="24" fill="white" font-size="11" text-anchor="middle">Search</text>
+            <rect x="340" y="8" width="60" height="24" rx="4" fill="rgba(255,255,255,0.15)"/>
+            <text x="370" y="24" fill="white" font-size="11" text-anchor="middle">Config</text>
 
-      <!-- Page boxes -->
-      <!-- Dashboard -->
-      <rect x="40" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
-      <text x="120" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Dashboard</text>
-      <text x="120" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/dashboard</text>
-      <text x="120" y="143" fill="#ccc" font-size="9" text-anchor="middle">Stats by source/target</text>
+            <!-- Page boxes -->
+            <!-- Dashboard -->
+            <rect x="40" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
+            <text x="120" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Dashboard</text>
+            <text x="120" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/dashboard</text>
+            <text x="120" y="143" fill="#ccc" font-size="9" text-anchor="middle">Stats by source/target</text>
 
-      <!-- Search/List -->
-      <rect x="280" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
-      <text x="360" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Search / List</text>
-      <text x="360" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/</text>
-      <text x="360" y="143" fill="#ccc" font-size="9" text-anchor="middle">Search + paginated table</text>
+            <!-- Search/List -->
+            <rect x="280" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
+            <text x="360" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Search / List
+            </text>
+            <text x="360" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/</text>
+            <text x="360" y="143" fill="#ccc" font-size="9" text-anchor="middle">Search + paginated table</text>
 
-      <!-- Detail -->
-      <rect x="520" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
-      <text x="600" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Posting Detail</text>
-      <text x="600" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/postings/:id</text>
-      <text x="600" y="143" fill="#ccc" font-size="9" text-anchor="middle">Fields + legs + manual update</text>
+            <!-- Detail -->
+            <rect x="520" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
+            <text x="600" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Posting Detail
+            </text>
+            <text x="600" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/postings/:id</text>
+            <text x="600" y="143" fill="#ccc" font-size="9" text-anchor="middle">Fields + legs + manual update</text>
 
-      <!-- Create -->
-      <rect x="760" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
-      <text x="840" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Create Posting</text>
-      <text x="840" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/create</text>
-      <text x="840" y="143" fill="#ccc" font-size="9" text-anchor="middle">Submit new posting</text>
+            <!-- Create -->
+            <rect x="760" y="80" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
+            <text x="840" y="110" fill="white" font-size="13" font-weight="700" text-anchor="middle">Create Posting
+            </text>
+            <text x="840" y="128" fill="#90caf9" font-size="10" text-anchor="middle">/create</text>
+            <text x="840" y="143" fill="#ccc" font-size="9" text-anchor="middle">Submit new posting</text>
 
-      <!-- Config -->
-      <rect x="280" y="280" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
-      <text x="360" y="310" fill="white" font-size="13" font-weight="700" text-anchor="middle">Config</text>
-      <text x="360" y="328" fill="#90caf9" font-size="10" text-anchor="middle">/config</text>
-      <text x="360" y="343" fill="#ccc" font-size="9" text-anchor="middle">Manage posting configs</text>
+            <!-- Config -->
+            <rect x="280" y="280" width="160" height="70" rx="8" fill="#1a2a3a" stroke="#003b5c" stroke-width="2"/>
+            <text x="360" y="310" fill="white" font-size="13" font-weight="700" text-anchor="middle">Config</text>
+            <text x="360" y="328" fill="#90caf9" font-size="10" text-anchor="middle">/config</text>
+            <text x="360" y="343" fill="#ccc" font-size="9" text-anchor="middle">Manage posting configs</text>
 
-      <!-- Arrows: Nav bar → pages -->
-      <line x1="220" y1="32" x2="120" y2="80" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-      <line x1="300" y1="32" x2="360" y2="80" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-      <line x1="370" y1="32" x2="360" y2="280" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+            <!-- Arrows: Nav bar → pages -->
+            <line x1="220" y1="32" x2="120" y2="80" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3"
+                  marker-end="url(#arrow)"/>
+            <line x1="300" y1="32" x2="360" y2="80" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3"
+                  marker-end="url(#arrow)"/>
+            <line x1="370" y1="32" x2="360" y2="280" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3"
+                  marker-end="url(#arrow)"/>
 
-      <!-- Search → Detail (click row) -->
-      <line x1="440" y1="115" x2="520" y2="115" stroke="#0072ce" stroke-width="2" marker-end="url(#arrow-blue)"/>
-      <text x="480" y="108" fill="#0072ce" font-size="10" text-anchor="middle">click row</text>
+            <!-- Search → Detail (click row) -->
+            <line x1="440" y1="115" x2="520" y2="115" stroke="#0072ce" stroke-width="2" marker-end="url(#arrow-blue)"/>
+            <text x="480" y="108" fill="#0072ce" font-size="10" text-anchor="middle">click row</text>
 
-      <!-- Create → Detail (on success) -->
-      <line x1="840" y1="150" x2="840" y2="220" stroke="#0a3622" stroke-width="2" marker-end="url(#arrow-green)"/>
-      <line x1="840" y1="220" x2="600" y2="220" stroke="#0a3622" stroke-width="2"/>
-      <line x1="600" y1="220" x2="600" y2="150" stroke="#0a3622" stroke-width="2" marker-end="url(#arrow-green)"/>
-      <text x="720" y="215" fill="#0a3622" font-size="10" text-anchor="middle">on success → navigate</text>
+            <!-- Create → Detail (on success) -->
+            <line x1="840" y1="150" x2="840" y2="220" stroke="#0a3622" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <line x1="840" y1="220" x2="600" y2="220" stroke="#0a3622" stroke-width="2"/>
+            <line x1="600" y1="220" x2="600" y2="150" stroke="#0a3622" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="720" y="215" fill="#0a3622" font-size="10" text-anchor="middle">on success → navigate</text>
 
-      <!-- Detail → Search (back button) -->
-      <line x1="520" y1="130" x2="440" y2="130" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
-      <text x="480" y="144" fill="#555" font-size="10" text-anchor="middle">← Back</text>
+            <!-- Detail → Search (back button) -->
+            <line x1="520" y1="130" x2="440" y2="130" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"
+                  marker-end="url(#arrow)"/>
+            <text x="480" y="144" fill="#555" font-size="10" text-anchor="middle">← Back</text>
 
-      <!-- API calls box -->
-      <rect x="40" y="280" width="200" height="200" rx="8" fill="#f4f7ff" stroke="#7b9ef0" stroke-width="1.5"/>
-      <text x="140" y="304" fill="#1a3fa8" font-size="12" font-weight="700" text-anchor="middle">Backend API</text>
-      <text x="140" y="322" fill="#555" font-size="10" text-anchor="middle">:8080/account-posting</text>
-      <line x1="60" y1="330" x2="230" y2="330" stroke="#dde2ea"/>
-      <text x="60" y="346" fill="#444" font-size="10">GET  /</text>
-      <text x="60" y="361" fill="#444" font-size="10">POST /</text>
-      <text x="60" y="376" fill="#444" font-size="10">GET  /:id</text>
-      <text x="60" y="391" fill="#444" font-size="10">POST /retry</text>
-      <text x="60" y="406" fill="#444" font-size="10">GET  /:id/leg</text>
-      <text x="60" y="421" fill="#444" font-size="10">PATCH /:id/leg/:legId</text>
-      <text x="60" y="436" fill="#444" font-size="10">GET  /config</text>
-      <text x="60" y="451" fill="#444" font-size="10">POST /config</text>
-      <text x="60" y="466" fill="#444" font-size="10">PUT  /config/:id</text>
+            <!-- API calls box -->
+            <rect x="40" y="280" width="200" height="200" rx="8" fill="#f4f7ff" stroke="#7b9ef0" stroke-width="1.5"/>
+            <text x="140" y="304" fill="#1a3fa8" font-size="12" font-weight="700" text-anchor="middle">Backend API
+            </text>
+            <text x="140" y="322" fill="#555" font-size="10" text-anchor="middle">:8080/account-posting</text>
+            <line x1="60" y1="330" x2="230" y2="330" stroke="#dde2ea"/>
+            <text x="60" y="346" fill="#444" font-size="10">GET /</text>
+            <text x="60" y="361" fill="#444" font-size="10">POST /</text>
+            <text x="60" y="376" fill="#444" font-size="10">GET /:id</text>
+            <text x="60" y="391" fill="#444" font-size="10">POST /retry</text>
+            <text x="60" y="406" fill="#444" font-size="10">GET /:id/leg</text>
+            <text x="60" y="421" fill="#444" font-size="10">PATCH /:id/leg/:legId</text>
+            <text x="60" y="436" fill="#444" font-size="10">GET /config</text>
+            <text x="60" y="451" fill="#444" font-size="10">POST /config</text>
+            <text x="60" y="466" fill="#444" font-size="10">PUT /config/:id</text>
 
-      <!-- Pages → API arrows -->
-      <line x1="200" y1="350" x2="240" y2="350" stroke="#7b9ef0" stroke-width="1.5" stroke-dasharray="4,2"/>
+            <!-- Pages → API arrows -->
+            <line x1="200" y1="350" x2="240" y2="350" stroke="#7b9ef0" stroke-width="1.5" stroke-dasharray="4,2"/>
 
-      <!-- Config → API -->
-      <line x1="280" y1="330" x2="240" y2="380" stroke="#7b9ef0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
+            <!-- Config → API -->
+            <line x1="280" y1="330" x2="240" y2="380" stroke="#7b9ef0" stroke-width="1.5" stroke-dasharray="4,2"
+                  marker-end="url(#arrow)"/>
 
-      <!-- Legend -->
-      <rect x="520" y="280" width="400" height="180" rx="6" fill="#f8f9fb" stroke="#dde2ea"/>
-      <text x="540" y="304" fill="#444" font-size="12" font-weight="700">Legend</text>
-      <line x1="540" y1="320" x2="580" y2="320" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3"/>
-      <text x="590" y="324" fill="#555" font-size="11">Nav bar link (always available)</text>
-      <line x1="540" y1="344" x2="580" y2="344" stroke="#0072ce" stroke-width="2"/>
-      <polygon points="580,340.5 590,344 580,347.5" fill="#0072ce"/>
-      <text x="595" y="348" fill="#555" font-size="11">User click navigation</text>
-      <line x1="540" y1="368" x2="580" y2="368" stroke="#0a3622" stroke-width="2"/>
-      <polygon points="580,364.5 590,368 580,371.5" fill="#0a3622"/>
-      <text x="595" y="372" fill="#555" font-size="11">Programmatic navigate (on success)</text>
-      <line x1="540" y1="392" x2="580" y2="392" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>
-      <polygon points="580,388.5 590,392 580,395.5" fill="#555"/>
-      <text x="595" y="396" fill="#555" font-size="11">Back / cancel navigation</text>
-      <line x1="540" y1="416" x2="580" y2="416" stroke="#7b9ef0" stroke-width="1.5" stroke-dasharray="4,2"/>
-      <text x="595" y="420" fill="#555" font-size="11">API call (Axios via postingApi)</text>
+            <!-- Legend -->
+            <rect x="520" y="280" width="400" height="180" rx="6" fill="#f8f9fb" stroke="#dde2ea"/>
+            <text x="540" y="304" fill="#444" font-size="12" font-weight="700">Legend</text>
+            <line x1="540" y1="320" x2="580" y2="320" stroke="#90caf9" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="590" y="324" fill="#555" font-size="11">Nav bar link (always available)</text>
+            <line x1="540" y1="344" x2="580" y2="344" stroke="#0072ce" stroke-width="2"/>
+            <polygon points="580,340.5 590,344 580,347.5" fill="#0072ce"/>
+            <text x="595" y="348" fill="#555" font-size="11">User click navigation</text>
+            <line x1="540" y1="368" x2="580" y2="368" stroke="#0a3622" stroke-width="2"/>
+            <polygon points="580,364.5 590,368 580,371.5" fill="#0a3622"/>
+            <text x="595" y="372" fill="#555" font-size="11">Programmatic navigate (on success)</text>
+            <line x1="540" y1="392" x2="580" y2="392" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>
+            <polygon points="580,388.5 590,392 580,395.5" fill="#555"/>
+            <text x="595" y="396" fill="#555" font-size="11">Back / cancel navigation</text>
+            <line x1="540" y1="416" x2="580" y2="416" stroke="#7b9ef0" stroke-width="1.5" stroke-dasharray="4,2"/>
+            <text x="595" y="420" fill="#555" font-size="11">API call (Axios via postingApi)</text>
 
-      <text x="540" y="448" fill="#888" font-size="10">Vite proxies /api → localhost:8080 in dev mode</text>
-    </svg>
-  </div>
+            <text x="540" y="448" fill="#888" font-size="10">Vite proxies /api → localhost:8080 in dev mode</text>
+        </svg>
+    </div>
 </div>
 
 <script>
-  function showTab(i) {
-    document.querySelectorAll('.page').forEach((p, idx) => {
-      p.classList.toggle('active', idx === i);
-    });
-    document.querySelectorAll('.tab-btn').forEach((b, idx) => {
-      b.classList.toggle('active', idx === i);
-    });
-  }
+    function showTab(i) {
+      document.querySelectorAll('.page').forEach((p, idx) => {
+        p.classList.toggle('active', idx === i);
+      });
+      document.querySelectorAll('.tab-btn').forEach((b, idx) => {
+        b.classList.toggle('active', idx === i);
+      });
+    }
 </script>
 </body>
 </html>

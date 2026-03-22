@@ -5,7 +5,7 @@
 -- =============================================================================
 
 ALTER TABLE account_posting
-    ADD COLUMN IF NOT EXISTS request_payload  JSONB,
+    ADD COLUMN IF NOT EXISTS request_payload JSONB,
     ADD COLUMN IF NOT EXISTS response_payload JSONB;
 
 DROP TABLE IF EXISTS account_posting_response_payload;

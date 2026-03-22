@@ -2,7 +2,6 @@ package com.accountposting.dto.accountposting;
 
 import com.accountposting.dto.accountpostingleg.LegResponse;
 import com.accountposting.entity.enums.PostingStatus;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,7 +12,6 @@ import java.util.List;
 
 @Data
 @Builder
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AccountPostingResponse {
 
     private Long postingId;

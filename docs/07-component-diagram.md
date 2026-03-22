@@ -1,6 +1,7 @@
 # Component Diagram — Spring Boot Internal Architecture
 
-Shows all Spring-managed beans, their package boundaries, and dependency relationships within the Account Posting Orchestrator API.
+Shows all Spring-managed beans, their package boundaries, and dependency relationships within the Account Posting
+Orchestrator API.
 
 ---
 
@@ -212,13 +213,13 @@ flowchart TD
 
 ## Key Notes
 
-| Component | Role |
-|-----------|------|
-| `AccountPostingController` | Receives HTTP requests, delegates to `AccountPostingService`, returns `ApiResponse<T>` envelope |
-| `AccountPostingServiceImpl` | Orchestrates the full create/retry flow. Injects `AccountPostingLegService` directly (no HTTP). |
-| `PostingRetryProcessor` | Handles per-posting retry logic inside a `CompletableFuture`. Injected into `AccountPostingServiceImpl`. |
-| `PostingStrategyFactory` | On startup, collects all `PostingStrategy` beans into a `Map<String, PostingStrategy>` keyed by `getPostingFlow()`. Zero switch statements. |
-| `AccountPostingSpecification` | Builds `Specification<AccountPosting>` from an `AccountPostingSearchRequest`. Each field adds a predicate only if non-null. |
-| `PostingEventPublisher` | Only registered as a bean when `kafka.enabled=true` (`@ConditionalOnProperty`). `AccountPostingServiceImpl` holds it as `@Autowired(required=false)` and null-guards before calling. |
-| `MdcLoggingFilter` | `OncePerRequestFilter` that extracts `X-Correlation-Id` from the incoming header, generates one if absent, and puts `traceId`, `requestType`, etc. into MDC for the duration of the request. |
-| **Package rule** | The `leg` package contains NO imports from the `posting` package. `posting` may freely call `leg` via the `AccountPostingLegService` interface. |
+| Component                     | Role                                                                                                                                                                                         |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `AccountPostingController`    | Receives HTTP requests, delegates to `AccountPostingService`, returns `ApiResponse<T>` envelope                                                                                              |
+| `AccountPostingServiceImpl`   | Orchestrates the full create/retry flow. Injects `AccountPostingLegService` directly (no HTTP).                                                                                              |
+| `PostingRetryProcessor`       | Handles per-posting retry logic inside a `CompletableFuture`. Injected into `AccountPostingServiceImpl`.                                                                                     |
+| `PostingStrategyFactory`      | On startup, collects all `PostingStrategy` beans into a `Map<String, PostingStrategy>` keyed by `getPostingFlow()`. Zero switch statements.                                                  |
+| `AccountPostingSpecification` | Builds `Specification<AccountPosting>` from an `AccountPostingSearchRequest`. Each field adds a predicate only if non-null.                                                                  |
+| `PostingEventPublisher`       | Only registered as a bean when `kafka.enabled=true` (`@ConditionalOnProperty`). `AccountPostingServiceImpl` holds it as `@Autowired(required=false)` and null-guards before calling.         |
+| `MdcLoggingFilter`            | `OncePerRequestFilter` that extracts `X-Correlation-Id` from the incoming header, generates one if absent, and puts `traceId`, `requestType`, etc. into MDC for the duration of the request. |
+| **Package rule**              | The `leg` package contains NO imports from the `posting` package. `posting` may freely call `leg` via the `AccountPostingLegService` interface.                                              |
