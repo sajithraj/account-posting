@@ -215,7 +215,7 @@
     },
     {
       "name": "Account Posting",
-      "description": "Core posting operations — create, search, get by ID, retry, and target-system autocomplete.\n\nKey behaviours:\n- sourceName and requestType are validated enums — invalid values → HTTP 400\n- Duplicate endToEndReferenceId → HTTP 422 DUPLICATE_E2E_REF\n- reason field in response: 'Request processed successfully' when all legs succeed, otherwise the last failed leg's error message\n- Retry locks postings for 120 s to prevent concurrent retries",
+      "description": "Core posting operations — create, search, get by ID, and retry.\n\nKey behaviours:\n- Required fields validated via Bean Validation before the service is called — missing/blank fields → HTTP 400 with errors[] array\n- sourceName and requestType are further validated as known enum values — invalid values → HTTP 400 INVALID_ENUM_VALUE\n- Duplicate endToEndReferenceId → HTTP 422 DUPLICATE_E2E_REF\n- reason field in response: 'Request processed successfully' when all legs succeed, otherwise the last failed leg's error message\n- Retry locks postings for 120 s to prevent concurrent retries",
       "item": [
         {
           "name": "POST Create Posting — IMX CBS+GL",
@@ -417,7 +417,7 @@
               "mode": "raw",
               "raw": "{\n  \"sourceReferenceId\": \"SRC-ERR-1\",\n  \"endToEndReferenceId\": \"E2E-ERR-1\",\n  \"sourceName\": \"INVALID_SOURCE\",\n  \"requestType\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"creditDebitIndicator\": \"CREDIT\",\n  \"debtorAccount\": \"1234567890\",\n  \"creditorAccount\": \"0987654321\",\n  \"requestedExecutionDate\": \"2026-03-21\"\n}"
             },
-            "description": "Demonstrates HTTP 400 validation failure when sourceName or requestType are not valid enum values."
+            "description": "Demonstrates HTTP 400 when sourceName or requestType are not recognised enum values.\nAll required fields are present so Bean Validation passes; failure is caught by AccountPostingRequestValidator.validateEnums().\nResponse: { \"name\": \"INVALID_ENUM_VALUE\", \"message\": \"INVALID_ENUM_VALUE: sourceName ... is not valid ...\" }\nThe posting is persisted with status FAILED for audit visibility."
           }
         },
         {
@@ -443,7 +443,7 @@
               "mode": "raw",
               "raw": "{\n  \"endToEndReferenceId\": \"E2E-ERR-2\",\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_CBS_GL\"\n}"
             },
-            "description": "Demonstrates HTTP 400 when required fields (amount, currency, debtorAccount, creditorAccount, requestedExecutionDate) are missing."
+            "description": "Demonstrates HTTP 400 Bean Validation failure when required fields are missing.\nMissing: sourceReferenceId, amount, currency, creditDebitIndicator, debtorAccount, creditorAccount, requestedExecutionDate.\nValidation fires at the controller layer (@Valid) before the service is called — no DB entry is created.\nResponse: { \"name\": \"VALIDATION_FAILED\", \"errors\": [ { \"field\": \"amount\", \"message\": \"...\" }, ... ] }"
           }
         },
         {
@@ -755,53 +755,6 @@
               ]
             },
             "description": "Get a single posting with all its legs.\nResponse includes reason field: 'Request processed successfully' or the last failed leg error.\nSet {{postingId}} collection variable."
-          }
-        },
-        {
-          "name": "GET Target Systems Autocomplete",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/account-posting/target-systems",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "account-posting",
-                "target-systems"
-              ],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "",
-                  "description": "Optional fragment filter, e.g. q=CBS returns [\"CBS\", \"CBS_GL\"]",
-                  "disabled": true
-                }
-              ]
-            },
-            "description": "Returns the distinct targetSystems values currently in the DB.\nUsed by the UI for autocomplete / dashboard panel names.\nOptional ?q= parameter for LIKE filtering."
-          }
-        },
-        {
-          "name": "GET Target Systems Autocomplete — filtered",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/account-posting/target-systems?q=CBS",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "account-posting",
-                "target-systems"
-              ],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "CBS"
-                }
-              ]
-            }
           }
         },
         {
