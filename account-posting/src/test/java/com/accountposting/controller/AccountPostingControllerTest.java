@@ -412,47 +412,4 @@ class AccountPostingControllerTest {
         }
     }
 
-    // ── GET /account-posting/target-systems ────────────────────────────────────
-
-    @Nested
-    class TargetSystems {
-
-        @Test
-        void returns200_withAllSystems() throws Exception {
-            when(service.getTargetSystems(null)).thenReturn(List.of("CBS", "GL", "OBPM"));
-
-            mockMvc.perform(get("/account-posting/target-systems"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(3)))
-                    .andExpect(jsonPath("$", hasItems("CBS", "GL", "OBPM")));
-        }
-
-        @Test
-        void returns200_filteredByQueryParam() throws Exception {
-            when(service.getTargetSystems("CB")).thenReturn(List.of("CBS"));
-
-            mockMvc.perform(get("/account-posting/target-systems").param("q", "CB"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(1)))
-                    .andExpect(jsonPath("$[0]").value("CBS"));
-        }
-
-        @Test
-        void returns200_withEmptyListWhenNoMatch() throws Exception {
-            when(service.getTargetSystems("XYZ")).thenReturn(List.of());
-
-            mockMvc.perform(get("/account-posting/target-systems").param("q", "XYZ"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(0)));
-        }
-
-        @Test
-        void returns500_whenServiceThrows() throws Exception {
-            when(service.getTargetSystems(any())).thenThrow(new RuntimeException("Unexpected"));
-
-            mockMvc.perform(get("/account-posting/target-systems"))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(jsonPath("$.name").value("INTERNAL_ERROR"));
-        }
-    }
 }

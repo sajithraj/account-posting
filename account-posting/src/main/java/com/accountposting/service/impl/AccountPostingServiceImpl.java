@@ -359,12 +359,6 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 .build();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<String> getTargetSystems(String q) {
-        return repository.findDistinctTargetSystems(q);
-    }
-
     // ── private helpers ───────────────────────────────────────────────────────
 
     private List<LegResponse> fetchLegs(Long postingId) {

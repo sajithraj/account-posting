@@ -16,8 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/account-posting")
 @RequiredArgsConstructor
@@ -47,16 +45,5 @@ public class AccountPostingController {
     public ResponseEntity<RetryResponse> retry(@RequestBody(required = false) RetryRequest request) {
         RetryRequest retryRequest = request != null ? request : new RetryRequest();
         return ResponseEntity.ok(service.retry(retryRequest));
-    }
-
-    /**
-     * Returns distinct targetSystems values for autocomplete.
-     * Optional ?q= fragment filters by LIKE match.
-     * Example: GET /account-posting/target-systems?q=CBS → ["CBS", "CBS_GL"]
-     */
-    @GetMapping("/target-systems")
-    public ResponseEntity<List<String>> getTargetSystems(
-            @RequestParam(required = false) String q) {
-        return ResponseEntity.ok(service.getTargetSystems(q));
     }
 }

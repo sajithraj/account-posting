@@ -68,11 +68,6 @@ export const postingApi = {
     await http.post('/account-posting/config/cache/flush');
   },
 
-  getTargetSystems: async (q?: string): Promise<string[]> => {
-    const res = await http.get<string[]>('/account-posting/target-systems', { params: q ? { q } : {} });
-    return res.data;
-  },
-
   updateLegStatus: async (postingId: number, postingLegId: number, status: string): Promise<unknown> => {
     const res = await http.patch<unknown>(
       `/account-posting/${postingId}/leg/${postingLegId}`,

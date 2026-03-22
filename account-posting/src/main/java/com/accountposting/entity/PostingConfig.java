@@ -3,8 +3,6 @@ package com.accountposting.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.Instant;
-
 @Entity
 @Table(name = "posting_config")
 @Getter
@@ -32,7 +30,4 @@ public class PostingConfig {
 
     @Column(nullable = false)
     private Integer orderSeq;
-
-    private Instant createdAt;
-    private Instant updatedAt;
 }

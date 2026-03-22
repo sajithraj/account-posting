@@ -19,18 +19,6 @@ public interface AccountPostingRepository
     boolean existsByEndToEndReferenceId(String endToEndReferenceId);
 
     /**
-     * Returns distinct non-null targetSystems values that contain the given fragment.
-     * Used by the target-systems autocomplete endpoint.
-     */
-    @Query("""
-            SELECT DISTINCT p.targetSystems FROM AccountPosting p
-            WHERE p.targetSystems IS NOT NULL
-              AND (:q IS NULL OR p.targetSystems LIKE %:q%)
-            ORDER BY p.targetSystems
-            """)
-    List<String> findDistinctTargetSystems(@Param("q") String q);
-
-    /**
      * All PENDING postings not currently locked — used when no specific IDs are requested.
      */
     @Query("""

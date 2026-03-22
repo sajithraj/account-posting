@@ -4,7 +4,6 @@ import com.accountposting.dto.accountposting.AccountPostingCreateResponse;
 import com.accountposting.dto.accountposting.AccountPostingRequest;
 import com.accountposting.dto.accountposting.AccountPostingResponse;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
-import com.accountposting.dto.accountpostingleg.LegCreateResponse;
 import com.accountposting.dto.accountpostingleg.LegResponse;
 import com.accountposting.entity.AccountPosting;
 import org.mapstruct.Mapper;
@@ -39,7 +38,4 @@ public interface AccountPostingMapper {
     @Mapping(target = "responses", ignore = true)
     AccountPostingCreateResponse toCreateResponse(AccountPosting posting);
 
-    @Mapping(source = "targetSystem", target = "name")
-    @Mapping(source = "operation", target = "type")
-    LegCreateResponse toLegCreateResponse(AccountPostingLegResponse legResponse);
 }

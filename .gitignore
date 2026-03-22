@@ -1,21 +1,24 @@
-# Maven
-  target/
-  *.class
-  *.jar
-  *.war
+# Maven build output
+target/
+*.class
+*.jar
+*.war
 
-  # IDE
-  .idea/
-  *.iml
-  .vscode/
-  .classpath
-  .project
-  .settings/
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
 
-  # Node
-  ui/node_modules/
-  ui/dist/
+# Node
+ui/node_modules/
+ui/dist/
 
-  # Env / secrets
-  .env
-  *.local
+# Env / secrets
+.env
+*.local
+
+# Claude Code local state
+.claude/
