@@ -1,0 +1,13 @@
+1 . Can you create a config table based on this image (config_Table.JPEG) and create new get api under account posting appication and under posting folder & create config controller . Below is the api details
+
+GET /account-posting/config/{request_type} - it should get list of target & order
+
+source_name | request_type | target_system | operation | order |
+
+keep the config table data in the db flyway scripts.
+
+2 . create 3 dummy service classes named OBPMPostingSerivice , CBSPostingSerivice , GLPostingSerivice and have process method & let the service classes process method returns LegResponse object. Keep mocked responses.
+
+I want to create strategy design pattern to call the service classes from results coming from config table .
+
+3. can you update the UI like image available UI_SAMPLE.jpeg

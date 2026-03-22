@@ -1,0 +1,21 @@
+# Maven
+  target/
+  *.class
+  *.jar
+  *.war
+
+  # IDE
+  .idea/
+  *.iml
+  .vscode/
+  .classpath
+  .project
+  .settings/
+
+  # Node
+  ui/node_modules/
+  ui/dist/
+
+  # Env / secrets
+  .env
+  *.local

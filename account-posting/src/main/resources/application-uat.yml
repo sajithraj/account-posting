@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/account_posting_uat
+    username: postgres
+    password: postgres
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.accountposting: INFO

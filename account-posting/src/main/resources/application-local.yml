@@ -1,0 +1,14 @@
+# Local dev — delegates to dev database.
+# Run with: mvn spring-boot:run -Dspring-boot.run.profiles=local,dev
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/account_posting_dev
+    username: postgres
+    password: postgres
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.accountposting: INFO
+    org.hibernate.SQL: INFO

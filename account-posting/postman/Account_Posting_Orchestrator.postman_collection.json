@@ -1,0 +1,1072 @@
+{
+  "info": {
+    "name": "Account Posting Orchestrator",
+    "_postman_id": "apo-collection-v2",
+    "description": "Full API collection for the Account Posting Orchestrator service.\n\nBase URL: http://localhost:8080/api\n\nAll responses use the envelope:\n{\n  \"success\": true,\n  \"data\": { ... },\n  \"message\": \"...\",\n  \"timestamp\": \"...\"\n}\n\n--- Enums ---\nsourceName:  IMX | RMS | STABLECOIN\nrequestType: IMX_OBPM | IMX_CBS_GL | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\npostingStatus / legStatus: PENDING | SUCCESS | FAILED\ncreditDebitIndicator: CREDIT | DEBIT",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "postingId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "legId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "configId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Posting Config",
+      "description": "Manage routing config — maps sourceName + requestType to ordered target systems with operations.\n\nNotes:\n- orderSeq determines the processing order of legs\n- Cached in memory; call POST /cache/flush after bulk changes\n- Duplicate (requestType + orderSeq) returns HTTP 422",
+      "item": [
+        {
+          "name": "GET All Config Entries",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config"
+              ]
+            },
+            "description": "Returns every row in posting_config ordered by configId."
+          }
+        },
+        {
+          "name": "GET Config by Request Type",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/IMX_CBS_GL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "IMX_CBS_GL"
+              ]
+            },
+            "description": "Returns the ordered legs (targetSystem + operation) for a given requestType.\n\nValid requestType values:\n  IMX_OBPM | IMX_CBS_GL | FED_RETURN | GL_RETURN |\n  MCA_RETURN | BUY_CUSTOMER_POSTNG | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
+          }
+        },
+        {
+          "name": "POST Create Config Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_CBS_GL\",\n  \"targetSystem\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"orderSeq\": 1\n}"
+            },
+            "description": "Add a new config routing entry.\n\nsourceName:   IMX | RMS | STABLECOIN\nrequestType:  IMX_OBPM | IMX_CBS_GL | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\ntargetSystem: CBS | GL | OBPM\noperation:    POSTING | ADD_HOLD | CANCEL_HOLD\norderSeq:     1-based integer; determines leg execution order"
+          }
+        },
+        {
+          "name": "POST Create Config Entry — IMX_OBPM (single leg)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_OBPM\",\n  \"targetSystem\": \"OBPM\",\n  \"operation\": \"POSTING\",\n  \"orderSeq\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Config Entry — IMX_CBS_GL (leg 2: GL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_CBS_GL\",\n  \"targetSystem\": \"GL\",\n  \"operation\": \"POSTING\",\n  \"orderSeq\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT Update Config Entry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "{{configId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceName\": \"RMS\",\n  \"requestType\": \"GL_RETURN\",\n  \"targetSystem\": \"GL\",\n  \"operation\": \"POSTING\",\n  \"orderSeq\": 1\n}"
+            },
+            "description": "Update an existing config entry by configId.\nSet the {{configId}} variable or replace in the URL."
+          }
+        },
+        {
+          "name": "DELETE Config Entry",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "{{configId}}"
+              ]
+            },
+            "description": "Delete a config entry by configId. Returns HTTP 204 No Content.\nSet the {{configId}} variable or replace in the URL."
+          }
+        },
+        {
+          "name": "POST Flush Config Cache",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/config/cache/flush",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "config",
+                "cache",
+                "flush"
+              ]
+            },
+            "description": "Evicts the in-memory config cache so the next request reloads from DB.\nCall this after bulk inserts/updates via direct SQL or migrations.\nReturns HTTP 204 No Content."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account Posting",
+      "description": "Core posting operations — create, search, get by ID, retry, and target-system autocomplete.\n\nKey behaviours:\n- sourceName and requestType are validated enums — invalid values → HTTP 400\n- Duplicate endToEndReferenceId → HTTP 422 DUPLICATE_E2E_REF\n- reason field in response: 'Request processed successfully' when all legs succeed, otherwise the last failed leg's error message\n- Retry locks postings for 120 s to prevent concurrent retries",
+      "item": [
+        {
+          "name": "POST Create Posting — IMX CBS+GL",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rand = Math.floor(Math.random() * 900000) + 100000;",
+                  "var ts   = new Date().getTime().toString().slice(-4);",
+                  "var now  = new Date();",
+                  "var pad  = function(n) { return n < 10 ? '0' + n : '' + n; };",
+                  "var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());",
+                  "pm.variables.set('srcRef',   'SRC-' + rand + '-' + ts);",
+                  "pm.variables.set('e2eRef',   'E2E-' + rand + '-' + ts);",
+                  "pm.variables.set('amount',   (Math.floor(Math.random() * 999900 + 100) / 100).toFixed(2));",
+                  "pm.variables.set('execDate', today);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceReferenceId\": \"{{srcRef}}\",\n  \"endToEndReferenceId\": \"{{e2eRef}}\",\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_CBS_GL\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"creditDebitIndicator\": \"CREDIT\",\n  \"debtorAccount\": \"1324658900\",\n  \"creditorAccount\": \"9875312300\",\n  \"requestedExecutionDate\": \"{{execDate}}\",\n  \"remittanceInformation\": \"Invoice payment INV-2026-001\"\n}"
+            },
+            "description": "Submit a new posting. Pre-request script auto-generates:\n  sourceReferenceId, endToEndReferenceId — unique per run (SRC/E2E-{random}-{ts})\n  amount — random value between 1.00 and 9999.00\n  requestedExecutionDate — today's date\n\ncreditDebitIndicator: CREDIT | DEBIT\nIdempotency: duplicate endToEndReferenceId → HTTP 422\nResponse includes reason field and leg responses."
+          }
+        },
+        {
+          "name": "POST Create Posting — IMX OBPM",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rand = Math.floor(Math.random() * 900000) + 100000;",
+                  "var ts   = new Date().getTime().toString().slice(-4);",
+                  "var now  = new Date();",
+                  "var pad  = function(n) { return n < 10 ? '0' + n : '' + n; };",
+                  "var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());",
+                  "pm.variables.set('srcRef',   'SRC-' + rand + '-' + ts);",
+                  "pm.variables.set('e2eRef',   'E2E-' + rand + '-' + ts);",
+                  "pm.variables.set('amount',   (Math.floor(Math.random() * 999900 + 100) / 100).toFixed(2));",
+                  "pm.variables.set('execDate', today);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceReferenceId\": \"{{srcRef}}\",\n  \"endToEndReferenceId\": \"{{e2eRef}}\",\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_OBPM\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"creditDebitIndicator\": \"DEBIT\",\n  \"debtorAccount\": \"4400112233\",\n  \"creditorAccount\": \"5500998877\",\n  \"requestedExecutionDate\": \"{{execDate}}\",\n  \"remittanceInformation\": \"OBPM wire transfer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Posting — RMS FED_RETURN",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rand = Math.floor(Math.random() * 900000) + 100000;",
+                  "var ts   = new Date().getTime().toString().slice(-4);",
+                  "var now  = new Date();",
+                  "var pad  = function(n) { return n < 10 ? '0' + n : '' + n; };",
+                  "var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());",
+                  "pm.variables.set('srcRef',   'SRC-' + rand + '-' + ts);",
+                  "pm.variables.set('e2eRef',   'E2E-' + rand + '-' + ts);",
+                  "pm.variables.set('amount',   (Math.floor(Math.random() * 999900 + 100) / 100).toFixed(2));",
+                  "pm.variables.set('execDate', today);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceReferenceId\": \"{{srcRef}}\",\n  \"endToEndReferenceId\": \"{{e2eRef}}\",\n  \"sourceName\": \"RMS\",\n  \"requestType\": \"FED_RETURN\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"creditDebitIndicator\": \"CREDIT\",\n  \"debtorAccount\": \"1111222233\",\n  \"creditorAccount\": \"4444555566\",\n  \"requestedExecutionDate\": \"{{execDate}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Posting — STABLECOIN CUSTOMER_POSTING",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rand = Math.floor(Math.random() * 900000) + 100000;",
+                  "var ts   = new Date().getTime().toString().slice(-4);",
+                  "var now  = new Date();",
+                  "var pad  = function(n) { return n < 10 ? '0' + n : '' + n; };",
+                  "var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());",
+                  "pm.variables.set('srcRef',   'SRC-' + rand + '-' + ts);",
+                  "pm.variables.set('e2eRef',   'E2E-' + rand + '-' + ts);",
+                  "pm.variables.set('amount',   (Math.floor(Math.random() * 999900 + 100) / 100).toFixed(2));",
+                  "pm.variables.set('execDate', today);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceReferenceId\": \"{{srcRef}}\",\n  \"endToEndReferenceId\": \"{{e2eRef}}\",\n  \"sourceName\": \"STABLECOIN\",\n  \"requestType\": \"CUSTOMER_POSTING\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"creditDebitIndicator\": \"DEBIT\",\n  \"debtorAccount\": \"7777888899\",\n  \"creditorAccount\": \"1010202030\",\n  \"requestedExecutionDate\": \"{{execDate}}\",\n  \"remittanceInformation\": \"Stablecoin customer posting\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Posting — 400 Invalid Enum",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceReferenceId\": \"SRC-ERR-1\",\n  \"endToEndReferenceId\": \"E2E-ERR-1\",\n  \"sourceName\": \"INVALID_SOURCE\",\n  \"requestType\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"creditDebitIndicator\": \"CREDIT\",\n  \"debtorAccount\": \"1234567890\",\n  \"creditorAccount\": \"0987654321\",\n  \"requestedExecutionDate\": \"2026-03-21\"\n}"
+            },
+            "description": "Demonstrates HTTP 400 validation failure when sourceName or requestType are not valid enum values."
+          }
+        },
+        {
+          "name": "POST Create Posting — 400 Missing Required Fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endToEndReferenceId\": \"E2E-ERR-2\",\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_CBS_GL\"\n}"
+            },
+            "description": "Demonstrates HTTP 400 when required fields (amount, currency, debtorAccount, creditorAccount, requestedExecutionDate) are missing."
+          }
+        },
+        {
+          "name": "POST Create Posting — 422 Duplicate E2E Ref",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceReferenceId\": \"SRC-1001\",\n  \"endToEndReferenceId\": \"E2E-1001\",\n  \"sourceName\": \"IMX\",\n  \"requestType\": \"IMX_CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"creditDebitIndicator\": \"CREDIT\",\n  \"debtorAccount\": \"1324658900\",\n  \"creditorAccount\": \"9875312300\",\n  \"requestedExecutionDate\": \"2026-03-21\"\n}"
+            },
+            "description": "Submit the same endToEndReferenceId as an existing record — expects HTTP 422 DUPLICATE_E2E_REF."
+          }
+        },
+        {
+          "name": "GET Search Postings — All",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Paginated list of all postings. Response includes reason field per posting."
+          }
+        },
+        {
+          "name": "GET Search Postings — by Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?status=PENDING&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "PENDING | SUCCESS | FAILED"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Search Postings — by Source Name",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?sourceName=IMX&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "sourceName",
+                  "value": "IMX",
+                  "description": "IMX | RMS | STABLECOIN"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Filter postings by source system name."
+          }
+        },
+        {
+          "name": "GET Search Postings — by Request Type",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?requestType=IMX_CBS_GL&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "requestType",
+                  "value": "IMX_CBS_GL",
+                  "description": "IMX_OBPM | IMX_CBS_GL | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Search Postings — by Source Reference",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?sourceReferenceId=SRC-1001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "sourceReferenceId",
+                  "value": "SRC-1001"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Search Postings — by End-to-End Reference",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId=E2E-1001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "endToEndReferenceId",
+                  "value": "E2E-1001"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Search Postings — by Target System",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?targetSystem=CBS&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "targetSystem",
+                  "value": "CBS",
+                  "description": "CBS | GL | OBPM"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Search Postings — by Date Range",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?fromDate=2026-03-01&toDate=2026-03-31&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "fromDate",
+                  "value": "2026-03-01"
+                },
+                {
+                  "key": "toDate",
+                  "value": "2026-03-31"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Search Postings — Multi-filter",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting?sourceName=IMX&requestType=IMX_CBS_GL&status=PENDING&fromDate=2026-03-01&toDate=2026-03-31&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting"
+              ],
+              "query": [
+                {
+                  "key": "sourceName",
+                  "value": "IMX"
+                },
+                {
+                  "key": "requestType",
+                  "value": "IMX_CBS_GL"
+                },
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "fromDate",
+                  "value": "2026-03-01"
+                },
+                {
+                  "key": "toDate",
+                  "value": "2026-03-31"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "All search filters are optional and composable."
+          }
+        },
+        {
+          "name": "GET Posting by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}"
+              ]
+            },
+            "description": "Get a single posting with all its legs.\nResponse includes reason field: 'Request processed successfully' or the last failed leg error.\nSet {{postingId}} collection variable."
+          }
+        },
+        {
+          "name": "GET Target Systems Autocomplete",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/target-systems",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "target-systems"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Optional fragment filter, e.g. q=CBS returns [\"CBS\", \"CBS_GL\"]",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns the distinct targetSystems values currently in the DB.\nUsed by the UI for autocomplete / dashboard panel names.\nOptional ?q= parameter for LIKE filtering."
+          }
+        },
+        {
+          "name": "GET Target Systems Autocomplete — filtered",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/target-systems?q=CBS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "target-systems"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "CBS"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Retry — All PENDING",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "retry"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "Retry all PENDING postings.\nEach posting is processed in parallel, each in its own transaction.\nLocks are held for 120 s to prevent concurrent retries.\n\nResponse fields:\n  totalLegsRetried — total legs attempted\n  successCount     — legs that became SUCCESS\n  failedCount      — legs that remained FAILED\n  results[]        — per-leg detail with previousStatus → newStatus + reason"
+          }
+        },
+        {
+          "name": "POST Retry — Specific Postings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "retry"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postingIds\": [1, 2, 3]\n}"
+            },
+            "description": "Retry only the specified postingIds.\nOnly PENDING postings that are not currently locked are processed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account Posting Legs",
+      "description": "Manage individual legs of a posting.\n\npostingId is always required in the path.\nLeg lifecycle: PENDING → SUCCESS | FAILED\nmode: NORM (system) | RETRY (retry processor) | MANUAL (UI override via PATCH)",
+      "item": [
+        {
+          "name": "GET List Legs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg"
+              ]
+            },
+            "description": "List all legs for the given postingId ordered by legOrder."
+          }
+        },
+        {
+          "name": "GET Leg by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            },
+            "description": "Get a single leg by postingId + postingLegId."
+          }
+        },
+        {
+          "name": "POST Add Leg",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"legOrder\": 1,\n  \"legType\": \"CBS\",\n  \"targetSystem\": \"CBS\",\n  \"account\": \"1324658900\",\n  \"mode\": \"NORM\",\n  \"operation\": \"POSTING\"\n}"
+            },
+            "description": "Manually add a leg to an existing posting.\nmode: NORM | RETRY | MANUAL\noperation: POSTING | ADD_HOLD | CANCEL_HOLD"
+          }
+        },
+        {
+          "name": "PUT Update Leg (System)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SUCCESS\",\n  \"referenceId\": \"CBS-REF-987654\",\n  \"reason\": \"Processed successfully\",\n  \"postedTime\": \"2026-03-21T10:00:00Z\",\n  \"responsePayload\": \"{\\\"txnId\\\":\\\"TXN-001\\\"}\"\n}"
+            },
+            "description": "Full leg update — used by the strategy processors.\nstatus: PENDING | SUCCESS | FAILED\nSets mode based on context (NORM / RETRY)."
+          }
+        },
+        {
+          "name": "PATCH Update Leg Status (Manual)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SUCCESS\"\n}"
+            },
+            "description": "Manual UI status override — sets mode=MANUAL, does NOT increment attempt count.\nstatus: PENDING | SUCCESS | FAILED\nReturns updated leg."
+          }
+        },
+        {
+          "name": "PATCH Update Leg Status — Mark FAILED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"FAILED\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT Update Leg — 400 Missing Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-posting",
+                "{{postingId}}",
+                "leg",
+                "{{legId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referenceId\": \"CBS-REF-000\"\n}"
+            },
+            "description": "Demonstrates HTTP 400 when required status field is missing."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Spring Boot Actuator health check. Returns {status: UP} when the service and DB are healthy."
+          }
+        }
+      ]
+    }
+  ]
+}
