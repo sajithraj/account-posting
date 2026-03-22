@@ -1,7 +1,7 @@
 package com.accountposting.repository;
 
 import com.accountposting.dto.accountposting.AccountPostingSearchRequest;
-import com.accountposting.entity.AccountPosting;
+import com.accountposting.entity.AccountPostingEntity;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
@@ -14,7 +14,7 @@ public final class AccountPostingSpecification {
     private AccountPostingSpecification() {
     }
 
-    public static Specification<AccountPosting> from(AccountPostingSearchRequest criteria) {
+    public static Specification<AccountPostingEntity> from(AccountPostingSearchRequest criteria) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 

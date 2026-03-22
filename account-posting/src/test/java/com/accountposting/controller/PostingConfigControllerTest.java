@@ -4,7 +4,7 @@ import com.accountposting.dto.config.PostingConfigRequest;
 import com.accountposting.dto.config.PostingConfigResponse;
 import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
-import com.accountposting.service.PostingConfigService;
+import com.accountposting.service.config.PostingConfigService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

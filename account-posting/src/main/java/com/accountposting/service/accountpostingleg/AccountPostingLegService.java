@@ -1,5 +1,6 @@
-package com.accountposting.service;
+package com.accountposting.service.accountpostingleg;
 
+import com.accountposting.dto.accountpostingleg.AccountPostingLegRequest;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
 import com.accountposting.dto.accountpostingleg.UpdateLegRequest;
 import com.accountposting.entity.enums.LegStatus;
@@ -8,7 +9,7 @@ import java.util.List;
 
 public interface AccountPostingLegService {
 
-    com.accountposting.dto.accountpostingleg.AccountPostingLegResponse addLeg(Long postingId, com.accountposting.dto.accountpostingleg.AccountPostingLegRequest request);
+    AccountPostingLegResponse addLeg(Long postingId, AccountPostingLegRequest request);
 
     List<AccountPostingLegResponse> listLegs(Long postingId);
 

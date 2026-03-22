@@ -1,4 +1,4 @@
-package com.accountposting.service.impl;
+package com.accountposting.service.accountposting;
 
 import com.accountposting.dto.accountposting.AccountPostingCreateResponse;
 import com.accountposting.dto.accountposting.AccountPostingRequest;
@@ -10,7 +10,7 @@ import com.accountposting.dto.accountpostingleg.LegCreateResponse;
 import com.accountposting.dto.accountpostingleg.LegResponse;
 import com.accountposting.dto.retry.RetryRequest;
 import com.accountposting.dto.retry.RetryResponse;
-import com.accountposting.entity.AccountPosting;
+import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.PostingConfig;
 import com.accountposting.entity.enums.LegMode;
 import com.accountposting.entity.enums.PostingStatus;
@@ -20,16 +20,15 @@ import com.accountposting.exception.BusinessException;
 import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.mapper.AccountPostingLegMapper;
 import com.accountposting.mapper.AccountPostingMapper;
+import com.accountposting.mapper.MappingUtils;
 import com.accountposting.repository.AccountPostingRepository;
 import com.accountposting.repository.AccountPostingSpecification;
 import com.accountposting.repository.PostingConfigRepository;
-import com.accountposting.service.AccountPostingLegService;
 import com.accountposting.service.AccountPostingRequestValidator;
-import com.accountposting.service.AccountPostingService;
-import com.accountposting.service.strategy.PostingStrategy;
-import com.accountposting.service.strategy.PostingStrategyFactory;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.accountposting.service.accountposting.strategy.PostingStrategy;
+import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountpostingleg.AccountPostingLegService;
+import com.accountposting.service.retry.PostingRetryProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -44,6 +43,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -61,9 +61,9 @@ public class AccountPostingServiceImpl implements AccountPostingService {
     private final AccountPostingLegService legService;
     private final PostingConfigRepository postingConfigRepository;
     private final PostingStrategyFactory strategyFactory;
-    private final com.accountposting.service.PostingRetryProcessor retryProcessor;
+    private final PostingRetryProcessor retryProcessor;
     private final AccountPostingRequestValidator requestValidator;
-    private final ObjectMapper objectMapper;
+    private final MappingUtils mappingUtils;
     @Qualifier("retryExecutor")
     private final Executor retryExecutor;
     private final PlatformTransactionManager transactionManager;
@@ -90,44 +90,63 @@ public class AccountPostingServiceImpl implements AccountPostingService {
     }
 
     private AccountPostingCreateResponse doCreate(AccountPostingRequest request) {
-        // Phase 1: structural validation before any DB operation
-        requestValidator.validateFields(request);
+        // ── Step 1: log received request ──────────────────────────────────
+        log.info("CREATE REQUEST | {}", mappingUtils.toJson(request));
 
+        // ── Step 2: idempotency guard ──────────────────────────────────────
         if (repository.existsByEndToEndReferenceId(request.getEndToEndReferenceId())) {
+            log.warn("Duplicate request rejected | e2eRef={}", request.getEndToEndReferenceId());
             throw new BusinessException("DUPLICATE_E2E_REF",
                     "Posting already exists for endToEndReferenceId: "
                             + request.getEndToEndReferenceId());
         }
 
-        // 1. Persist the request immediately (PENDING) — stored regardless of what fails next,
-        //    giving full audit visibility even for invalid / misconfigured requests.
-        AccountPosting posting = mapper.toEntity(request);
-        posting.setRequestPayload(toJson(request));
+        // ── Step 3: persist initial PENDING record ─────────────────────────
+        AccountPostingEntity posting = mapper.toEntity(request);
+        posting.setRequestPayload(mappingUtils.toJson(request));
+        log.info("Persisting initial posting | e2eRef={} sourceName={} requestType={} amount={} "
+                        + "currency={} debtorAccount={} creditorAccount={} executionDate={} status={}",
+                posting.getEndToEndReferenceId(), posting.getSourceName(), posting.getRequestType(),
+                posting.getAmount(), posting.getCurrency(), posting.getDebtorAccount(),
+                posting.getCreditorAccount(), posting.getRequestedExecutionDate(), posting.getStatus());
         posting = repository.save(posting);
         MDC.put("postingId", String.valueOf(posting.getPostingId()));
-        log.info("Posting saved | sourceName={} requestType={}", request.getSourceName(), request.getRequestType());
+        log.info("Initial posting saved | postingId={}", posting.getPostingId());
 
-        // 2. Validate enum fields — invalid values → FAILED + 400.
-        //    Posting is already in DB so the caller can query it regardless of the outcome.
+        // ── Step 4: validate fields + enums after initial save ─────────────
+        // Both validators run together so all validation errors are captured in one pass.
+        // The posting is already in DB so failures are always visible for audit regardless of outcome.
         try {
-            requestValidator.validateEnums(request.getSourceName(), request.getRequestType());
+            requestValidator.validate(request);
         } catch (BusinessException ex) {
+            log.warn("Validation failed | postingId={} reason={}", posting.getPostingId(), ex.getMessage());
             posting.setStatus(PostingStatus.FAILED);
             posting.setReason(ex.getMessage());
-            posting.setResponsePayload(toJson(Map.of("error", ex.getMessage())));
+            posting.setResponsePayload(mappingUtils.toJson(Map.of("error", ex.getMessage())));
+            log.info("Persisting FAILED posting | postingId={} status={} reason={}",
+                    posting.getPostingId(), posting.getStatus(), posting.getReason());
             repository.save(posting);
             throw ex;
         }
 
-        // 3. Load config — derive targetSystems
+        // ── Step 5: load config — sort by orderSeq asc — derive targetSystems ─
         List<PostingConfig> configs = postingConfigRepository
-                .findByRequestTypeOrderByOrderSeqAsc(request.getRequestType());
+                .findByRequestTypeOrderByOrderSeqAsc(request.getRequestType())
+                .stream()
+                .sorted(Comparator.comparingInt(PostingConfig::getOrderSeq))
+                .toList();
+        log.info("Config fetched | postingId={} requestType={} configs={}",
+                posting.getPostingId(), request.getRequestType(), mappingUtils.toJson(configs));
 
         if (configs.isEmpty()) {
             String noConfigReason = "No posting config found for requestType: " + request.getRequestType();
+            log.warn("No config found | postingId={} requestType={}",
+                    posting.getPostingId(), request.getRequestType());
             posting.setStatus(PostingStatus.FAILED);
             posting.setReason(noConfigReason);
-            posting.setResponsePayload(toJson(Map.of("error", noConfigReason)));
+            posting.setResponsePayload(mappingUtils.toJson(Map.of("error", noConfigReason)));
+            log.info("Persisting FAILED posting | postingId={} status={} reason={}",
+                    posting.getPostingId(), posting.getStatus(), posting.getReason());
             repository.save(posting);
             throw new BusinessException("NO_CONFIG_FOUND", noConfigReason);
         }
@@ -136,44 +155,55 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 .map(PostingConfig::getTargetSystem)
                 .collect(Collectors.joining("_"));
         posting.setTargetSystems(targetSystems);
+        log.info("Persisting targetSystems update | postingId={} targetSystems={}",
+                posting.getPostingId(), targetSystems);
         repository.save(posting);
-        log.info("Config loaded | targetSystems={}", targetSystems);
 
-        // 3. Pre-insert ALL legs as PENDING before calling any external system.
-        //    This ensures every leg row exists in the DB even if the first external call fails,
-        //    so that a subsequent retry can find and re-process all legs.
+        // ── Step 6: pre-insert ALL legs as PENDING ─────────────────────────
+        // Ensures every leg row exists in DB even if the first external call fails,
+        // so that a subsequent retry can find and re-process all legs.
         List<AccountPostingLegResponse> preInsertedLegs = new ArrayList<>();
         for (PostingConfig config : configs) {
             AccountPostingLegRequest legReq = legMapper.toCreateLegRequest(
                     request, config.getOrderSeq(), config.getTargetSystem(),
                     LegMode.NORM, config.getOperation(), null);
+            log.info("Pre-inserting PENDING leg | postingId={} targetSystem={} legOrder={} operation={}",
+                    posting.getPostingId(), config.getTargetSystem(),
+                    config.getOrderSeq(), config.getOperation());
             AccountPostingLegResponse pre = legService.addLeg(posting.getPostingId(), legReq);
             preInsertedLegs.add(pre);
-            log.info("Pre-inserted PENDING leg#{} targetSystem={}", pre.getPostingLegId(), config.getTargetSystem());
+            log.info("Pre-inserted leg | postingLegId={} targetSystem={} legOrder={} status={}",
+                    pre.getPostingLegId(), pre.getTargetSystem(), pre.getLegOrder(), pre.getStatus());
         }
 
-        // 4. Execute each strategy sequentially, passing the pre-inserted leg ID.
-        //    Strategies skip their own INSERT because existingLegId is non-null.
+        // ── Step 7: execute each strategy sequentially ────────────────────
         List<LegResponse> legResponses = new ArrayList<>();
         boolean allSuccess = true;
 
         for (AccountPostingLegResponse pre : preInsertedLegs) {
             try {
+                log.info("Executing strategy | postingId={} postingLegId={} targetSystem={} operation={}",
+                        posting.getPostingId(), pre.getPostingLegId(),
+                        pre.getTargetSystem(), pre.getOperation());
                 PostingStrategy strategy = strategyFactory.resolve(
                         pre.getTargetSystem() + "_" + pre.getOperation());
                 LegResponse legResponse = strategy.process(
                         posting.getPostingId(), pre.getLegOrder(), request, false, pre.getPostingLegId());
                 legResponses.add(legResponse);
+                log.info("Leg result | postingLegId={} targetSystem={} status={} referenceId={}",
+                        legResponse.getPostingLegId(), legResponse.getName(),
+                        legResponse.getStatus(), legResponse.getReferenceId());
                 if (!"SUCCESS".equalsIgnoreCase(legResponse.getStatus())) {
                     allSuccess = false;
                 }
             } catch (Exception ex) {
-                log.error("Strategy failed | targetSystem={}", pre.getTargetSystem(), ex);
+                log.error("Strategy failed | postingId={} targetSystem={}",
+                        posting.getPostingId(), pre.getTargetSystem(), ex);
                 allSuccess = false;
             }
         }
 
-        // 5. Persist final posting status + reason
+        // ── Step 8: persist final posting status + reason ─────────────────
         PostingStatus finalStatus = allSuccess ? PostingStatus.SUCCESS : PostingStatus.PENDING;
         String reason = allSuccess
                 ? "Request processed successfully"
@@ -185,14 +215,17 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 .orElse("One or more legs failed");
         posting.setStatus(finalStatus);
         posting.setReason(reason);
-        posting.setResponsePayload(toJson(Map.of(
+        posting.setResponsePayload(mappingUtils.toJson(Map.of(
                 "status", finalStatus.name(),
                 "legs", legResponses)));
+        log.info("Persisting final posting status | postingId={} status={} reason={} legCount={}",
+                posting.getPostingId(), finalStatus, reason, legResponses.size());
         repository.save(posting);
-        log.info("Posting completed | status={} legs={}", finalStatus, legResponses.size());
+        log.info("Posting completed | postingId={} status={} legs={}", posting.getPostingId(), finalStatus, legResponses.size());
 
-        // 6. Publish success event — downstream consumers process only when all legs succeed
+        // ── Step 9: publish success event ─────────────────────────────────
         if (finalStatus == PostingStatus.SUCCESS && eventPublisher != null) {
+            log.info("Publishing success event | postingId={}", posting.getPostingId());
             eventPublisher.publishSuccess(new PostingSuccessEvent(
                     posting.getPostingId(),
                     posting.getEndToEndReferenceId(),
@@ -219,27 +252,35 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         AccountPostingCreateResponse response = mapper.toCreateResponse(posting);
         response.setProcessedAt(Instant.now());
         response.setResponses(legCreateResponses);
+
+        // ── Step 10: log response before returning to caller ──────────────
+        log.info("CREATE RESPONSE | {}", mappingUtils.toJson(response));
         return response;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<AccountPostingResponse> search(AccountPostingSearchRequest criteria, Pageable pageable) {
-        return repository
+        log.info("SEARCH REQUEST | {}", mappingUtils.toJson(criteria));
+        Page<AccountPostingResponse> result = repository
                 .findAll(AccountPostingSpecification.from(criteria), pageable)
                 .map(posting -> {
                     AccountPostingResponse resp = mapper.toResponse(posting);
                     resp.setResponses(fetchLegs(posting.getPostingId()));
                     return resp;
                 });
+        log.info("SEARCH RESPONSE | totalElements={} totalPages={}", result.getTotalElements(), result.getTotalPages());
+        return result;
     }
 
     @Override
     @Transactional(readOnly = true)
     public AccountPostingResponse findById(Long postingId) {
-        AccountPosting posting = getOrThrow(postingId);
+        log.info("FIND BY ID REQUEST | postingId={}", postingId);
+        AccountPostingEntity posting = getOrThrow(postingId);
         AccountPostingResponse response = mapper.toResponse(posting);
         response.setResponses(fetchLegs(postingId));
+        log.info("FIND BY ID RESPONSE | {}", mappingUtils.toJson(response));
         return response;
     }
 
@@ -262,9 +303,12 @@ public class AccountPostingServiceImpl implements AccountPostingService {
      */
     @Override
     public RetryResponse retry(RetryRequest request) {
+        log.info("RETRY REQUEST | {}", mappingUtils.toJson(request));
         MDC.put("operation", "RETRY");
         try {
-            return doRetry(request);
+            RetryResponse response = doRetry(request);
+            log.info("RETRY RESPONSE | {}", mappingUtils.toJson(response));
+            return response;
         } finally {
             MDC.remove("operation");
         }
@@ -277,7 +321,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         // 1. Determine candidate IDs
         List<Long> candidateIds = CollectionUtils.isEmpty(request.getPostingIds())
                 ? repository.findEligibleForRetry(PostingStatus.PENDING, now)
-                .stream().map(AccountPosting::getPostingId).toList()
+                .stream().map(AccountPostingEntity::getPostingId).toList()
                 : request.getPostingIds();
 
         log.info("RETRY START | candidates={} ids={}", candidateIds.size(), candidateIds);
@@ -289,9 +333,8 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         }
 
         // 2. Lock + fetch in one short transaction that commits immediately.
-        //    After execute() returns, the lock is visible in the DB and no TX is held.
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
-        List<AccountPosting> lockedPostings = txTemplate.execute(tx -> {
+        List<AccountPostingEntity> lockedPostings = txTemplate.execute(tx -> {
             int lockedCount = repository.lockForRetry(candidateIds, PostingStatus.PENDING, now, lockUntil);
             log.info("RETRY | lockForRetry locked={} lockUntil={}", lockedCount, lockUntil);
             return repository.findByIdsAndLockUntil(candidateIds, lockUntil);
@@ -305,14 +348,14 @@ public class AccountPostingServiceImpl implements AccountPostingService {
 
         log.info("RETRY | Locked postings={} ids={}",
                 lockedPostings.size(),
-                lockedPostings.stream().map(AccountPosting::getPostingId).toList());
+                lockedPostings.stream().map(AccountPostingEntity::getPostingId).toList());
 
         // 3. Capture MDC so each async thread inherits the same traceId + operation
         final Map<String, String> parentMdc = java.util.Optional
                 .ofNullable(MDC.getCopyOfContextMap()).orElse(Map.of());
 
         // 4. Dispatch one future per posting — no outer TX held, each future owns its own TX
-        List<Long> lockedIds = lockedPostings.stream().map(AccountPosting::getPostingId).toList();
+        List<Long> lockedIds = lockedPostings.stream().map(AccountPostingEntity::getPostingId).toList();
         List<CompletableFuture<List<RetryResponse.LegRetryResult>>> futures = lockedIds.stream()
                 .map(id -> CompletableFuture.supplyAsync(() -> {
                     MDC.setContextMap(parentMdc);
@@ -367,17 +410,8 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 .toList();
     }
 
-    private AccountPosting getOrThrow(Long postingId) {
+    private AccountPostingEntity getOrThrow(Long postingId) {
         return repository.findById(postingId)
-                .orElseThrow(() -> new ResourceNotFoundException("AccountPosting", postingId));
-    }
-
-    private String toJson(Object obj) {
-        try {
-            return objectMapper.writeValueAsString(obj);
-        } catch (JsonProcessingException ex) {
-            log.warn("Could not serialise object to JSON", ex);
-            return "{}";
-        }
+                .orElseThrow(() -> new ResourceNotFoundException("AccountPostingEntity", postingId));
     }
 }

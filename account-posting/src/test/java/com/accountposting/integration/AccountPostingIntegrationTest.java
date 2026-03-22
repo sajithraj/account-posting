@@ -8,8 +8,8 @@ import com.accountposting.dto.accountpostingleg.LegCreateResponse;
 import com.accountposting.dto.accountpostingleg.LegResponse;
 import com.accountposting.dto.retry.RetryRequest;
 import com.accountposting.dto.retry.RetryResponse;
-import com.accountposting.entity.AccountPosting;
-import com.accountposting.entity.AccountPostingLeg;
+import com.accountposting.entity.AccountPostingEntity;
+import com.accountposting.entity.AccountPostingLegEntity;
 import com.accountposting.entity.PostingConfig;
 import com.accountposting.entity.enums.CreditDebitIndicator;
 import com.accountposting.entity.enums.LegMode;
@@ -20,9 +20,9 @@ import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.repository.AccountPostingLegRepository;
 import com.accountposting.repository.AccountPostingRepository;
 import com.accountposting.repository.PostingConfigRepository;
-import com.accountposting.service.AccountPostingService;
-import com.accountposting.service.strategy.PostingStrategy;
-import com.accountposting.service.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountposting.AccountPostingService;
+import com.accountposting.service.accountposting.strategy.PostingStrategy;
+import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -252,11 +252,11 @@ class AccountPostingIntegrationTest {
                 .getPostingId();
     }
 
-    private AccountPosting getPosting(Long postingId) {
+    private AccountPostingEntity getPosting(Long postingId) {
         return postingRepo.findById(postingId).orElseThrow();
     }
 
-    private List<AccountPostingLeg> getLegs(Long postingId) {
+    private List<AccountPostingLegEntity> getLegs(Long postingId) {
         return legRepo.findByPostingIdOrderByLegOrder(postingId);
     }
 
@@ -283,7 +283,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getResponses().get(0).getReferenceId()).isNotBlank();
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getTargetSystems()).isEqualTo("OBPM");
             assertThat(dbPosting.getReason()).isEqualTo("Request processed successfully");
@@ -292,7 +292,7 @@ class AccountPostingIntegrationTest {
             assertThat(dbPosting.getRequestPayload()).isNotBlank();
             assertThat(dbPosting.getResponsePayload()).isNotBlank();
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(1);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("OBPM");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
@@ -313,11 +313,11 @@ class AccountPostingIntegrationTest {
             assertThat(response.getResponses()).hasSize(1);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getTargetSystems()).isEqualTo("CBS");
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(1);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("CBS");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
@@ -332,12 +332,12 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.SUCCESS);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getSourceName()).isEqualTo("RMS");
             assertThat(dbPosting.getTargetSystems()).isEqualTo("CBS");
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(1);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("CBS");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
@@ -352,11 +352,11 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.SUCCESS);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getTargetSystems()).isEqualTo("GL");
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(1);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("GL");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
@@ -382,7 +382,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getResponses()).hasSize(2);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getTargetSystems()).isEqualTo("CBS_GL");
             assertThat(dbPosting.getAmount()).isEqualByComparingTo(request.getAmount());
@@ -390,10 +390,10 @@ class AccountPostingIntegrationTest {
             assertThat(dbPosting.getDebtorAccount()).isEqualTo(request.getDebtorAccount());
             assertThat(dbPosting.getCreditorAccount()).isEqualTo(request.getCreditorAccount());
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(2);
 
-            AccountPostingLeg cbsLeg = legs.get(0);
+            AccountPostingLegEntity cbsLeg = legs.get(0);
             assertThat(cbsLeg.getTargetSystem()).isEqualTo("CBS");
             assertThat(cbsLeg.getStatus()).isEqualTo(LegStatus.SUCCESS);
             assertThat(cbsLeg.getLegOrder()).isEqualTo(1);
@@ -402,7 +402,7 @@ class AccountPostingIntegrationTest {
             assertThat(cbsLeg.getReferenceId()).isNotBlank();
             assertThat(cbsLeg.getPostedTime()).isNotNull();
 
-            AccountPostingLeg glLeg = legs.get(1);
+            AccountPostingLegEntity glLeg = legs.get(1);
             assertThat(glLeg.getTargetSystem()).isEqualTo("GL");
             assertThat(glLeg.getStatus()).isEqualTo(LegStatus.SUCCESS);
             assertThat(glLeg.getLegOrder()).isEqualTo(2);
@@ -418,16 +418,16 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.SUCCESS);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getSourceName()).isEqualTo("RMS");
             assertThat(dbPosting.getTargetSystems()).isEqualTo("CBS_GL");
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(2);
-            assertThat(legs).extracting(AccountPostingLeg::getTargetSystem)
+            assertThat(legs).extracting(AccountPostingLegEntity::getTargetSystem)
                     .containsExactly("CBS", "GL");
-            assertThat(legs).extracting(AccountPostingLeg::getStatus)
+            assertThat(legs).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.SUCCESS);
         }
 
@@ -440,11 +440,11 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.SUCCESS);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getTargetSystems()).isEqualTo("OBPM_GL");
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(2);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("OBPM");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
@@ -474,19 +474,19 @@ class AccountPostingIntegrationTest {
                     .containsExactly("CBS", "OBPM", "GL");
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.SUCCESS);
             assertThat(dbPosting.getTargetSystems()).isEqualTo("CBS_OBPM_GL");
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(3);
-            assertThat(legs).extracting(AccountPostingLeg::getTargetSystem)
+            assertThat(legs).extracting(AccountPostingLegEntity::getTargetSystem)
                     .containsExactly("CBS", "OBPM", "GL");
-            assertThat(legs).extracting(AccountPostingLeg::getLegOrder)
+            assertThat(legs).extracting(AccountPostingLegEntity::getLegOrder)
                     .containsExactly(1, 2, 3);
-            assertThat(legs).extracting(AccountPostingLeg::getStatus)
+            assertThat(legs).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.SUCCESS);
-            assertThat(legs).extracting(AccountPostingLeg::getMode)
+            assertThat(legs).extracting(AccountPostingLegEntity::getMode)
                     .containsOnly(LegMode.NORM);
         }
     }
@@ -511,11 +511,11 @@ class AccountPostingIntegrationTest {
             assertThat(response.getResponses()).hasSize(2);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.PENDING);
             assertThat(dbPosting.getTargetSystems()).isEqualTo("CBS_GL");
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(2);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("CBS");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.FAILED);
@@ -535,7 +535,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("CBS");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
             assertThat(legs.get(1).getTargetSystem()).isEqualTo("GL");
@@ -555,12 +555,12 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPosting dbPosting = getPosting(postingId);
+            AccountPostingEntity dbPosting = getPosting(postingId);
             assertThat(dbPosting.getStatus()).isEqualTo(PostingStatus.PENDING);
 
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(2);
-            assertThat(legs).extracting(AccountPostingLeg::getStatus)
+            assertThat(legs).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.FAILED);
         }
 
@@ -575,7 +575,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(1);
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.FAILED);
             assertThat(legs.get(0).getReason()).isEqualTo("OBPM timeout");
@@ -592,7 +592,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("OBPM");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.FAILED);
             assertThat(legs.get(1).getTargetSystem()).isEqualTo("GL");
@@ -610,7 +610,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
             assertThat(legs.get(1).getStatus()).isEqualTo(LegStatus.FAILED);
         }
@@ -626,7 +626,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(3);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("CBS");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
@@ -647,7 +647,7 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.FAILED);   // CBS
             assertThat(legs.get(1).getStatus()).isEqualTo(LegStatus.SUCCESS);  // OBPM
             assertThat(legs.get(2).getStatus()).isEqualTo(LegStatus.SUCCESS);  // GL
@@ -666,9 +666,9 @@ class AccountPostingIntegrationTest {
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PENDING);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            List<AccountPostingLeg> legs = getLegs(postingId);
+            List<AccountPostingLegEntity> legs = getLegs(postingId);
             assertThat(legs).hasSize(3);
-            assertThat(legs).extracting(AccountPostingLeg::getStatus)
+            assertThat(legs).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.FAILED);
         }
     }
@@ -706,7 +706,7 @@ class AccountPostingIntegrationTest {
                     .hasMessageContaining("No posting config found");
 
             assertThat(postingRepo.count()).isEqualTo(1);
-            AccountPosting posting = postingRepo.findAll().get(0);
+            AccountPostingEntity posting = postingRepo.findAll().get(0);
             assertThat(posting.getStatus()).isEqualTo(PostingStatus.FAILED);
             assertThat(posting.getReason()).contains("No posting config found");
         }
@@ -722,7 +722,7 @@ class AccountPostingIntegrationTest {
                     .hasMessageContaining("INVALID_ENUM_VALUE");
 
             assertThat(postingRepo.count()).isEqualTo(1);
-            AccountPosting posting = postingRepo.findAll().get(0);
+            AccountPostingEntity posting = postingRepo.findAll().get(0);
             assertThat(posting.getStatus()).isEqualTo(PostingStatus.FAILED);
             assertThat(posting.getSourceName()).isEqualTo("UNKNOWN_SOURCE");
             assertThat(posting.getReason()).contains("sourceName");
@@ -739,7 +739,7 @@ class AccountPostingIntegrationTest {
                     .hasMessageContaining("INVALID_ENUM_VALUE");
 
             assertThat(postingRepo.count()).isEqualTo(1);
-            AccountPosting posting = postingRepo.findAll().get(0);
+            AccountPostingEntity posting = postingRepo.findAll().get(0);
             assertThat(posting.getStatus()).isEqualTo(PostingStatus.FAILED);
             assertThat(posting.getReason()).contains("requestType");
         }
@@ -755,7 +755,7 @@ class AccountPostingIntegrationTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("INVALID_ENUM_VALUE");
 
-            AccountPosting posting = postingRepo.findAll().get(0);
+            AccountPostingEntity posting = postingRepo.findAll().get(0);
             assertThat(posting.getStatus()).isEqualTo(PostingStatus.FAILED);
             // Reason contains both errors joined
             assertThat(posting.getReason()).contains("sourceName").contains("requestType");
@@ -809,7 +809,7 @@ class AccountPostingIntegrationTest {
             assertThat(getPosting(postingId).getReason()).isEqualTo("Request processed successfully");
 
             // CBS leg: mode=RETRY, attempt incremented to 2
-            AccountPostingLeg cbsLeg = getLegs(postingId).stream()
+            AccountPostingLegEntity cbsLeg = getLegs(postingId).stream()
                     .filter(l -> "CBS".equals(l.getTargetSystem())).findFirst().orElseThrow();
             assertThat(cbsLeg.getStatus()).isEqualTo(LegStatus.SUCCESS);
             assertThat(cbsLeg.getMode()).isEqualTo(LegMode.RETRY);
@@ -825,7 +825,7 @@ class AccountPostingIntegrationTest {
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            assertThat(getLegs(postingId)).extracting(AccountPostingLeg::getStatus)
+            assertThat(getLegs(postingId)).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.FAILED);
 
             reset(strategyFactory);
@@ -836,11 +836,11 @@ class AccountPostingIntegrationTest {
             assertThat(retryResp.getSuccessCount()).isEqualTo(2);
 
             assertThat(getPosting(postingId).getStatus()).isEqualTo(PostingStatus.SUCCESS);
-            assertThat(getLegs(postingId)).extracting(AccountPostingLeg::getStatus)
+            assertThat(getLegs(postingId)).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.SUCCESS);
-            assertThat(getLegs(postingId)).extracting(AccountPostingLeg::getMode)
+            assertThat(getLegs(postingId)).extracting(AccountPostingLegEntity::getMode)
                     .containsOnly(LegMode.RETRY);
-            assertThat(getLegs(postingId)).extracting(AccountPostingLeg::getAttemptNumber)
+            assertThat(getLegs(postingId)).extracting(AccountPostingLegEntity::getAttemptNumber)
                     .containsOnly(2);
         }
 
@@ -857,7 +857,7 @@ class AccountPostingIntegrationTest {
             service.create(req3);
 
             assertThat(postingRepo.findAll()).hasSize(3)
-                    .extracting(AccountPosting::getStatus)
+                    .extracting(AccountPostingEntity::getStatus)
                     .containsOnly(PostingStatus.PENDING);
 
             reset(strategyFactory);
@@ -870,7 +870,7 @@ class AccountPostingIntegrationTest {
             assertThat(retryResp.getFailedCount()).isEqualTo(0);
 
             assertThat(postingRepo.findAll())
-                    .extracting(AccountPosting::getStatus)
+                    .extracting(AccountPostingEntity::getStatus)
                     .containsOnly(PostingStatus.SUCCESS);
         }
 
@@ -937,7 +937,7 @@ class AccountPostingIntegrationTest {
             assertThat(retryResp.getSuccessCount()).isEqualTo(1);
 
             assertThat(getPosting(postingId).getStatus()).isEqualTo(PostingStatus.SUCCESS);
-            assertThat(getLegs(postingId)).extracting(AccountPostingLeg::getStatus)
+            assertThat(getLegs(postingId)).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.SUCCESS);
         }
 
@@ -949,7 +949,7 @@ class AccountPostingIntegrationTest {
             service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG"));
 
             assertThat(postingRepo.findAll())
-                    .extracting(AccountPosting::getStatus)
+                    .extracting(AccountPostingEntity::getStatus)
                     .containsOnly(PostingStatus.SUCCESS);
 
             RetryResponse retryResp = service.retry(new RetryRequest());
@@ -967,7 +967,7 @@ class AccountPostingIntegrationTest {
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
 
             // Lock the posting for 5 minutes
-            AccountPosting posting = getPosting(postingId);
+            AccountPostingEntity posting = getPosting(postingId);
             posting.setRetryLockedUntil(Instant.now().plusSeconds(300));
             postingRepo.save(posting);
 
@@ -992,7 +992,7 @@ class AccountPostingIntegrationTest {
             service.create(locked);
 
             Long lockedId = findPostingIdByE2e(locked.getEndToEndReferenceId());
-            AccountPosting lockedPosting = getPosting(lockedId);
+            AccountPostingEntity lockedPosting = getPosting(lockedId);
             lockedPosting.setRetryLockedUntil(Instant.now().plusSeconds(300));
             postingRepo.save(lockedPosting);
 
@@ -1309,13 +1309,13 @@ class AccountPostingIntegrationTest {
 
             assertThat(postingRepo.count()).isEqualTo(13);
             assertThat(postingRepo.findAll())
-                    .extracting(AccountPosting::getStatus)
+                    .extracting(AccountPostingEntity::getStatus)
                     .containsOnly(PostingStatus.SUCCESS);
 
             // Leg count: 3×2 + 2×1 + 2×2 + 1×1 + 1×1 + 2×2 + 1×1 + 1×3 = 6+2+4+1+1+4+1+3 = 22
             assertThat(legRepo.count()).isEqualTo(22);
             assertThat(legRepo.findAll())
-                    .extracting(AccountPostingLeg::getStatus)
+                    .extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.SUCCESS);
         }
 
@@ -1421,7 +1421,7 @@ class AccountPostingIntegrationTest {
 
             // All 8 postings now SUCCESS
             assertThat(postingRepo.findAll())
-                    .extracting(AccountPosting::getStatus)
+                    .extracting(AccountPostingEntity::getStatus)
                     .containsOnly(PostingStatus.SUCCESS);
 
             // Verify retry metadata on the retried legs

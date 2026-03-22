@@ -8,7 +8,7 @@ import com.accountposting.entity.enums.LegStatus;
 import com.accountposting.exception.BusinessException;
 import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
-import com.accountposting.service.AccountPostingLegService;
+import com.accountposting.service.accountpostingleg.AccountPostingLegService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;

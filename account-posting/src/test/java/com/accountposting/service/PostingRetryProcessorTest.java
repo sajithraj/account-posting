@@ -4,14 +4,16 @@ import com.accountposting.dto.accountposting.AccountPostingRequest;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
 import com.accountposting.dto.accountpostingleg.LegResponse;
 import com.accountposting.dto.retry.RetryResponse;
-import com.accountposting.entity.AccountPosting;
+import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.enums.CreditDebitIndicator;
 import com.accountposting.entity.enums.LegStatus;
 import com.accountposting.entity.enums.PostingStatus;
 import com.accountposting.event.PostingEventPublisher;
 import com.accountposting.repository.AccountPostingRepository;
-import com.accountposting.service.strategy.PostingStrategy;
-import com.accountposting.service.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountposting.strategy.PostingStrategy;
+import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountpostingleg.AccountPostingLegService;
+import com.accountposting.service.retry.PostingRetryProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,11 +43,11 @@ class PostingRetryProcessorTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
-    private com.accountposting.service.PostingRetryProcessor processor;
+    private PostingRetryProcessor processor;
 
     @BeforeEach
     void setUp() {
-        processor = new com.accountposting.service.PostingRetryProcessor(postingRepository, legService, strategyFactory, objectMapper);
+        processor = new PostingRetryProcessor(postingRepository, legService, strategyFactory, objectMapper);
     }
 
     // ── posting not found ──────────────────────────────────────────────────────
@@ -64,7 +66,7 @@ class PostingRetryProcessorTest {
 
     @Test
     void process_noNonSuccessLegs_returnsEmptyList() {
-        AccountPosting posting = buildPosting(1L, "FT");
+        AccountPostingEntity posting = buildPosting(1L, "FT");
         when(postingRepository.findById(1L)).thenReturn(java.util.Optional.of(posting));
         when(legService.listNonSuccessLegs(1L)).thenReturn(List.of());
 
@@ -78,7 +80,7 @@ class PostingRetryProcessorTest {
 
     @Test
     void process_onePendingLeg_retriesAndUpdatesPostingToSuccess() {
-        AccountPosting posting = buildPosting(1L, "FT");
+        AccountPostingEntity posting = buildPosting(1L, "FT");
         AccountPostingLegResponse leg = buildLegResponse(10L, 1, "CBS", LegStatus.FAILED);
 
         PostingStrategy strategy = mock(PostingStrategy.class);
@@ -105,7 +107,7 @@ class PostingRetryProcessorTest {
 
     @Test
     void process_multipleFailedLegs_retriesSequentiallyByOrder() {
-        AccountPosting posting = buildPosting(2L, "FT");
+        AccountPostingEntity posting = buildPosting(2L, "FT");
         AccountPostingLegResponse leg1 = buildLegResponse(11L, 1, "CBS", LegStatus.FAILED);
         AccountPostingLegResponse leg2 = buildLegResponse(12L, 2, "GL", LegStatus.PENDING);
 
@@ -142,7 +144,7 @@ class PostingRetryProcessorTest {
 
     @Test
     void process_legStillFailsAfterRetry_postingRemainsAsPending() {
-        AccountPosting posting = buildPosting(3L, "FT");
+        AccountPostingEntity posting = buildPosting(3L, "FT");
         AccountPostingLegResponse leg = buildLegResponse(20L, 1, "OBPM", LegStatus.FAILED);
 
         PostingStrategy strategy = mock(PostingStrategy.class);
@@ -166,7 +168,7 @@ class PostingRetryProcessorTest {
 
     @Test
     void process_strategyThrows_legRecordedAsFailedAndContinues() {
-        AccountPosting posting = buildPosting(4L, "FT");
+        AccountPostingEntity posting = buildPosting(4L, "FT");
         AccountPostingLegResponse leg = buildLegResponse(30L, 1, "CBS", LegStatus.FAILED);
 
         PostingStrategy strategy = mock(PostingStrategy.class);
@@ -188,8 +190,8 @@ class PostingRetryProcessorTest {
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    private AccountPosting buildPosting(Long id, String requestType) {
-        AccountPosting p = new AccountPosting();
+    private AccountPostingEntity buildPosting(Long id, String requestType) {
+        AccountPostingEntity p = new AccountPostingEntity();
         p.setPostingId(id);
         p.setStatus(PostingStatus.PENDING);
         p.setRequestType(requestType);

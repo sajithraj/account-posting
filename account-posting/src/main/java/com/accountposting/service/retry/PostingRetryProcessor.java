@@ -1,17 +1,18 @@
-package com.accountposting.service;
+package com.accountposting.service.retry;
 
 import com.accountposting.dto.accountposting.AccountPostingRequest;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
 import com.accountposting.dto.accountpostingleg.LegResponse;
 import com.accountposting.dto.retry.RetryResponse;
-import com.accountposting.entity.AccountPosting;
+import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.enums.LegStatus;
 import com.accountposting.entity.enums.PostingStatus;
 import com.accountposting.event.PostingEventPublisher;
 import com.accountposting.event.PostingSuccessEvent;
 import com.accountposting.repository.AccountPostingRepository;
-import com.accountposting.service.strategy.PostingStrategy;
-import com.accountposting.service.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountposting.strategy.PostingStrategy;
+import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountpostingleg.AccountPostingLegService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,7 +57,7 @@ public class PostingRetryProcessor {
         log.info("RETRY-PROCESSOR START | thread={}", Thread.currentThread().getName());
 
         // 1. Load posting and deserialize original request
-        AccountPosting posting = postingRepository.findById(postingId).orElse(null);
+        AccountPostingEntity posting = postingRepository.findById(postingId).orElse(null);
         if (posting == null) {
             log.warn("RETRY-PROCESSOR | posting not found — skipping");
             return List.of();

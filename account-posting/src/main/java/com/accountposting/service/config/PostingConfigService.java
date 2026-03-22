@@ -1,4 +1,4 @@
-package com.accountposting.service;
+package com.accountposting.service.config;
 
 
 import com.accountposting.dto.config.PostingConfigRequest;

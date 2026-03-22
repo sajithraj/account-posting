@@ -1,4 +1,4 @@
-package com.accountposting.service.strategy;
+package com.accountposting.service.accountposting.strategy;
 
 
 import com.accountposting.dto.accountposting.AccountPostingRequest;

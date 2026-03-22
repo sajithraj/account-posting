@@ -2,7 +2,7 @@ package com.accountposting.controller;
 
 import com.accountposting.dto.config.PostingConfigRequest;
 import com.accountposting.dto.config.PostingConfigResponse;
-import com.accountposting.service.PostingConfigService;
+import com.accountposting.service.config.PostingConfigService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

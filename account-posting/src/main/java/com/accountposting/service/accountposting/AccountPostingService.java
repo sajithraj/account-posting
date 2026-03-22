@@ -1,4 +1,4 @@
-package com.accountposting.service;
+package com.accountposting.service.accountposting;
 
 import com.accountposting.dto.accountposting.AccountPostingCreateResponse;
 import com.accountposting.dto.accountposting.AccountPostingRequest;

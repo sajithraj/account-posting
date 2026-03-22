@@ -12,7 +12,7 @@ import com.accountposting.entity.enums.PostingStatus;
 import com.accountposting.exception.BusinessException;
 import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
-import com.accountposting.service.AccountPostingService;
+import com.accountposting.service.accountposting.AccountPostingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;

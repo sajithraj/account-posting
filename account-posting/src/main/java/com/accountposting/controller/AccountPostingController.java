@@ -6,7 +6,7 @@ import com.accountposting.dto.accountposting.AccountPostingResponse;
 import com.accountposting.dto.accountposting.AccountPostingSearchRequest;
 import com.accountposting.dto.retry.RetryRequest;
 import com.accountposting.dto.retry.RetryResponse;
-import com.accountposting.service.AccountPostingService;
+import com.accountposting.service.accountposting.AccountPostingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

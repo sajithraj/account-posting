@@ -4,7 +4,7 @@ import com.accountposting.dto.accountpostingleg.AccountPostingLegRequest;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
 import com.accountposting.dto.accountpostingleg.UpdateLegRequest;
 import com.accountposting.entity.enums.LegStatus;
-import com.accountposting.service.AccountPostingLegService;
+import com.accountposting.service.accountpostingleg.AccountPostingLegService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

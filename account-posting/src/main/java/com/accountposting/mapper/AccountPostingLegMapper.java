@@ -5,7 +5,7 @@ import com.accountposting.dto.accountpostingleg.AccountPostingLegRequest;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
 import com.accountposting.dto.accountpostingleg.ExternalCallResult;
 import com.accountposting.dto.accountpostingleg.UpdateLegRequest;
-import com.accountposting.entity.AccountPostingLeg;
+import com.accountposting.entity.AccountPostingLegEntity;
 import com.accountposting.entity.enums.LegMode;
 import com.accountposting.entity.enums.LegStatus;
 import org.mapstruct.BeanMapping;
@@ -25,9 +25,9 @@ public interface AccountPostingLegMapper {
     @Mapping(target = "status", expression = "java(resolveStatus(request))")
     @Mapping(target = "mode", expression = "java(resolveMode(request))")
     @Mapping(target = "operation", expression = "java(resolveOperation(request))")
-    AccountPostingLeg toEntity(AccountPostingLegRequest request);
+    AccountPostingLegEntity toEntity(AccountPostingLegRequest request);
 
-    AccountPostingLegResponse toResponse(AccountPostingLeg leg);
+    AccountPostingLegResponse toResponse(AccountPostingLegEntity leg);
 
     /**
      * Full-parameter factory — produces a ready-to-use {@link AccountPostingLegRequest}.
@@ -69,7 +69,7 @@ public interface AccountPostingLegMapper {
     @Mapping(target = "account", ignore = true)
     @Mapping(target = "attemptNumber", ignore = true)
     @Mapping(target = "operation", ignore = true)
-    void applyUpdate(UpdateLegRequest request, @MappingTarget AccountPostingLeg leg);
+    void applyUpdate(UpdateLegRequest request, @MappingTarget AccountPostingLegEntity leg);
 
     default LegStatus resolveStatus(AccountPostingLegRequest request) {
         if (request.getStatus() == null) return LegStatus.PENDING;

@@ -1,6 +1,6 @@
 package com.accountposting.repository;
 
-import com.accountposting.entity.AccountPosting;
+import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.enums.PostingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -14,7 +14,7 @@ import java.util.List;
 
 @Repository
 public interface AccountPostingRepository
-        extends JpaRepository<AccountPosting, Long>, JpaSpecificationExecutor<AccountPosting> {
+        extends JpaRepository<AccountPostingEntity, Long>, JpaSpecificationExecutor<AccountPostingEntity> {
 
     boolean existsByEndToEndReferenceId(String endToEndReferenceId);
 
@@ -22,11 +22,11 @@ public interface AccountPostingRepository
      * All PENDING postings not currently locked — used when no specific IDs are requested.
      */
     @Query("""
-            SELECT p FROM AccountPosting p
+            SELECT p FROM AccountPostingEntity p
             WHERE p.status = :status
               AND (p.retryLockedUntil IS NULL OR p.retryLockedUntil < :now)
             """)
-    List<AccountPosting> findEligibleForRetry(
+    List<AccountPostingEntity> findEligibleForRetry(
             @Param("status") PostingStatus status,
             @Param("now") Instant now);
 
@@ -36,7 +36,7 @@ public interface AccountPostingRepository
      */
     @Modifying(clearAutomatically = true)
     @Query("""
-            UPDATE AccountPosting p
+            UPDATE AccountPostingEntity p
             SET p.retryLockedUntil = :lockUntil
             WHERE p.postingId IN :ids
               AND p.status = :status
@@ -52,11 +52,11 @@ public interface AccountPostingRepository
      * Fetch postings that were just locked — matched by the exact lockUntil timestamp.
      */
     @Query("""
-            SELECT p FROM AccountPosting p
+            SELECT p FROM AccountPostingEntity p
             WHERE p.postingId IN :ids
               AND p.retryLockedUntil = :lockUntil
             """)
-    List<AccountPosting> findByIdsAndLockUntil(
+    List<AccountPostingEntity> findByIdsAndLockUntil(
             @Param("ids") List<Long> ids,
             @Param("lockUntil") Instant lockUntil);
 }

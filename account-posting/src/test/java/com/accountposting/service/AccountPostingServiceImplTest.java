@@ -7,7 +7,7 @@ import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
 import com.accountposting.dto.accountpostingleg.LegResponse;
 import com.accountposting.dto.retry.RetryRequest;
 import com.accountposting.dto.retry.RetryResponse;
-import com.accountposting.entity.AccountPosting;
+import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.PostingConfig;
 import com.accountposting.entity.enums.CreditDebitIndicator;
 import com.accountposting.entity.enums.PostingStatus;
@@ -15,11 +15,14 @@ import com.accountposting.event.PostingEventPublisher;
 import com.accountposting.exception.BusinessException;
 import com.accountposting.mapper.AccountPostingLegMapper;
 import com.accountposting.mapper.AccountPostingMapper;
+import com.accountposting.mapper.MappingUtils;
 import com.accountposting.repository.AccountPostingRepository;
 import com.accountposting.repository.PostingConfigRepository;
-import com.accountposting.service.impl.AccountPostingServiceImpl;
-import com.accountposting.service.strategy.PostingStrategy;
-import com.accountposting.service.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountposting.AccountPostingServiceImpl;
+import com.accountposting.service.accountposting.strategy.PostingStrategy;
+import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
+import com.accountposting.service.accountpostingleg.AccountPostingLegService;
+import com.accountposting.service.retry.PostingRetryProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,7 +58,7 @@ class AccountPostingServiceImplTest {
     @Mock
     PostingStrategyFactory strategyFactory;
     @Mock
-    com.accountposting.service.PostingRetryProcessor retryProcessor;
+    PostingRetryProcessor retryProcessor;
     @Mock
     AccountPostingRequestValidator requestValidator;
     @Mock
@@ -63,8 +66,9 @@ class AccountPostingServiceImplTest {
     @Mock
     PlatformTransactionManager transactionManager;
 
-    // Real ObjectMapper — used for JSON serialization of request/response payloads
+    // Real ObjectMapper + MappingUtils — used for JSON serialization of request/response payloads
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final MappingUtils mappingUtils = new MappingUtils(objectMapper);
 
     private AccountPostingServiceImpl service;
 
@@ -86,7 +90,7 @@ class AccountPostingServiceImplTest {
         // and commit() → no-op (void, Mockito default). The callback always executes inline.
         service = new AccountPostingServiceImpl(
                 repository, mapper, legMapper, legService, postingConfigRepository,
-                strategyFactory, retryProcessor, requestValidator, objectMapper,
+                strategyFactory, retryProcessor, requestValidator, mappingUtils,
                 Runnable::run, transactionManager
         );
     }
@@ -96,7 +100,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_allLegsSucceed_postingStatusIsSavedAsSuccess() {
         AccountPostingRequest request = buildRequest("e2e-001");
-        AccountPosting posting = buildPosting(1L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(1L, PostingStatus.PENDING);
 
         PostingConfig config1 = buildConfig(1, "CBS");
         PostingConfig config2 = buildConfig(2, "GL");
@@ -123,15 +127,15 @@ class AccountPostingServiceImplTest {
                 .thenReturn(legResponse("SUCCESS"));
         when(strategy2.process(eq(1L), eq(2), any(), eq(false), any()))
                 .thenReturn(legResponse("SUCCESS"));
-        when(mapper.toCreateResponse(any(AccountPosting.class))).thenReturn(AccountPostingCreateResponse.builder().build());
+        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponse.builder().build());
 
         service.create(request);
 
         // Final save must persist SUCCESS status
-        ArgumentCaptor<AccountPosting> captor = ArgumentCaptor.forClass(AccountPosting.class);
+        ArgumentCaptor<AccountPostingEntity> captor = ArgumentCaptor.forClass(AccountPostingEntity.class);
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
-                .extracting(AccountPosting::getStatus)
+                .extracting(AccountPostingEntity::getStatus)
                 .contains(PostingStatus.SUCCESS);
 
         // Both strategies must be called in order
@@ -144,7 +148,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_noConfigFound_savesFailedStatusAndThrowsBusinessException() {
         AccountPostingRequest request = buildRequest("e2e-002");
-        AccountPosting posting = buildPosting(2L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(2L, PostingStatus.PENDING);
 
         when(repository.existsByEndToEndReferenceId("e2e-002")).thenReturn(false);
         when(mapper.toEntity(request)).thenReturn(posting);
@@ -157,10 +161,10 @@ class AccountPostingServiceImplTest {
                 .hasMessageContaining("No posting config found");
 
         // FAILED status must be persisted before the exception is thrown
-        ArgumentCaptor<AccountPosting> captor = ArgumentCaptor.forClass(AccountPosting.class);
+        ArgumentCaptor<AccountPostingEntity> captor = ArgumentCaptor.forClass(AccountPostingEntity.class);
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
-                .extracting(AccountPosting::getStatus)
+                .extracting(AccountPostingEntity::getStatus)
                 .contains(PostingStatus.FAILED);
 
         // No strategy should be called
@@ -187,7 +191,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_oneLegFails_postingStatusIsSavedAsPending() {
         AccountPostingRequest request = buildRequest("e2e-003");
-        AccountPosting posting = buildPosting(3L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(3L, PostingStatus.PENDING);
 
         PostingConfig config1 = buildConfig(1, "CBS");
         PostingConfig config2 = buildConfig(2, "GL");
@@ -214,14 +218,14 @@ class AccountPostingServiceImplTest {
                 .thenReturn(legResponse("SUCCESS"));
         when(strategy2.process(eq(3L), eq(2), any(), eq(false), any()))
                 .thenReturn(legResponse("FAILED"));
-        when(mapper.toCreateResponse(any(AccountPosting.class))).thenReturn(AccountPostingCreateResponse.builder().build());
+        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponse.builder().build());
 
         service.create(request);
 
-        ArgumentCaptor<AccountPosting> captor = ArgumentCaptor.forClass(AccountPosting.class);
+        ArgumentCaptor<AccountPostingEntity> captor = ArgumentCaptor.forClass(AccountPostingEntity.class);
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
-                .extracting(AccountPosting::getStatus)
+                .extracting(AccountPostingEntity::getStatus)
                 .contains(PostingStatus.PENDING);
     }
 
@@ -230,7 +234,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_allLegsFail_postingStatusIsSavedAsPending() {
         AccountPostingRequest request = buildRequest("e2e-004");
-        AccountPosting posting = buildPosting(4L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(4L, PostingStatus.PENDING);
 
         PostingConfig config1 = buildConfig(1, "CBS");
         PostingStrategy strategy1 = mock(PostingStrategy.class);
@@ -252,14 +256,14 @@ class AccountPostingServiceImplTest {
         when(strategyFactory.resolve("CBS_POSTING")).thenReturn(strategy1);
         when(strategy1.process(eq(4L), eq(1), any(), eq(false), any()))
                 .thenReturn(legResponse("FAILED"));
-        when(mapper.toCreateResponse(any(AccountPosting.class))).thenReturn(AccountPostingCreateResponse.builder().build());
+        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponse.builder().build());
 
         service.create(request);
 
-        ArgumentCaptor<AccountPosting> captor = ArgumentCaptor.forClass(AccountPosting.class);
+        ArgumentCaptor<AccountPostingEntity> captor = ArgumentCaptor.forClass(AccountPostingEntity.class);
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
-                .extracting(AccountPosting::getStatus)
+                .extracting(AccountPostingEntity::getStatus)
                 .contains(PostingStatus.PENDING);
     }
 
@@ -267,8 +271,8 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_bulkAllPending_locksAndProcessesEachPosting() {
-        AccountPosting p1 = buildPosting(10L, PostingStatus.PENDING);
-        AccountPosting p2 = buildPosting(11L, PostingStatus.PENDING);
+        AccountPostingEntity p1 = buildPosting(10L, PostingStatus.PENDING);
+        AccountPostingEntity p2 = buildPosting(11L, PostingStatus.PENDING);
 
         when(repository.findEligibleForRetry(eq(PostingStatus.PENDING), any(Instant.class)))
                 .thenReturn(List.of(p1, p2));
@@ -298,7 +302,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_specificPostingIds_onlyLocksAndProcessesThoseIds() {
-        AccountPosting p1 = buildPosting(20L, PostingStatus.PENDING);
+        AccountPostingEntity p1 = buildPosting(20L, PostingStatus.PENDING);
 
         when(repository.lockForRetry(eq(List.of(20L)), eq(PostingStatus.PENDING),
                 any(Instant.class), any(Instant.class)))
@@ -337,7 +341,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_allPostingsAlreadyLocked_returnsEmptyResponse() {
-        AccountPosting p1 = buildPosting(30L, PostingStatus.PENDING);
+        AccountPostingEntity p1 = buildPosting(30L, PostingStatus.PENDING);
 
         when(repository.findEligibleForRetry(eq(PostingStatus.PENDING), any(Instant.class)))
                 .thenReturn(List.of(p1));
@@ -367,8 +371,8 @@ class AccountPostingServiceImplTest {
         return req;
     }
 
-    private AccountPosting buildPosting(Long id, PostingStatus status) {
-        AccountPosting p = new AccountPosting();
+    private AccountPostingEntity buildPosting(Long id, PostingStatus status) {
+        AccountPostingEntity p = new AccountPostingEntity();
         p.setPostingId(id);
         p.setStatus(status);
         p.setRequestType("FT");

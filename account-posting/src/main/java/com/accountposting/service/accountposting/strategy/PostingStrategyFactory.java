@@ -1,4 +1,4 @@
-package com.accountposting.service.strategy;
+package com.accountposting.service.accountposting.strategy;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

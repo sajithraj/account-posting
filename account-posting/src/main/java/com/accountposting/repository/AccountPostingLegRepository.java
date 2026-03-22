@@ -1,6 +1,6 @@
 package com.accountposting.repository;
 
-import com.accountposting.entity.AccountPostingLeg;
+import com.accountposting.entity.AccountPostingLegEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,23 +10,23 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface AccountPostingLegRepository extends JpaRepository<AccountPostingLeg, Long> {
+public interface AccountPostingLegRepository extends JpaRepository<AccountPostingLegEntity, Long> {
 
-    List<AccountPostingLeg> findByPostingIdOrderByLegOrder(Long postingId);
+    List<AccountPostingLegEntity> findByPostingIdOrderByLegOrder(Long postingId);
 
-    Optional<AccountPostingLeg> findByPostingLegIdAndPostingId(Long postingLegId, Long postingId);
+    Optional<AccountPostingLegEntity> findByPostingLegIdAndPostingId(Long postingLegId, Long postingId);
 
     /**
      * Returns all non-SUCCESS legs for a posting ordered by legOrder.
      * Used by the retry processor to determine which legs need to be re-executed.
      */
     @Query("""
-            SELECT l FROM AccountPostingLeg l
+            SELECT l FROM AccountPostingLegEntity l
             WHERE l.postingId = :postingId
               AND l.status <> :status
             ORDER BY l.legOrder
             """)
-    List<AccountPostingLeg> findNonSuccessByPostingId(
+    List<AccountPostingLegEntity> findNonSuccessByPostingId(
             @Param("postingId") Long postingId,
             @Param("status") com.accountposting.entity.enums.LegStatus status);
 }

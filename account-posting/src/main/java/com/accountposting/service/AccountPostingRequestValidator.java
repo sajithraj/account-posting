@@ -12,19 +12,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Validates incoming posting requests.
- *
- * <p>Two-phase validation:
- * <ol>
- *   <li>{@link #validateFields(AccountPostingRequest)} — structural checks (null / blank / size /
- *       format). Called <em>before</em> the initial DB save. Failures → 400, no DB entry
- *       (impossible to persist without required NOT-NULL columns).</li>
- *   <li>{@link #validateEnums(String, String)} — enum membership checks. Called <em>after</em>
- *       the initial PENDING save so that non-null but invalid enum values are always recorded in
- *       the DB with FAILED status for audit visibility. Failures → 400.</li>
- * </ol>
- */
 @Slf4j
 @Component
 public class AccountPostingRequestValidator {
@@ -36,14 +23,14 @@ public class AccountPostingRequestValidator {
             Arrays.stream(RequestType.values()).map(Enum::name).toList();
 
     /**
-     * Validates all required and size-constrained fields.
-     * Call before persisting the posting.
+     * Validates all required fields, size constraints, and enum membership in one pass.
      *
-     * @throws BusinessException with code {@code VALIDATION_FAILED} listing all errors.
+     * @throws BusinessException on the first category that produces errors.
      */
-    public void validateFields(AccountPostingRequest request) {
+    public void validate(AccountPostingRequest request) {
         List<String> errors = new ArrayList<>();
 
+        // ── Field / structural checks ──────────────────────────────────────
         if (isBlank(request.getSourceReferenceId()))
             errors.add("sourceReferenceId is required");
         else if (request.getSourceReferenceId().length() > 100)
@@ -95,23 +82,15 @@ public class AccountPostingRequestValidator {
             log.warn("VALIDATION_FAILED | {}", message);
             throw new BusinessException("VALIDATION_FAILED", message);
         }
-    }
 
-    /**
-     * Validates that sourceName and requestType match known enum constants.
-     * Uses list-contains check instead of try/catch.
-     * Call <em>after</em> the initial PENDING save for full audit visibility.
-     *
-     * @throws BusinessException with code {@code INVALID_ENUM_VALUE} → HTTP 400.
-     */
-    public void validateEnums(String sourceName, String requestType) {
-        List<String> errors = new ArrayList<>();
+        // ── Enum membership checks ─────────────────────────────────────────
+        errors = new ArrayList<>();
 
-        if (!VALID_SOURCE_NAMES.contains(sourceName))
-            errors.add("sourceName '" + sourceName + "' is not valid. Accepted values: " + VALID_SOURCE_NAMES);
+        if (!isBlank(request.getSourceName()) && !VALID_SOURCE_NAMES.contains(request.getSourceName()))
+            errors.add("sourceName '" + request.getSourceName() + "' is not valid. Accepted values: " + VALID_SOURCE_NAMES);
 
-        if (!VALID_REQUEST_TYPES.contains(requestType))
-            errors.add("requestType '" + requestType + "' is not valid. Accepted values: " + VALID_REQUEST_TYPES);
+        if (!isBlank(request.getRequestType()) && !VALID_REQUEST_TYPES.contains(request.getRequestType()))
+            errors.add("requestType '" + request.getRequestType() + "' is not valid. Accepted values: " + VALID_REQUEST_TYPES);
 
         if (!errors.isEmpty()) {
             String message = String.join("; ", errors);
