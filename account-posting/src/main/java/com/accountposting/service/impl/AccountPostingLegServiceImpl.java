@@ -6,7 +6,6 @@ import com.accountposting.dto.accountpostingleg.UpdateLegRequest;
 import com.accountposting.entity.AccountPostingLeg;
 import com.accountposting.entity.enums.LegMode;
 import com.accountposting.entity.enums.LegStatus;
-import com.accountposting.entity.AccountPosting;
 import com.accountposting.entity.enums.PostingStatus;
 import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.mapper.AccountPostingLegMapper;
