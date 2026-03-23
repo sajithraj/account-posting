@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "Account Posting Orchestrator",
+    "name": "Account Posting Validator",
     "description": "Complete test suite. Run in order using the Collection Runner — the first CREATE request sets collection variables (postingId, legId, configId) used by all subsequent requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
