@@ -1,0 +1,90 @@
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: account_posting_db_qa
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: account_posting_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_qa:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d account_posting_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  # ── DB migrations (Flyway) — runs once then exits ──────────────────────────
+  flyway:
+    image: flyway/flyway:11-alpine
+    container_name: account_posting_flyway_qa
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../db/src/main/resources/db/migration/qa:/flyway/sql
+    command: >
+      -url=jdbc:postgresql://postgres:5432/account_posting_db
+      -user=postgres
+      -password=postgres
+      -schemas=public
+      migrate
+    networks:
+      - app-net
+
+  # ── Spring Boot API ────────────────────────────────────────────────────────
+  account-posting:
+    build:
+      context: ../account-posting
+      dockerfile: Dockerfile
+    container_name: account_posting_api_qa
+    restart: unless-stopped
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: qa
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account_posting_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SERVER_PORT: 8080
+      KAFKA_ENABLED: "false"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep -q UP || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - app-net
+
+  # ── React UI (nginx) ───────────────────────────────────────────────────────
+  ui:
+    build:
+      context: ../ui
+      dockerfile: Dockerfile
+    container_name: account_posting_ui_qa
+    restart: unless-stopped
+    depends_on:
+      account-posting:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  postgres_data_qa:

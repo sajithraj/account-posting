@@ -3,16 +3,16 @@ services:
   # ── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: account_posting_db
+    container_name: account_posting_db_prod
     restart: unless-stopped
     environment:
       POSTGRES_DB: account_posting_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_prod:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d account_posting_db" ]
       interval: 5s
@@ -24,12 +24,12 @@ services:
   # ── DB migrations (Flyway) — runs once then exits ──────────────────────────
   flyway:
     image: flyway/flyway:11-alpine
-    container_name: account_posting_flyway
+    container_name: account_posting_flyway_prod
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ./db/src/main/resources/db/migration:/flyway/sql
+      - ../db/src/main/resources/db/migration/prod:/flyway/sql
     command: >
       -url=jdbc:postgresql://postgres:5432/account_posting_db
       -user=postgres
@@ -42,21 +42,20 @@ services:
   # ── Spring Boot API ────────────────────────────────────────────────────────
   account-posting:
     build:
-      context: ./account-posting
+      context: ../account-posting
       dockerfile: Dockerfile
-    container_name: account_posting_api
+    container_name: account_posting_api_prod
     restart: unless-stopped
     depends_on:
       flyway:
         condition: service_completed_successfully
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: account_posting_db
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account_posting_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       SERVER_PORT: 8080
-      SPRING_PROFILES_ACTIVE: docker
+      KAFKA_ENABLED: "false"
     ports:
       - "8080:8080"
     healthcheck:
@@ -71,9 +70,9 @@ services:
   # ── React UI (nginx) ───────────────────────────────────────────────────────
   ui:
     build:
-      context: ./ui
+      context: ../ui
       dockerfile: Dockerfile
-    container_name: account_posting_ui
+    container_name: account_posting_ui_prod
     restart: unless-stopped
     depends_on:
       account-posting:
@@ -88,4 +87,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_data_prod:

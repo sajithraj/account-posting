@@ -1,7 +1,6 @@
 import { BrowserRouter, Route, Routes, Link, useLocation } from 'react-router-dom';
 import PostingListPage from './pages/PostingListPage';
 import PostingDetailPage from './pages/PostingDetailPage';
-import CreatePostingPage from './pages/CreatePostingPage';
 import ConfigPage from './pages/ConfigPage';
 import DashboardPage from './pages/DashboardPage';
 

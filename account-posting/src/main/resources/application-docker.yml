@@ -1,6 +1,6 @@
 app:
   kafka:
-    enabled: true
+    enabled: false
     topic:
       posting-success: account-posting-success
 

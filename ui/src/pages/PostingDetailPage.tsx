@@ -45,7 +45,7 @@ export default function PostingDetailPage() {
   if (isLoading) return <p>Loading...</p>;
   if (isError || !posting) return <p style={{ color: 'red' }}>Posting not found.</p>;
 
-  const canRetry = posting.postingStatus === 'PENDING';
+  const canRetry = posting.postingStatus === 'PNDG';
 
   const handleUpdateLegStatus = (legId: number, status: string) => {
     setUpdatingLegId(legId);

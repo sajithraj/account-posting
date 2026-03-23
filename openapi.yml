@@ -1,0 +1,1492 @@
+openapi: 3.0.3
+
+info:
+  title: Account Posting Orchestrator API
+  version: 1.0.0
+  description: |
+    Accepts posting requests from upstream systems, delivers them to a core banking
+    orchestrator, tracks every response leg, and provides retry capability.
+
+    ## Naming Convention
+    All JSON request bodies and response payloads use **snake_case** field names
+    (Jackson `SNAKE_CASE` property naming strategy).
+    GET query parameters use **camelCase** (Spring `@ModelAttribute` binding).
+
+    ## Error Envelope
+    All error responses share the same structure — see the `ErrorResponse` schema.
+
+    ## Enums
+    | Enum | Values |
+    |------|--------|
+    | `credit_debit_indicator` | `CREDIT` \| `DEBIT` |
+    | `posting_status` | `PENDING` \| `SUCCESS` \| `FAILED` |
+    | `leg_status` | `PENDING` \| `SUCCESS` \| `FAILED` |
+    | `leg_mode` | `NORM` \| `RETRY` \| `MANUAL` |
+
+    ## Source Names → Request Types (canonical from dev DB)
+    | source_name | request_type | target legs |
+    |-------------|-------------|------------|
+    | `IMX` | `IMX_CBS_GL` | CBS (order 1) → GL (order 2) |
+    | `IMX` | `IMX_OBPM` | OBPM (order 1) |
+    | `RMS` | `FED_RETURN` | CBS (order 1) → GL (order 2) |
+    | `RMS` | `GL_RETURN` | GL (order 1) → GL (order 2) |
+    | `RMS` | `MCA_RETURN` | OBPM (order 1) |
+    | `STABLECOIN` | `CUSTOMER_POSTING` | CBS (order 1) → GL (order 2) |
+    | `STABLECOIN` | `BUY_CUSTOMER_POSTNG` | CBS (order 2) → GL (order 3) |
+    | `STABLECOIN` | `BUY_CUSTOMER_POSTING` | CBS REMOVE_HOLD (order 1) |
+    | `STABLECOIN` | `ADD_ACCOUNT_HOLD` | CBS ADD_HOLD (order 1) |
+
+    > **Note:** `BUY_CUSTOMER_POSTNG` (missing trailing 'I') is the actual value in the database — preserve as-is.
+
+    ## Target Systems & Operations
+    | target_system | operations |
+    |--------------|-----------|
+    | `CBS` | `POSTING`, `ADD_HOLD`, `REMOVE_HOLD` |
+    | `GL` | `POSTING` |
+    | `OBPM` | `POSTING` |
+
+servers:
+  - url: http://localhost:8080/api
+    description: Local development (H2 in-memory)
+  - url: http://localhost:8080/api
+    description: Dev (PostgreSQL via Docker, profile=dev)
+  - url: http://localhost:8080/api
+    description: QA
+  - url: http://localhost:8080/api
+    description: UAT
+  - url: http://localhost:8080/api
+    description: Production
+
+tags:
+  - name: Account Posting
+    description: Core posting lifecycle — create, search, retrieve, and retry
+  - name: Posting Legs
+    description: Manage individual legs of a posting
+  - name: Posting Config
+    description: Routing configuration — maps source_name + request_type to ordered target systems
+  - name: Stub Simulator
+    description: |
+      Test-only endpoints to simulate external system failures.
+      **Not available in production** (`@Profile("!prod")`).
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Account Posting ─────────────────────────────────────────────────────────
+
+  /account-posting:
+    post:
+      tags: [ Account Posting ]
+      summary: Create a posting
+      description: |
+        Submits a new posting request. The service:
+        1. Validates the payload (bean validation + enum validation)
+        2. Checks idempotency on `end_to_end_reference_id`
+        3. Persists the posting with status `PENDING`
+        4. Resolves the routing config for `source_name` + `request_type`
+        5. Calls each target system in `order_seq` order (stub in current impl)
+        6. Updates the posting status to `SUCCESS` or `FAILED`
+
+        Validation fires **before** the service is invoked — a failed validation never creates a DB record.
+      operationId: createPosting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountPostingRequest'
+            examples:
+              imx_cbs_gl:
+                summary: IMX IMX_CBS_GL — 2 legs (CBS → GL)
+                value:
+                  source_reference_id: "SRC-001"
+                  end_to_end_reference_id: "E2E-001"
+                  source_name: "IMX"
+                  request_type: "IMX_CBS_GL"
+                  amount: 1500.00
+                  currency: "USD"
+                  credit_debit_indicator: "DEBIT"
+                  debtor_account: "1324658900"
+                  creditor_account: "9875312300"
+                  requested_execution_date: "2026-03-23"
+                  remittance_information: "Invoice payment INV-2026-001"
+              rms_fed_return:
+                summary: RMS FED_RETURN — 2 legs (CBS → GL)
+                value:
+                  source_reference_id: "SRC-002"
+                  end_to_end_reference_id: "E2E-002"
+                  source_name: "RMS"
+                  request_type: "FED_RETURN"
+                  amount: 500.00
+                  currency: "USD"
+                  credit_debit_indicator: "CREDIT"
+                  debtor_account: "1234567890"
+                  creditor_account: "0987654321"
+                  requested_execution_date: "2026-03-23"
+      responses:
+        '201':
+          description: Posting created and processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPostingCreateResponse'
+              example:
+                source_reference_id: "SRC-001"
+                end_to_end_reference_id: "E2E-001"
+                posting_status: "SUCCESS"
+                processed_at: "2026-03-23T10:15:30Z"
+                responses:
+                  - name: "CBS"
+                    type: "CBS"
+                    account: "1324658900"
+                    reference_id: "CBS-TXN-001"
+                    posted_time: "2026-03-23T10:15:30Z"
+                    status: "SUCCESS"
+                    reason: null
+                  - name: "GL"
+                    type: "GL"
+                    account: "9875312300"
+                    reference_id: "GL-TXN-001"
+                    posted_time: "2026-03-23T10:15:30Z"
+                    status: "SUCCESS"
+                    reason: null
+        '400':
+          description: |
+            Validation failure or malformed request.
+
+            | `name` | Cause |
+            |--------|-------|
+            | `VALIDATION_FAILED` | Bean validation — missing/blank/invalid fields; includes `errors[]` array |
+            | `INVALID_ENUM_VALUE` | `source_name` or `request_type` not in the allowed enum set |
+            | `INVALID_REQUEST_BODY` | Unparseable JSON body |
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validation_failed:
+                  summary: Missing required fields
+                  value:
+                    id: "b7a44802-adde-4a5a-97b6-52f962209773"
+                    name: "VALIDATION_FAILED"
+                    message: "Request validation failed"
+                    errors:
+                      - field: "source_reference_id"
+                        message: "must not be blank"
+                        rejected_value: null
+                      - field: "credit_debit_indicator"
+                        message: "must not be null"
+                        rejected_value: null
+                invalid_enum:
+                  summary: Unknown source_name
+                  value:
+                    id: "c1d2e3f4-0000-0000-0000-000000000001"
+                    name: "INVALID_ENUM_VALUE"
+                    message: "INVALID_ENUM_VALUE: sourceName 'UNKNOWN_SRC' is not valid"
+                    errors: null
+        '422':
+          description: |
+            Business rule violation.
+
+            | `name` | Cause |
+            |--------|-------|
+            | `DUPLICATE_E2E_REF` | `end_to_end_reference_id` already exists |
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                id: "a1b2c3d4-0000-0000-0000-000000000001"
+                name: "DUPLICATE_E2E_REF"
+                message: "A posting with this end-to-end reference ID already exists"
+                errors: null
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [ Account Posting ]
+      summary: Search postings
+      description: |
+        Paginated search with optional filters. All parameters are optional and composable.
+
+        **Note:** Query parameters use `camelCase` (Spring `@ModelAttribute` binding, not Jackson).
+      operationId: searchPostings
+      parameters:
+        - name: status
+          in: query
+          description: Filter by posting status
+          schema:
+            $ref: '#/components/schemas/PostingStatus'
+        - name: sourceName
+          in: query
+          description: Filter by originating system name
+          schema:
+            type: string
+            example: IMX
+        - name: requestType
+          in: query
+          description: Filter by request type
+          schema:
+            type: string
+            example: CBS_GL
+        - name: sourceReferenceId
+          in: query
+          description: Filter by source system reference
+          schema:
+            type: string
+        - name: endToEndReferenceId
+          in: query
+          description: Filter by end-to-end reference
+          schema:
+            type: string
+        - name: targetSystem
+          in: query
+          description: Filter by target system (matches postings that routed to this system)
+          schema:
+            type: string
+            example: CBS
+        - name: fromDate
+          in: query
+          description: Filter by requested_execution_date >= fromDate (ISO 8601 date)
+          schema:
+            type: string
+            format: date
+            example: "2026-03-01"
+        - name: toDate
+          in: query
+          description: Filter by requested_execution_date <= toDate (ISO 8601 date)
+          schema:
+            type: string
+            format: date
+            example: "2026-03-31"
+        - name: page
+          in: query
+          description: Zero-based page number
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: Page size
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 200
+        - name: sort
+          in: query
+          description: Sort field and direction (e.g. `postingId,desc`)
+          schema:
+            type: string
+            example: postingId,desc
+      responses:
+        '200':
+          description: Paginated list of postings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAccountPostingResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /account-posting/{postingId}:
+    get:
+      tags: [ Account Posting ]
+      summary: Get posting by ID
+      description: Returns a single posting with all its legs.
+      operationId: getPostingById
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+      responses:
+        '200':
+          description: Posting found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPostingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /account-posting/retry:
+    post:
+      tags: [ Account Posting ]
+      summary: Retry non-SUCCESS postings
+      description: |
+        Re-processes failed or pending legs.
+
+        - If `posting_ids` is omitted or empty — all non-SUCCESS postings are retried.
+        - If `posting_ids` is provided — only those postings are retried.
+        - Postings locked within the retry window (120 s) are skipped.
+        - Each retried leg gets `mode = RETRY` and increments `attempt_number`.
+      operationId: retryPostings
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryRequest'
+            examples:
+              retry_all:
+                summary: Retry all non-SUCCESS
+                value: { }
+              retry_specific:
+                summary: Retry specific IDs
+                value:
+                  posting_ids: [ 1, 2, 3 ]
+      responses:
+        '200':
+          description: Retry completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryResponse'
+              example:
+                total_legs_retried: 3
+                success_count: 2
+                failed_count: 1
+                results:
+                  - posting_leg_id: 10
+                    posting_id: 5
+                    previous_status: "FAILED"
+                    new_status: "SUCCESS"
+                    reason: null
+                  - posting_leg_id: 11
+                    posting_id: 5
+                    previous_status: "PENDING"
+                    new_status: "SUCCESS"
+                    reason: null
+                  - posting_leg_id: 12
+                    posting_id: 6
+                    previous_status: "FAILED"
+                    new_status: "FAILED"
+                    reason: "Connection timeout"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ── Posting Legs ────────────────────────────────────────────────────────────
+
+  /account-posting/{postingId}/leg:
+    post:
+      tags: [ Posting Legs ]
+      summary: Add a leg to a posting
+      description: Creates a new leg record under an existing posting.
+      operationId: addLeg
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountPostingLegRequest'
+      responses:
+        '201':
+          description: Leg created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPostingLegResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [ Posting Legs ]
+      summary: List legs for a posting
+      description: Returns all legs for a given posting ordered by `leg_order`.
+      operationId: listLegs
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+      responses:
+        '200':
+          description: List of legs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountPostingLegResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /account-posting/{postingId}/leg/{postingLegId}:
+    get:
+      tags: [ Posting Legs ]
+      summary: Get a single leg
+      operationId: getLeg
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+        - $ref: '#/components/parameters/PostingLegId'
+      responses:
+        '200':
+          description: Leg found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPostingLegResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [ Posting Legs ]
+      summary: Update a leg (system / retry path)
+      description: |
+        Full update of a leg — used by the retry processor after calling the external system.
+        Sets `mode = RETRY` and increments `attempt_number`.
+      operationId: updateLeg
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+        - $ref: '#/components/parameters/PostingLegId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLegRequest'
+      responses:
+        '200':
+          description: Leg updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPostingLegResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [ Posting Legs ]
+      summary: Manual status update (UI)
+      description: |
+        Sets the leg status directly from the UI. Sets `mode = MANUAL`.
+        Does **not** increment `attempt_number` or call any external system.
+      operationId: manualUpdateLeg
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+        - $ref: '#/components/parameters/PostingLegId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualUpdateLegRequest'
+            example:
+              status: "SUCCESS"
+      responses:
+        '200':
+          description: Leg status updated manually
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPostingLegResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ── Posting Config ──────────────────────────────────────────────────────────
+
+  /account-posting/config:
+    get:
+      tags: [ Posting Config ]
+      summary: Get all config entries
+      description: Returns every row in `posting_config` ordered by `config_id`.
+      operationId: getAllConfig
+      responses:
+        '200':
+          description: Full config list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostingConfigResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [ Posting Config ]
+      summary: Create a config entry
+      description: |
+        Adds a new routing rule. Duplicate `(request_type, order_seq)` → HTTP 422.
+        Call `POST /account-posting/config/cache/flush` after bulk changes.
+      operationId: createConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostingConfigRequest'
+            example:
+              source_name: "IMX"
+              request_type: "IMX_CBS_GL"
+              target_system: "CBS"
+              operation: "POSTING"
+              order_seq: 1
+      responses:
+        '201':
+          description: Config entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostingConfigResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '422':
+          description: Duplicate (request_type, order_seq)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                id: "d4e5f6a7-0000-0000-0000-000000000001"
+                name: "DUPLICATE_CONFIG_ORDER"
+                message: "A config entry with the same request type and order already exists"
+                errors: null
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /account-posting/config/cache/flush:
+    post:
+      tags: [ Posting Config ]
+      summary: Flush the config cache
+      description: |
+        Evicts the in-memory routing config cache so the next request reloads from the database.
+        Call this after bulk SQL inserts/updates or after applying a Flyway migration that modifies `posting_config`.
+      operationId: flushConfigCache
+      responses:
+        '204':
+          description: Cache flushed successfully
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /account-posting/config/{requestType}:
+    get:
+      tags: [ Posting Config ]
+      summary: Get config entries by request type
+      description: Returns the ordered legs (target_system + operation) for a given `request_type`.
+      operationId: getConfigByRequestType
+      parameters:
+        - name: requestType
+          in: path
+          required: true
+          description: The request type to look up (e.g. `IMX_CBS_GL`, `FED_RETURN`)
+          schema:
+            type: string
+            example: IMX_CBS_GL
+      responses:
+        '200':
+          description: Config entries for the given request type
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostingConfigResponse'
+              example:
+                - config_id: 1
+                  source_name: "IMX"
+                  request_type: "IMX_CBS_GL"
+                  target_system: "CBS"
+                  operation: "POSTING"
+                  order_seq: 1
+                - config_id: 2
+                  source_name: "IMX"
+                  request_type: "IMX_CBS_GL"
+                  target_system: "GL"
+                  operation: "POSTING"
+                  order_seq: 2
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /account-posting/config/{configId}:
+    put:
+      tags: [ Posting Config ]
+      summary: Update a config entry
+      operationId: updateConfig
+      parameters:
+        - $ref: '#/components/parameters/ConfigId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostingConfigRequest'
+      responses:
+        '200':
+          description: Config entry updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostingConfigResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Duplicate (request_type, order_seq)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [ Posting Config ]
+      summary: Delete a config entry
+      operationId: deleteConfig
+      parameters:
+        - $ref: '#/components/parameters/ConfigId'
+      responses:
+        '204':
+          description: Config entry deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ── Stub Simulator (non-prod only) ─────────────────────────────────────────
+
+  /test/stub/configure:
+    post:
+      tags: [ Stub Simulator ]
+      summary: Configure systems to simulate as failing
+      description: |
+        Sets which external target systems the stub should return a failure response for.
+        Replaces the current failing-systems list on every call.
+
+        **Not available in production.**
+      operationId: stubConfigure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fail_systems:
+                  type: array
+                  description: Target system keys to simulate as failing
+                  items:
+                    type: string
+                    enum: [ CBS, GL, OBPM ]
+            examples:
+              fail_cbs:
+                summary: Make CBS fail
+                value:
+                  fail_systems: [ "CBS" ]
+              fail_all:
+                summary: Make all systems fail
+                value:
+                  fail_systems: [ "CBS", "GL", "OBPM" ]
+              clear_via_configure:
+                summary: Clear all failures
+                value:
+                  fail_systems: [ ]
+      responses:
+        '200':
+          description: Simulator configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubStatusResponse'
+              example:
+                message: "Stub simulator configured"
+                failing_systems: [ "CBS" ]
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /test/stub/clear:
+    post:
+      tags: [ Stub Simulator ]
+      summary: Clear all failure simulations
+      description: Resets the stub — all external systems return SUCCESS again.
+      operationId: stubClear
+      responses:
+        '200':
+          description: Simulator cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubStatusResponse'
+              example:
+                message: "Stub simulator cleared"
+                failing_systems: [ ]
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /test/stub/status:
+    get:
+      tags: [ Stub Simulator ]
+      summary: Get current simulator state
+      operationId: stubStatus
+      responses:
+        '200':
+          description: Current failing systems
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubStatusResponse'
+              example:
+                failing_systems: [ "CBS" ]
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────────────────────────────────────
+components:
+
+  # ── Parameters ──────────────────────────────────────────────────────────────
+  parameters:
+    PostingId:
+      name: postingId
+      in: path
+      required: true
+      description: Unique posting identifier
+      schema:
+        type: integer
+        format: int64
+        example: 1
+
+    PostingLegId:
+      name: postingLegId
+      in: path
+      required: true
+      description: Unique posting leg identifier
+      schema:
+        type: integer
+        format: int64
+        example: 1
+
+    ConfigId:
+      name: configId
+      in: path
+      required: true
+      description: Unique posting config identifier
+      schema:
+        type: integer
+        format: int64
+        example: 1
+
+  # ── Reusable Responses ───────────────────────────────────────────────────────
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            id: "f1e2d3c4-0000-0000-0000-000000000001"
+            name: "NOT_FOUND"
+            message: "AccountPosting not found with id: 99"
+            errors: null
+
+    ValidationError:
+      description: Bean validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            id: "b7a44802-adde-4a5a-97b6-52f962209773"
+            name: "VALIDATION_FAILED"
+            message: "Request validation failed"
+            errors:
+              - field: "source_reference_id"
+                message: "must not be blank"
+                rejected_value: null
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            id: "e9f8a7b6-0000-0000-0000-000000000001"
+            name: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+            errors: null
+
+  # ── Schemas ──────────────────────────────────────────────────────────────────
+  schemas:
+
+    # ── Enums ─────────────────────────────────────────────────────────────────
+    PostingStatus:
+      type: string
+      enum: [ PENDING, SUCCESS, FAILED ]
+      description: Lifecycle status of an account posting
+
+    LegStatus:
+      type: string
+      enum: [ PENDING, SUCCESS, FAILED ]
+      description: Lifecycle status of a posting leg
+
+    LegMode:
+      type: string
+      enum: [ NORM, RETRY, MANUAL ]
+      description: |
+        How the leg was last processed:
+        - `NORM` — initial posting call
+        - `RETRY` — re-executed via the retry flow
+        - `MANUAL` — status set manually from the UI
+
+    CreditDebitIndicator:
+      type: string
+      enum: [ CREDIT, DEBIT ]
+      description: Direction of the posting from the debtor's perspective
+
+    # ── Requests ──────────────────────────────────────────────────────────────
+    AccountPostingRequest:
+      type: object
+      description: Payload for creating a new account posting
+      required:
+        - source_reference_id
+        - end_to_end_reference_id
+        - source_name
+        - request_type
+        - amount
+        - currency
+        - credit_debit_indicator
+        - debtor_account
+        - creditor_account
+        - requested_execution_date
+      properties:
+        source_reference_id:
+          type: string
+          maxLength: 100
+          description: Upstream system's own reference for this posting
+          example: "SRC-20260323-001"
+        end_to_end_reference_id:
+          type: string
+          maxLength: 100
+          description: Unique end-to-end identifier. Used for idempotency — duplicate value returns HTTP 422.
+          example: "E2E-20260323-001"
+        source_name:
+          type: string
+          maxLength: 100
+          description: Name of the originating system. Must be a value known to `posting_config`.
+          example: "IMX"
+        request_type:
+          type: string
+          maxLength: 50
+          description: Transaction type that determines the routing strategy from `posting_config`.
+          example: "CBS_GL"
+        amount:
+          type: number
+          format: decimal
+          minimum: 0.0001
+          description: Transaction amount. Must be greater than zero.
+          example: 1500.00
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO 4217 3-letter currency code
+          example: "USD"
+        credit_debit_indicator:
+          $ref: '#/components/schemas/CreditDebitIndicator'
+        debtor_account:
+          type: string
+          maxLength: 50
+          description: Account number of the debtor
+          example: "1324658900"
+        creditor_account:
+          type: string
+          maxLength: 50
+          description: Account number of the creditor
+          example: "9875312300"
+        requested_execution_date:
+          type: string
+          format: date
+          description: Requested value date (ISO 8601 date)
+          example: "2026-03-23"
+        remittance_information:
+          type: string
+          maxLength: 500
+          description: Free-text payment reference (optional)
+          example: "Invoice payment INV-2026-001"
+
+    RetryRequest:
+      type: object
+      description: |
+        Specifies which postings to retry. Omit `posting_ids` (or send an empty object) to retry all non-SUCCESS postings.
+      properties:
+        posting_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+          description: Specific posting IDs to retry. If absent or empty, all non-SUCCESS postings are targeted.
+          example: [ 1, 2, 3 ]
+
+    AccountPostingLegRequest:
+      type: object
+      description: Payload for adding a new leg to an existing posting
+      required:
+        - leg_order
+        - target_system
+        - account
+      properties:
+        leg_order:
+          type: integer
+          minimum: 1
+          description: Execution order of this leg (1-based)
+          example: 1
+        target_system:
+          type: string
+          maxLength: 100
+          description: External system this leg targets (e.g. `CBS`)
+          example: "CBS"
+        account:
+          type: string
+          maxLength: 50
+          description: Account associated with this leg
+          example: "1324658900"
+        status:
+          type: string
+          description: Initial leg status (defaults to `PENDING` if omitted)
+          example: "PENDING"
+        reference_id:
+          type: string
+          maxLength: 100
+          description: Reference ID returned by the target system
+          example: "CBS-TXN-001"
+        reason:
+          type: string
+          maxLength: 500
+          description: Outcome reason or error message from the target system
+        posted_time:
+          type: string
+          format: date-time
+          description: Timestamp when the leg was posted (ISO 8601)
+        request_payload:
+          type: string
+          description: JSON payload sent to the target system (stored as-is)
+        response_payload:
+          type: string
+          description: JSON response received from the target system (stored as-is)
+        mode:
+          $ref: '#/components/schemas/LegMode'
+        operation:
+          type: string
+          maxLength: 20
+          description: Operation type (e.g. `POSTING`, `ADD_HOLD`, `CANCEL_HOLD`)
+          example: "POSTING"
+
+    UpdateLegRequest:
+      type: object
+      description: Payload for updating a leg after an external system call (retry path)
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/LegStatus'
+        reference_id:
+          type: string
+          maxLength: 100
+          description: Reference ID returned by the target system
+        reason:
+          type: string
+          maxLength: 500
+          description: Outcome reason or error message
+        posted_time:
+          type: string
+          format: date-time
+          description: Timestamp when the leg was posted
+        request_payload:
+          type: string
+          description: JSON payload sent to the target system
+        response_payload:
+          type: string
+          description: JSON response from the target system
+        mode:
+          $ref: '#/components/schemas/LegMode'
+
+    ManualUpdateLegRequest:
+      type: object
+      description: Payload for manually overriding a leg status from the UI
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/LegStatus'
+
+    PostingConfigRequest:
+      type: object
+      description: Payload for creating or updating a routing config entry
+      required:
+        - source_name
+        - request_type
+        - target_system
+        - operation
+        - order_seq
+      properties:
+        source_name:
+          type: string
+          description: Originating system name
+          example: "IMX"
+        request_type:
+          type: string
+          description: Transaction type
+          example: "CBS_GL"
+        target_system:
+          type: string
+          description: External system to route to (e.g. `CBS`)
+          example: "CBS"
+        operation:
+          type: string
+          description: Operation to perform on the target system (e.g. `POSTING`)
+          example: "POSTING"
+        order_seq:
+          type: integer
+          minimum: 1
+          description: Execution order (1-based). Must be unique per `request_type`.
+          example: 1
+
+    # ── Responses ─────────────────────────────────────────────────────────────
+    AccountPostingCreateResponse:
+      type: object
+      description: Response returned immediately after a posting is created and processed
+      properties:
+        source_reference_id:
+          type: string
+          example: "SRC-20260323-001"
+        end_to_end_reference_id:
+          type: string
+          example: "E2E-20260323-001"
+        posting_status:
+          $ref: '#/components/schemas/PostingStatus'
+        processed_at:
+          type: string
+          format: date-time
+          description: Timestamp when processing completed
+          example: "2026-03-23T10:15:30Z"
+        responses:
+          type: array
+          description: Result from each leg processed during this call
+          items:
+            $ref: '#/components/schemas/LegCreateResponse'
+
+    LegCreateResponse:
+      type: object
+      description: Summary result of a single leg during the initial create flow
+      properties:
+        name:
+          type: string
+          description: Leg name / target system identifier
+          example: "CBS"
+        type:
+          type: string
+          description: Leg type
+          example: "CBS"
+        account:
+          type: string
+          example: "1324658900"
+        reference_id:
+          type: string
+          description: Reference ID returned by the external system (null if failed)
+          example: "CBS-TXN-001"
+        posted_time:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:30Z"
+        status:
+          type: string
+          example: "SUCCESS"
+        reason:
+          type: string
+          description: Error message if failed, null on success
+          example: null
+
+    AccountPostingResponse:
+      type: object
+      description: Full posting detail including all legs
+      properties:
+        posting_id:
+          type: integer
+          format: int64
+          example: 1
+        source_reference_id:
+          type: string
+          example: "SRC-20260323-001"
+        end_to_end_reference_id:
+          type: string
+          example: "E2E-20260323-001"
+        source_name:
+          type: string
+          example: "IMX"
+        request_type:
+          type: string
+          example: "CBS_GL"
+        amount:
+          type: number
+          format: decimal
+          example: 1500.00
+        currency:
+          type: string
+          example: "USD"
+        credit_debit_indicator:
+          type: string
+          example: "DEBIT"
+        debtor_account:
+          type: string
+          example: "1324658900"
+        creditor_account:
+          type: string
+          example: "9875312300"
+        requested_execution_date:
+          type: string
+          format: date
+          example: "2026-03-23"
+        remittance_information:
+          type: string
+          example: "Invoice payment INV-2026-001"
+        posting_status:
+          $ref: '#/components/schemas/PostingStatus'
+        target_systems:
+          type: string
+          description: Concatenated target system keys in execution order (e.g. `CBS_GL`)
+          example: "CBS_GL"
+        reason:
+          type: string
+          description: |
+            Processing outcome:
+            - `"Request processed successfully"` — all legs succeeded
+            - Error message of the last failed leg — if any leg failed
+          example: "Request processed successfully"
+        processed_at:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:30Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:29Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:30Z"
+        responses:
+          type: array
+          description: Leg results (populated by the search/get endpoints)
+          items:
+            $ref: '#/components/schemas/LegResponse'
+
+    LegResponse:
+      type: object
+      description: Leg summary as embedded in AccountPostingResponse
+      properties:
+        posting_leg_id:
+          type: integer
+          format: int64
+          example: 1
+        leg_order:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "CBS"
+        type:
+          type: string
+          example: "CBS"
+        account:
+          type: string
+          example: "1324658900"
+        reference_id:
+          type: string
+          example: "CBS-TXN-001"
+        posted_time:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:30Z"
+        status:
+          type: string
+          example: "SUCCESS"
+        reason:
+          type: string
+          example: null
+        mode:
+          type: string
+          example: "NORM"
+
+    AccountPostingLegResponse:
+      type: object
+      description: Full leg detail returned by the leg endpoints
+      properties:
+        posting_leg_id:
+          type: integer
+          format: int64
+          example: 1
+        posting_id:
+          type: integer
+          format: int64
+          example: 1
+        leg_order:
+          type: integer
+          example: 1
+        target_system:
+          type: string
+          example: "CBS"
+        account:
+          type: string
+          example: "1324658900"
+        status:
+          $ref: '#/components/schemas/LegStatus'
+        reference_id:
+          type: string
+          example: "CBS-TXN-001"
+        reason:
+          type: string
+          example: null
+        attempt_number:
+          type: integer
+          description: How many times this leg has been attempted (starts at 1)
+          example: 1
+        posted_time:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:30Z"
+        mode:
+          $ref: '#/components/schemas/LegMode'
+        operation:
+          type: string
+          example: "POSTING"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:29Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:15:30Z"
+
+    PostingConfigResponse:
+      type: object
+      description: A single routing config entry
+      properties:
+        config_id:
+          type: integer
+          format: int64
+          example: 1
+        source_name:
+          type: string
+          example: "IMX"
+        request_type:
+          type: string
+          example: "CBS_GL"
+        target_system:
+          type: string
+          example: "CBS"
+        operation:
+          type: string
+          example: "POSTING"
+        order_seq:
+          type: integer
+          example: 1
+
+    RetryResponse:
+      type: object
+      description: Summary of a retry operation
+      properties:
+        total_legs_retried:
+          type: integer
+          description: Total number of legs that were attempted
+          example: 3
+        success_count:
+          type: integer
+          description: Number of legs that transitioned to SUCCESS
+          example: 2
+        failed_count:
+          type: integer
+          description: Number of legs that remained or became FAILED
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegRetryResult'
+
+    LegRetryResult:
+      type: object
+      description: Per-leg result from a retry operation
+      properties:
+        posting_leg_id:
+          type: integer
+          format: int64
+          example: 10
+        posting_id:
+          type: integer
+          format: int64
+          example: 5
+        previous_status:
+          type: string
+          example: "FAILED"
+        new_status:
+          type: string
+          example: "SUCCESS"
+        reason:
+          type: string
+          description: Error message if the retry also failed, null on success
+          example: null
+
+    PagedAccountPostingResponse:
+      type: object
+      description: Spring Data paginated response wrapping a list of AccountPostingResponse
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountPostingResponse'
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        total_elements:
+          type: integer
+          format: int64
+          description: Total number of records matching the filter
+          example: 42
+        total_pages:
+          type: integer
+          description: Total number of pages
+          example: 3
+        number:
+          type: integer
+          description: Current page number (0-based)
+          example: 0
+        size:
+          type: integer
+          description: Requested page size
+          example: 20
+        number_of_elements:
+          type: integer
+          description: Number of elements on the current page
+          example: 20
+        first:
+          type: boolean
+          example: true
+        last:
+          type: boolean
+          example: false
+        empty:
+          type: boolean
+          example: false
+
+    Pageable:
+      type: object
+      description: Spring Data pageable metadata
+      properties:
+        page_number:
+          type: integer
+          example: 0
+        page_size:
+          type: integer
+          example: 20
+        sort:
+          type: object
+          properties:
+            sorted:
+              type: boolean
+            unsorted:
+              type: boolean
+            empty:
+              type: boolean
+        offset:
+          type: integer
+          format: int64
+          example: 0
+        paged:
+          type: boolean
+          example: true
+        unpaged:
+          type: boolean
+          example: false
+
+    ErrorResponse:
+      type: object
+      description: |
+        Uniform error envelope returned for all 4xx and 5xx responses.
+
+        | HTTP | `name` | Description |
+        |------|--------|-------------|
+        | 400 | `VALIDATION_FAILED` | Bean validation — `errors[]` array populated |
+        | 400 | `INVALID_ENUM_VALUE` | Unknown `source_name` or `request_type` |
+        | 400 | `INVALID_REQUEST_BODY` | Unparseable JSON body |
+        | 404 | `NOT_FOUND` | Entity not found by ID |
+        | 422 | `DUPLICATE_E2E_REF` | Duplicate `end_to_end_reference_id` |
+        | 422 | `DUPLICATE_CONFIG_ORDER` | Duplicate `(request_type, order_seq)` in config |
+        | 422 | `DATA_INTEGRITY_VIOLATION` | Other DB constraint violation |
+        | 500 | `INTERNAL_ERROR` | Unhandled exception |
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique error trace ID for log correlation
+          example: "b7a44802-adde-4a5a-97b6-52f962209773"
+        name:
+          type: string
+          description: Machine-readable error code
+          example: "VALIDATION_FAILED"
+        message:
+          type: string
+          description: Human-readable error description
+          example: "Request validation failed"
+        errors:
+          type: array
+          description: Field-level validation errors — populated only for `VALIDATION_FAILED`
+          nullable: true
+          items:
+            $ref: '#/components/schemas/FieldError'
+
+    FieldError:
+      type: object
+      description: A single field-level validation error
+      properties:
+        field:
+          type: string
+          description: The camelCase field name that failed validation
+          example: "source_reference_id"
+        message:
+          type: string
+          description: Validation constraint message
+          example: "must not be blank"
+        rejected_value:
+          description: The value that was rejected (null if the field was absent)
+          nullable: true
+          example: null
+
+    StubStatusResponse:
+      type: object
+      description: Current state of the stub simulator
+      properties:
+        message:
+          type: string
+          description: Human-readable outcome (present on configure/clear only)
+          example: "Stub simulator configured"
+        failing_systems:
+          type: array
+          description: Target systems currently configured to return failure
+          items:
+            type: string
+            enum: [ CBS, GL, OBPM ]
+          example: [ "CBS" ]

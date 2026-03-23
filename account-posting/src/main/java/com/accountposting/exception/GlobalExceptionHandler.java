@@ -32,7 +32,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex) {
         boolean isBadInput = "INVALID_ENUM_VALUE".equals(ex.getCode())
-                || "VALIDATION_FAILED".equals(ex.getCode());
+                || "VALIDATION_FAILED".equals(ex.getCode())
+                || "DUPLICATE_E2E_REF".equals(ex.getCode())
+                || "DUPLICATE_CONFIG_ORDER".equals(ex.getCode());
         HttpStatus status = isBadInput ? HttpStatus.BAD_REQUEST : HttpStatus.UNPROCESSABLE_ENTITY;
         log.warn("Business rule violation [{}] {}: {}", ex.getCode(), status.value(), ex.getMessage());
         return ResponseEntity.status(status)
@@ -73,7 +75,7 @@ public class GlobalExceptionHandler {
             message = "The request conflicts with existing data";
         }
 
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.builder()
                         .id(UUID.randomUUID().toString())
                         .name(errorCode)

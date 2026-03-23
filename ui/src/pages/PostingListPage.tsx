@@ -64,12 +64,12 @@ export default function PostingListPage() {
   const to = Math.min((currentPage + 1) * pageSize, totalElements);
 
   const pendingIds = (data?.content ?? [])
-    .filter(p => p.postingStatus === 'PENDING')
+    .filter(p => p.postingStatus === 'PNDG')
     .map(p => p.postingId);
   const hasPending = pendingIds.length > 0;
 
   const selectedPendingIds = [...selected].filter(id =>
-    (data?.content ?? []).some(p => p.postingId === id && p.postingStatus === 'PENDING'),
+    (data?.content ?? []).some(p => p.postingId === id && p.postingStatus === 'PNDG'),
   );
   const hasSelectedPending = selectedPendingIds.length > 0;
 
@@ -192,9 +192,9 @@ export default function PostingListPage() {
           onChange={e => setDraft(d => ({ ...d, status: e.target.value as PostingStatus || undefined }))}
         >
           <option value="">Posting Status</option>
-          <option value="PENDING">PENDING</option>
-          <option value="SUCCESS">SUCCESS</option>
-          <option value="FAILED">FAILED</option>
+          <option value="PNDG">PNDG</option>
+          <option value="ACSP">ACSP</option>
+          <option value="RJCT">RJCT</option>
         </select>
 
         <select
@@ -256,6 +256,7 @@ export default function PostingListPage() {
                 <th style={s.th}>Target Systems</th>
                 <th style={s.th}>Exec. Date</th>
                 <th style={s.th}>Amount</th>
+                <th style={s.th}>Currency</th>
                 <th style={s.th}>Payment Status</th>
                 <th style={s.th}>Reason</th>
                 <th style={{ ...s.th, width: 90 }}></th>
@@ -285,12 +286,13 @@ export default function PostingListPage() {
                       <td style={s.td}>{p.requestType}</td>
                       <td style={s.td}>{p.targetSystems ?? '—'}</td>
                       <td style={s.td}>{p.requestedExecutionDate}</td>
-                      <td style={s.td}>{p.amount} {p.currency}</td>
+                      <td style={s.td}>{p.amount}</td>
+                      <td style={s.td}>{p.currency}</td>
                       <td style={s.td}><StatusBadge status={p.postingStatus} /></td>
                       <td style={{ ...s.td, ...s.reasonCell }} title={p.reason ?? ''}>{p.reason ?? '—'}</td>
                       <td style={{ ...s.td, width: 90 }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'flex-end' }}>
-                          {p.postingStatus === 'PENDING' && (
+                          {p.postingStatus === 'PNDG' && (
                             <button
                               style={{
                                 ...s.retryRowBtn,
@@ -320,7 +322,7 @@ export default function PostingListPage() {
                     </tr>
                     {expanded && (
                       <tr style={{ background: '#f4f7ff' }}>
-                        <td colSpan={11} style={s.expandedCell}>
+                        <td colSpan={12} style={s.expandedCell}>
                           <div style={s.expandedLabel}>Posting Legs</div>
                           <LegTable legs={p.responses ?? []} />
                         </td>

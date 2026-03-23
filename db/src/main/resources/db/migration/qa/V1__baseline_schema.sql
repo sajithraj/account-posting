@@ -1,7 +1,7 @@
 -- =============================================================================
 -- V1__baseline_schema.sql
--- Consolidated baseline — represents the final schema state equivalent to
--- dev V1 through V12. Applied as a single script on first-time env setup.
+-- Full baseline schema — tables, indexes, constraints and seed data.
+-- Applied as a single script on first-time setup for all environments.
 -- =============================================================================
 
 -- ── account_posting ───────────────────────────────────────────────────────────
@@ -20,8 +20,8 @@ CREATE TABLE account_posting
     creditor_account         VARCHAR(50)    NOT NULL,
     requested_execution_date DATE           NOT NULL,
     remittance_information   VARCHAR(500),
-    status                   VARCHAR(10)    NOT NULL DEFAULT 'PENDING'
-        CHECK (status IN ('PENDING', 'SUCCESS', 'FAILED')),
+    status                   VARCHAR(10)    NOT NULL DEFAULT 'PNDG'
+        CHECK (status IN ('PNDG', 'ACSP', 'RJCT')),
     request_payload          JSONB,
     response_payload         JSONB,
     retry_locked_until       TIMESTAMPTZ,
@@ -82,37 +82,35 @@ CREATE INDEX idx_pc_source_name ON posting_config (source_name);
 -- ── Seed data ─────────────────────────────────────────────────────────────────
 INSERT INTO posting_config (source_name, request_type, target_system, operation, order_seq)
 VALUES
--- DMS: CBS_GL → CBS then GL
-('DMS', 'CBS_GL', 'CBS_POSTING', 'CBS_PROCESS', 1),
-('DMS', 'CBS_GL', 'GL_POSTING', 'GL_PROCESS', 2),
+-- IMX: IMX_CBS_GL → CBS then GL
+('IMX', 'IMX_CBS_GL', 'CBS', 'POSTING', 1),
+('IMX', 'IMX_CBS_GL', 'GL', 'POSTING', 2),
 
--- DMS: OBPM only
-('DMS', 'OBPM', 'OBPM_POSTING', 'OBPM_PROCESS', 1),
+-- IMX: IMX_OBPM → OBPM only
+('IMX', 'IMX_OBPM', 'OBPM', 'POSTING', 1),
 
--- RMS: EFD_RETURN → CBS then GL
-('RMS', 'EFD_RETURN', 'CBS_POSTING', 'CBS_PROCESS', 1),
-('RMS', 'EFD_RETURN', 'GL_POSTING', 'GL_PROCESS', 2),
+-- RMS: FED_RETURN → CBS then GL
+('RMS', 'FED_RETURN', 'CBS', 'POSTING', 1),
+('RMS', 'FED_RETURN', 'GL', 'POSTING', 2),
 
--- RMS: USDNT_GL_RETURN → GL only
-('RMS', 'USDNT_GL_RETURN', 'GL_POSTING', 'GL_PROCESS', 1),
+-- RMS: GL_RETURN → GL (two legs)
+('RMS', 'GL_RETURN', 'GL', 'POSTING', 1),
+('RMS', 'GL_RETURN', 'GL', 'POSTING', 2),
 
--- USDNT: GL_RETURN → GL only
-('USDNT', 'GL_RETURN', 'GL_POSTING', 'GL_PROCESS', 1),
+-- RMS: MCA_RETURN → OBPM only
+('RMS', 'MCA_RETURN', 'OBPM', 'POSTING', 1),
 
--- LCD: USDNT_GL → OBPM then CBS
-('LCD', 'USDNT_GL', 'OBPM_POSTING', 'OBPM_PROCESS', 1),
-('LCD', 'USDNT_GL', 'CBS_POSTING', 'CBS_PROCESS', 2),
+-- STABLECOIN: BUY_CUSTOMER_POSTNG → CBS (order 2) then GL (order 3)
+-- Note: 'BUY_CUSTOMER_POSTNG' is the canonical value (missing trailing 'I') — do not correct
+('STABLECOIN', 'BUY_CUSTOMER_POSTNG', 'CBS', 'POSTING', 2),
+('STABLECOIN', 'BUY_CUSTOMER_POSTNG', 'GL', 'POSTING', 3),
 
--- NPSS: NPSS_PAYMENT → CBS then OBPM
-('NPSS', 'NPSS_PAYMENT', 'CBS_POSTING', 'CBS_PROCESS', 1),
-('NPSS', 'NPSS_PAYMENT', 'OBPM_POSTING', 'OBPM_PROCESS', 2),
+-- STABLECOIN: ADD_ACCOUNT_HOLD → CBS (ADD_HOLD operation)
+('STABLECOIN', 'ADD_ACCOUNT_HOLD', 'CBS', 'ADD_HOLD', 1),
 
--- DBA: DBA_ACCOUNT_HOLD → CBS only
-('DBA', 'DBA_ACCOUNT_HOLD', 'CBS_POSTING', 'CBS_PROCESS', 1),
+-- STABLECOIN: BUY_CUSTOMER_POSTING → CBS (REMOVE_HOLD operation)
+('STABLECOIN', 'BUY_CUSTOMER_POSTING', 'CBS', 'REMOVE_HOLD', 1),
 
--- STABLECOIN: BNK_CUSTOMER → OBPM then GL
-('STABLECOIN', 'BNK_CUSTOMER', 'OBPM_POSTING', 'OBPM_PROCESS', 1),
-('STABLECOIN', 'BNK_CUSTOMER', 'GL_POSTING', 'GL_PROCESS', 2),
-
--- STABLECOIN: BNK_CANCEL_HOLD → CBS only
-('STABLECOIN', 'BNK_CANCEL_HOLD', 'CBS_POSTING', 'CBS_PROCESS', 1);
+-- STABLECOIN: CUSTOMER_POSTING → CBS then GL
+('STABLECOIN', 'CUSTOMER_POSTING', 'CBS', 'POSTING', 1),
+('STABLECOIN', 'CUSTOMER_POSTING', 'GL', 'POSTING', 2);

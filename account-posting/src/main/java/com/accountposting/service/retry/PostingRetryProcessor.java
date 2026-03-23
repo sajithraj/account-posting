@@ -106,7 +106,7 @@ public class PostingRetryProcessor {
         // Promote posting to SUCCESS only when every leg across all attempts is now SUCCESS.
         List<AccountPostingLegResponse> allLegs = legService.listLegs(postingId);
         boolean fullySucceeded = allLegs.stream().allMatch(l -> l.getStatus() == LegStatus.SUCCESS);
-        PostingStatus newStatus = fullySucceeded ? PostingStatus.SUCCESS : PostingStatus.PENDING;
+        PostingStatus newStatus = fullySucceeded ? PostingStatus.ACSP : PostingStatus.PNDG;
         String reason = fullySucceeded
                 ? "Request processed successfully"
                 : results.stream()

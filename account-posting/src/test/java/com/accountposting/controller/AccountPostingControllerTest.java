@@ -73,7 +73,7 @@ class AccountPostingControllerTest {
         return AccountPostingCreateResponse.builder()
                 .sourceReferenceId("SRC-001")
                 .endToEndReferenceId("E2E-001")
-                .postingStatus(PostingStatus.SUCCESS)
+                .postingStatus(PostingStatus.ACSP)
                 .build();
     }
 
@@ -82,7 +82,7 @@ class AccountPostingControllerTest {
                 .postingId(id)
                 .sourceReferenceId("SRC-001")
                 .endToEndReferenceId("E2E-001")
-                .postingStatus(PostingStatus.SUCCESS)
+                .postingStatus(PostingStatus.ACSP)
                 .build();
     }
 
@@ -101,7 +101,7 @@ class AccountPostingControllerTest {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.source_reference_id").value("SRC-001"))
                     .andExpect(jsonPath("$.end_to_end_reference_id").value("E2E-001"))
-                    .andExpect(jsonPath("$.posting_status").value("SUCCESS"));
+                    .andExpect(jsonPath("$.posting_status").value("ACSP"));
         }
 
         @Test
@@ -215,7 +215,7 @@ class AccountPostingControllerTest {
         }
 
         @Test
-        void returns422_whenDuplicateEndToEndReferenceId() throws Exception {
+        void returns400_whenDuplicateEndToEndReferenceId() throws Exception {
             when(service.create(any()))
                     .thenThrow(new BusinessException("DUPLICATE_E2E_REF",
                             "Posting with this endToEndReferenceId already exists"));
@@ -223,7 +223,7 @@ class AccountPostingControllerTest {
             mockMvc.perform(post("/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
-                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.name").value("DUPLICATE_E2E_REF"))
                     .andExpect(jsonPath("$.message").value(containsString("already exists")));
         }
@@ -286,7 +286,7 @@ class AccountPostingControllerTest {
             when(service.search(any(), any())).thenReturn(Page.empty());
 
             mockMvc.perform(get("/account-posting")
-                            .param("postingStatus", "SUCCESS")
+                            .param("postingStatus", "ACSP")
                             .param("sourceName", "TEST-SOURCE")
                             .param("requestType", "PAYMENT"))
                     .andExpect(status().isOk());
@@ -318,7 +318,7 @@ class AccountPostingControllerTest {
 
             AccountPostingResponse resp = AccountPostingResponse.builder()
                     .postingId(42L)
-                    .postingStatus(PostingStatus.SUCCESS)
+                    .postingStatus(PostingStatus.ACSP)
                     .responses(List.of(leg))
                     .build();
             when(service.findById(42L)).thenReturn(resp);

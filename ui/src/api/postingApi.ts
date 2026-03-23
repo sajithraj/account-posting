@@ -8,7 +8,46 @@ import type {
   PostingSearchParams,
 } from '../types/posting';
 
+// ── key-case helpers ──────────────────────────────────────────────────────────
+
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);
+}
+
+function transformKeys(obj: unknown, transform: (k: string) => string): unknown {
+  if (Array.isArray(obj)) return obj.map(v => transformKeys(v, transform));
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+        transform(k),
+        transformKeys(v, transform),
+      ]),
+    );
+  }
+  return obj;
+}
+
+// ── axios instance with interceptors ─────────────────────────────────────────
+
 const http = axios.create({ baseURL: '/api' });
+
+// Outgoing: convert camelCase body → snake_case (POST / PUT / PATCH only)
+http.interceptors.request.use(config => {
+  if (config.data && typeof config.data === 'object') {
+    config.data = transformKeys(config.data, camelToSnake);
+  }
+  return config;
+});
+
+// Incoming: convert snake_case response → camelCase
+http.interceptors.response.use(response => {
+  response.data = transformKeys(response.data, snakeToCamel);
+  return response;
+});
 
 // Extract a human-readable message from any API error
 export function getErrorMessage(err: unknown): string {

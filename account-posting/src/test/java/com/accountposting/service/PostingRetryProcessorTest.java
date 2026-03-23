@@ -100,7 +100,7 @@ class PostingRetryProcessorTest {
         assertThat(results.get(0).getNewStatus()).isEqualTo("SUCCESS");
 
         // Posting status should be updated to SUCCESS
-        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.SUCCESS));
+        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.ACSP));
     }
 
     // ── multiple legs — sequential by order ───────────────────────────────────
@@ -137,7 +137,7 @@ class PostingRetryProcessorTest {
         inOrder.verify(cbsStrategy).process(eq(2L), eq(1), any(), eq(true), eq(11L));
         inOrder.verify(glStrategy).process(eq(2L), eq(2), any(), eq(true), eq(12L));
 
-        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.SUCCESS));
+        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.ACSP));
     }
 
     // ── one leg still fails after retry → posting stays PENDING ───────────────
@@ -161,7 +161,7 @@ class PostingRetryProcessorTest {
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getNewStatus()).isEqualTo("FAILED");
-        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.PENDING));
+        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.PNDG));
     }
 
     // ── strategy throws exception → leg recorded as FAILED ────────────────────
@@ -185,7 +185,7 @@ class PostingRetryProcessorTest {
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getNewStatus()).isEqualTo("FAILED");
         assertThat(results.get(0).getReason()).contains("CBS timeout");
-        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.PENDING));
+        verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.PNDG));
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ class PostingRetryProcessorTest {
     private AccountPostingEntity buildPosting(Long id, String requestType) {
         AccountPostingEntity p = new AccountPostingEntity();
         p.setPostingId(id);
-        p.setStatus(PostingStatus.PENDING);
+        p.setStatus(PostingStatus.PNDG);
         p.setRequestType(requestType);
         try {
             AccountPostingRequest req = new AccountPostingRequest();

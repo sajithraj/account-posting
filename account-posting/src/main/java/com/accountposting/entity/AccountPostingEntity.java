@@ -73,7 +73,7 @@ public class AccountPostingEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 10)
     @Builder.Default
-    private PostingStatus status = PostingStatus.PENDING;
+    private PostingStatus status = PostingStatus.PNDG;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "request_payload", columnDefinition = "jsonb")

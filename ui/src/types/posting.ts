@@ -1,4 +1,4 @@
-export type PostingStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
+export type PostingStatus = 'PNDG' | 'ACSP' | 'RJCT';
 export type CreditDebitIndicator = 'CREDIT' | 'DEBIT';
 
 export interface AccountPostingRequest {

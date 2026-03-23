@@ -108,11 +108,11 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         try {
             requestValidator.validate(request);
         } catch (BusinessException ex) {
-            posting.setStatus(PostingStatus.FAILED);
+            posting.setStatus(PostingStatus.RJCT);
             posting.setReason(ex.getMessage());
             posting.setResponsePayload(mappingUtils.toJson(Map.of("error", ex.getMessage())));
             repository.save(posting);
-            log.warn("Posting marked FAILED due to validation | postingId={} reason={}", posting.getPostingId(), ex.getMessage());
+            log.warn("Posting marked RJCT due to validation | postingId={} reason={}", posting.getPostingId(), ex.getMessage());
             throw ex;
         }
 
@@ -127,11 +127,11 @@ public class AccountPostingServiceImpl implements AccountPostingService {
 
         if (configs.isEmpty()) {
             String reason = "No posting config found for requestType: " + request.getRequestType();
-            posting.setStatus(PostingStatus.FAILED);
+            posting.setStatus(PostingStatus.RJCT);
             posting.setReason(reason);
             posting.setResponsePayload(mappingUtils.toJson(Map.of("error", reason)));
             repository.save(posting);
-            log.warn("Posting marked FAILED — no config found | postingId={} requestType={}",
+            log.warn("Posting marked RJCT — no config found | postingId={} requestType={}",
                     posting.getPostingId(), request.getRequestType());
             throw new BusinessException("NO_CONFIG_FOUND", reason);
         }
@@ -179,7 +179,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
             }
         }
 
-        PostingStatus finalStatus = allSuccess ? PostingStatus.SUCCESS : PostingStatus.PENDING;
+        PostingStatus finalStatus = allSuccess ? PostingStatus.ACSP : PostingStatus.PNDG;
         String finalReason = allSuccess
                 ? "Request processed successfully"
                 : legResponses.stream()
@@ -194,7 +194,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         repository.save(posting);
         log.info("Posting finalized | postingId={} status={} legs={}", posting.getPostingId(), finalStatus, legResponses.size());
 
-        if (finalStatus == PostingStatus.SUCCESS && eventPublisher != null) {
+        if (finalStatus == PostingStatus.ACSP && eventPublisher != null) {
             eventPublisher.publishSuccess(new PostingSuccessEvent(
                     posting.getPostingId(),
                     posting.getEndToEndReferenceId(),
@@ -288,7 +288,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
 
         // 1. Determine candidate IDs
         List<Long> candidateIds = CollectionUtils.isEmpty(request.getPostingIds())
-                ? repository.findEligibleForRetry(PostingStatus.PENDING, now)
+                ? repository.findEligibleForRetry(PostingStatus.PNDG, now)
                 .stream().map(AccountPostingEntity::getPostingId).toList()
                 : request.getPostingIds();
 
@@ -303,7 +303,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         // 2. Lock + fetch in one short transaction that commits immediately.
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
         List<AccountPostingEntity> lockedPostings = txTemplate.execute(tx -> {
-            int lockedCount = repository.lockForRetry(candidateIds, PostingStatus.PENDING, now, lockUntil);
+            int lockedCount = repository.lockForRetry(candidateIds, PostingStatus.PNDG, now, lockUntil);
             log.info("RETRY | lockForRetry locked={} lockUntil={}", lockedCount, lockUntil);
             return repository.findByIdsAndLockUntil(candidateIds, lockUntil);
         });

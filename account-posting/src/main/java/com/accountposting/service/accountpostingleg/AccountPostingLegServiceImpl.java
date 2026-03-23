@@ -105,10 +105,10 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
             boolean allSuccess = repository.findNonSuccessByPostingId(postingId, LegStatus.SUCCESS).isEmpty();
             if (allSuccess) {
                 postingRepository.findById(postingId).ifPresent(posting -> {
-                    posting.setStatus(PostingStatus.SUCCESS);
+                    posting.setStatus(PostingStatus.ACSP);
                     posting.setReason("Request processed successfully");
                     postingRepository.save(posting);
-                    log.info("All legs SUCCESS — promoted postingId={} to SUCCESS", postingId);
+                    log.info("All legs SUCCESS — promoted postingId={} to ACSP", postingId);
                 });
             }
         }

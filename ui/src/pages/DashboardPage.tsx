@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { postingApi } from '../api/postingApi';
-import type { PostingStatus } from '../types/posting';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -133,9 +132,9 @@ function SystemPanel({ name, color, filterKey, range }: PanelProps) {
   const baseParams = { [filterKey]: name, size: 1, page: 0, ...range };
 
   const total   = useStatusCount({ ...baseParams });
-  const pending = useStatusCount({ ...baseParams, status: 'PENDING' });
-  const success = useStatusCount({ ...baseParams, status: 'SUCCESS' });
-  const failed  = useStatusCount({ ...baseParams, status: 'FAILED'  });
+  const pending = useStatusCount({ ...baseParams, status: 'PNDG' });
+  const success = useStatusCount({ ...baseParams, status: 'ACSP' });
+  const failed  = useStatusCount({ ...baseParams, status: 'RJCT' });
 
   return (
     <div style={s.panel}>
@@ -144,9 +143,9 @@ function SystemPanel({ name, color, filterKey, range }: PanelProps) {
         <span style={s.panelTotal}>{total ?? '…'} total</span>
       </div>
       <div style={s.counters}>
-        <Counter label="PENDING" value={pending} color="#856404" bg="#fffbeb" />
-        <Counter label="SUCCESS" value={success} color="#0a3622" bg="#f0fdf4" />
-        <Counter label="FAILED"  value={failed}  color="#58151c" bg="#fff1f2" />
+        <Counter label="PNDG" value={pending} color="#856404" bg="#fffbeb" />
+        <Counter label="ACSP" value={success} color="#0a3622" bg="#f0fdf4" />
+        <Counter label="RJCT" value={failed}  color="#58151c" bg="#fff1f2" />
       </div>
     </div>
   );
@@ -166,7 +165,7 @@ function useStatusCount(params: Record<string, unknown>): number | undefined {
 // ── Counter tile ───────────────────────────────────────────────────────────────
 
 function Counter({ label, value, color, bg }: {
-  label: PostingStatus; value: number | undefined; color: string; bg: string;
+  label: string; value: number | undefined; color: string; bg: string;
 }) {
   return (
     <div style={{ ...s.counter, background: bg, color }}>

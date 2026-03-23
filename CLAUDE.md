@@ -11,7 +11,7 @@ tracks every response leg, and provides a UI with retry.
 
 | Directory          | What it is                              | Port |
 |--------------------|-----------------------------------------|------|
-| `account-posting/` | Spring Boot 3.2, Java 21, Maven         | 8080 |
+| `account-posting/` | Spring Boot 3.2, Java 17, Maven         | 8080 |
 | `db/`              | Flyway migration scripts + Maven plugin | —    |
 | `ui/`              | React 18, TypeScript, Vite              | 3000 |
 

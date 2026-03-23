@@ -100,7 +100,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_allLegsSucceed_postingStatusIsSavedAsSuccess() {
         AccountPostingRequest request = buildRequest("e2e-001");
-        AccountPostingEntity posting = buildPosting(1L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(1L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
         PostingConfig config2 = buildConfig(2, "GL");
@@ -136,7 +136,7 @@ class AccountPostingServiceImplTest {
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(AccountPostingEntity::getStatus)
-                .contains(PostingStatus.SUCCESS);
+                .contains(PostingStatus.ACSP);
 
         // Both strategies must be called in order
         verify(strategy1).process(eq(1L), eq(1), any(), eq(false), any());
@@ -148,7 +148,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_noConfigFound_savesFailedStatusAndThrowsBusinessException() {
         AccountPostingRequest request = buildRequest("e2e-002");
-        AccountPostingEntity posting = buildPosting(2L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(2L, PostingStatus.PNDG);
 
         when(repository.existsByEndToEndReferenceId("e2e-002")).thenReturn(false);
         when(mapper.toEntity(request)).thenReturn(posting);
@@ -165,7 +165,7 @@ class AccountPostingServiceImplTest {
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(AccountPostingEntity::getStatus)
-                .contains(PostingStatus.FAILED);
+                .contains(PostingStatus.RJCT);
 
         // No strategy should be called
         verifyNoInteractions(strategyFactory);
@@ -191,7 +191,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_oneLegFails_postingStatusIsSavedAsPending() {
         AccountPostingRequest request = buildRequest("e2e-003");
-        AccountPostingEntity posting = buildPosting(3L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(3L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
         PostingConfig config2 = buildConfig(2, "GL");
@@ -226,7 +226,7 @@ class AccountPostingServiceImplTest {
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(AccountPostingEntity::getStatus)
-                .contains(PostingStatus.PENDING);
+                .contains(PostingStatus.PNDG);
     }
 
     // ── CREATE: all legs fail → PENDING ────────────────────────────────────────
@@ -234,7 +234,7 @@ class AccountPostingServiceImplTest {
     @Test
     void create_allLegsFail_postingStatusIsSavedAsPending() {
         AccountPostingRequest request = buildRequest("e2e-004");
-        AccountPostingEntity posting = buildPosting(4L, PostingStatus.PENDING);
+        AccountPostingEntity posting = buildPosting(4L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
         PostingStrategy strategy1 = mock(PostingStrategy.class);
@@ -264,19 +264,19 @@ class AccountPostingServiceImplTest {
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(AccountPostingEntity::getStatus)
-                .contains(PostingStatus.PENDING);
+                .contains(PostingStatus.PNDG);
     }
 
     // ── RETRY: bulk — all PENDING postings ─────────────────────────────────────
 
     @Test
     void retry_bulkAllPending_locksAndProcessesEachPosting() {
-        AccountPostingEntity p1 = buildPosting(10L, PostingStatus.PENDING);
-        AccountPostingEntity p2 = buildPosting(11L, PostingStatus.PENDING);
+        AccountPostingEntity p1 = buildPosting(10L, PostingStatus.PNDG);
+        AccountPostingEntity p2 = buildPosting(11L, PostingStatus.PNDG);
 
-        when(repository.findEligibleForRetry(eq(PostingStatus.PENDING), any(Instant.class)))
+        when(repository.findEligibleForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
                 .thenReturn(List.of(p1, p2));
-        when(repository.lockForRetry(eq(List.of(10L, 11L)), eq(PostingStatus.PENDING),
+        when(repository.lockForRetry(eq(List.of(10L, 11L)), eq(PostingStatus.PNDG),
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(2);
         when(repository.findByIdsAndLockUntil(eq(List.of(10L, 11L)), any(Instant.class)))
@@ -302,9 +302,9 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_specificPostingIds_onlyLocksAndProcessesThoseIds() {
-        AccountPostingEntity p1 = buildPosting(20L, PostingStatus.PENDING);
+        AccountPostingEntity p1 = buildPosting(20L, PostingStatus.PNDG);
 
-        when(repository.lockForRetry(eq(List.of(20L)), eq(PostingStatus.PENDING),
+        when(repository.lockForRetry(eq(List.of(20L)), eq(PostingStatus.PNDG),
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(1);
         when(repository.findByIdsAndLockUntil(eq(List.of(20L)), any(Instant.class)))
@@ -328,7 +328,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_noEligiblePostings_returnsEmptyResponse() {
-        when(repository.findEligibleForRetry(eq(PostingStatus.PENDING), any(Instant.class)))
+        when(repository.findEligibleForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
                 .thenReturn(List.of());
 
         RetryResponse response = service.retry(new RetryRequest());
@@ -341,9 +341,9 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_allPostingsAlreadyLocked_returnsEmptyResponse() {
-        AccountPostingEntity p1 = buildPosting(30L, PostingStatus.PENDING);
+        AccountPostingEntity p1 = buildPosting(30L, PostingStatus.PNDG);
 
-        when(repository.findEligibleForRetry(eq(PostingStatus.PENDING), any(Instant.class)))
+        when(repository.findEligibleForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
                 .thenReturn(List.of(p1));
         when(repository.lockForRetry(anyList(), any(), any(), any())).thenReturn(0);
         when(repository.findByIdsAndLockUntil(anyList(), any())).thenReturn(List.of());

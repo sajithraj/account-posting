@@ -19,7 +19,7 @@ import org.mapstruct.ReportingPolicy;
 public interface AccountPostingMapper {
 
     @Mapping(target = "postingId", ignore = true)
-    @Mapping(target = "status", expression = "java(PostingStatus.PENDING)")
+    @Mapping(target = "status", expression = "java(PostingStatus.PNDG)")
     @Mapping(target = "requestPayload", ignore = true)
     @Mapping(target = "responsePayload", ignore = true)
     @Mapping(target = "targetSystems", ignore = true)

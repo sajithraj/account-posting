@@ -1,6 +1,6 @@
 # account-posting — Spring Boot API
 
-Spring Boot 3.5 · Java 21 · Maven · PostgreSQL · Kafka (optional)
+Spring Boot 3.5 · Java 17 · Maven · PostgreSQL · Kafka (optional)
 
 ---
 

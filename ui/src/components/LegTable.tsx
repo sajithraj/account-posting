@@ -87,7 +87,6 @@ export default function LegTable({ legs, onUpdateStatus, updatingLegId }: Props)
                           setPendingStatus(prev => ({ ...prev, [leg.postingLegId]: e.target.value }));
                         }}
                       >
-                        <option value="PENDING">PENDING</option>
                         <option value="SUCCESS">SUCCESS</option>
                         <option value="FAILED">FAILED</option>
                       </select>
