@@ -39,7 +39,7 @@ Step-by-step instructions for running the Account Posting service in each enviro
 ## ENV 1 — Local (H2, no Docker)
 
 No Docker required. Hibernate creates the schema on startup and drops it on shutdown.
-Seed data is loaded automatically from `account-posting/src/main/resources/data-local.sql`.
+Seed data is loaded automatically from `backend/src/main/resources/data-local.sql`.
 
 ### Prerequisites
 
@@ -49,7 +49,7 @@ Seed data is loaded automatically from `account-posting/src/main/resources/data-
 ### Start
 
 ```bash
-cd account-posting
+cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
@@ -218,7 +218,7 @@ Run from the `deploy/` directory. Replace `<env>` with `dev`, `qa`, `uat`, or `p
 
 | What changed           | Command                                                                 |
 |------------------------|-------------------------------------------------------------------------|
-| Java source            | `docker compose -f docker-compose.<env>.yml up --build account-posting` |
+| Java source            | `docker compose -f docker-compose.<env>.yml up --build backend` |
 | React / TypeScript     | `docker compose -f docker-compose.<env>.yml up --build ui`              |
 | New DB migration added | `docker compose -f docker-compose.<env>.yml up flyway`                  |
 | Everything             | `docker compose -f docker-compose.<env>.yml up --build`                 |
@@ -292,7 +292,7 @@ docker compose -f docker-compose.<env>.yml logs flyway
 
 ```bash
 docker compose -f docker-compose.<env>.yml logs -f <service>
-# services: postgres  flyway  account-posting  ui
+# services: postgres  flyway  backend  ui
 ```
 
 ### Full clean reset

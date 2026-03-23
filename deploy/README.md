@@ -31,7 +31,7 @@ No JDK or Node.js installation required — all builds happen inside Docker.
 
 ```
 project/
-├── account-posting/          Spring Boot API (Java 17, Maven)
+├── backend/          Spring Boot API (Java 17, Maven)
 │   └── Dockerfile
 ├── db/
 │   └── src/main/resources/db/migration/
@@ -210,7 +210,7 @@ docker compose -f docker-compose.qa.yml up --build -d
 |------|-------------------|----------------------------------------------------------------------|
 | 1    | `postgres`        | Starts PostgreSQL, waits until `pg_isready` passes                   |
 | 2    | `flyway`          | Mounts env-specific migration folder, applies V1 baseline, exits     |
-| 3    | `account-posting` | Builds JAR (Maven inside Docker), starts API, waits for health check |
+| 3    | `backend` | Builds JAR (Maven inside Docker), starts API, waits for health check |
 | 4    | `ui`              | Builds React app (Vite inside Docker), serves via nginx              |
 
 ---
@@ -236,7 +236,7 @@ docker compose -f docker-compose.dev.yml ps
 docker compose -f docker-compose.dev.yml logs -f
 
 # Follow logs for one service
-docker compose -f docker-compose.dev.yml logs -f account-posting
+docker compose -f docker-compose.dev.yml logs -f backend
 
 # Stop (keeps data)
 docker compose -f docker-compose.dev.yml down
@@ -245,7 +245,7 @@ docker compose -f docker-compose.dev.yml down
 docker compose -f docker-compose.dev.yml down -v
 
 # Rebuild one service after a code change
-docker compose -f docker-compose.dev.yml up --build account-posting
+docker compose -f docker-compose.dev.yml up --build backend
 docker compose -f docker-compose.dev.yml up --build ui
 ```
 
@@ -255,7 +255,7 @@ docker compose -f docker-compose.dev.yml up --build ui
 
 | What changed           | Docker command                                                          | Local (batch)                  |
 |------------------------|-------------------------------------------------------------------------|--------------------------------|
-| Java source            | `docker compose -f docker-compose.<env>.yml up --build account-posting` | Restart `start-backend.bat`    |
+| Java source            | `docker compose -f docker-compose.<env>.yml up --build backend` | Restart `start-backend.bat`    |
 | React / TypeScript     | `docker compose -f docker-compose.<env>.yml up --build ui`              | Vite hot-reloads automatically |
 | New DB migration added | `docker compose -f docker-compose.<env>.yml up flyway`                  | Re-run `start-db.bat`          |
 | Everything             | `docker compose -f docker-compose.<env>.yml up --build`                 | Restart all batch scripts      |

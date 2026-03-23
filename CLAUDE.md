@@ -11,13 +11,13 @@ tracks every response leg, and provides a UI with retry.
 
 | Directory          | What it is                              | Port |
 |--------------------|-----------------------------------------|------|
-| `account-posting/` | Spring Boot 3.2, Java 17, Maven         | 8080 |
+| `backend/` | Spring Boot 3.2, Java 17, Maven         | 8080 |
 | `db/`              | Flyway migration scripts + Maven plugin | —    |
 | `ui/`              | React 18, TypeScript, Vite              | 3000 |
 
 ---
 
-## `account-posting/`
+## `backend/`
 
 ### Run Commands
 
@@ -74,7 +74,7 @@ com.accountposting
 
 ### Key Flows
 
-**POST /account-posting:**
+**POST /backend:**
 
 1. Idempotency guard on `endToEndReferenceId`
 2. Save `AccountPosting` (PENDING) + `AccountPostingRequestPayload`
@@ -82,14 +82,14 @@ com.accountposting
 4. For each leg in response → `legService.addLeg()` (in-process, no HTTP)
 5. Update status (SUCCESS/FAILED) + save `AccountPostingResponsePayload`
 
-**POST /account-posting/retry:**
+**POST /backend/retry:**
 
 1. Resolve target postingIds (all non-SUCCESS if none supplied)
 2. `legService.lockLegsForRetry()` — single atomic `@Modifying` UPDATE acquires the pessimistic lock
 3. For each locked leg → `CoreBankingClient.submitSingleLeg()` stub → `legService.updateLeg()`
 4. Update parent posting status
 
-**GET /account-posting (search):**
+**GET /backend (search):**
 `AccountPostingSpecification.from(criteria)` composes JPA Criteria predicates — every field is optional.
 
 ### Design Notes

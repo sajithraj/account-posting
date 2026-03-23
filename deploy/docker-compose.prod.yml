@@ -40,11 +40,11 @@ services:
       - app-net
 
   # ── Spring Boot API ────────────────────────────────────────────────────────
-  account-posting:
+  backend:
     build:
-      context: ../account-posting
+      context: ../backend
       dockerfile: Dockerfile
-    container_name: account_posting_api_prod
+    container_name: backend_api_prod
     restart: unless-stopped
     depends_on:
       flyway:
@@ -75,7 +75,7 @@ services:
     container_name: account_posting_ui_prod
     restart: unless-stopped
     depends_on:
-      account-posting:
+      backend:
         condition: service_healthy
     ports:
       - "3000:80"

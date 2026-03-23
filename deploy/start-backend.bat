@@ -14,5 +14,5 @@ echo API will be available at http://localhost:8080/api
 echo Press Ctrl+C to stop.
 echo.
 
-cd /d "%ROOT%\account-posting"
+cd /d "%ROOT%\backend"
 call mvn spring-boot:run -Dspring-boot.run.profiles=dev
