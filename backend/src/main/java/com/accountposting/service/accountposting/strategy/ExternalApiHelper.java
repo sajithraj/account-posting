@@ -1,7 +1,7 @@
 package com.accountposting.service.accountposting.strategy;
 
 import com.accountposting.config.StubSimulatorConfig;
-import com.accountposting.dto.accountposting.AccountPostingRequest;
+import com.accountposting.dto.accountposting.AccountPostingRequestV2;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +27,7 @@ public class ExternalApiHelper {
 
     // ── CBS ───────────────────────────────────────────────────────────────────
 
-    public Map<String, Object> buildCbsRequest(AccountPostingRequest request, String transactionIndex) {
+    public Map<String, Object> buildCbsRequest(AccountPostingRequestV2 request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
         req.put("transaction_index", transactionIndex);
@@ -56,7 +56,7 @@ public class ExternalApiHelper {
 
     // ── GL ────────────────────────────────────────────────────────────────────
 
-    public Map<String, Object> buildGlRequest(AccountPostingRequest request) {
+    public Map<String, Object> buildGlRequest(AccountPostingRequestV2 request) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
         req.put("target_system", "GL");
@@ -83,7 +83,7 @@ public class ExternalApiHelper {
 
     // ── OBPM ──────────────────────────────────────────────────────────────────
 
-    public Map<String, Object> buildObpmRequest(AccountPostingRequest request) {
+    public Map<String, Object> buildObpmRequest(AccountPostingRequestV2 request) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
         req.put("target_system", "OBPM");

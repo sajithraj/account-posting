@@ -1,6 +1,6 @@
 package com.accountposting.exception;
 
-import com.accountposting.dto.retry.ErrorResponse;
+import com.accountposting.dto.retry.ErrorResponseV2;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -19,10 +19,10 @@ import java.util.UUID;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
+    public ResponseEntity<ErrorResponseV2> handleNotFound(ResourceNotFoundException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ErrorResponse.builder()
+                .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
                         .name("NOT_FOUND")
                         .message(ex.getMessage())
@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex) {
+    public ResponseEntity<ErrorResponseV2> handleBusiness(BusinessException ex) {
         boolean isBadInput = "INVALID_ENUM_VALUE".equals(ex.getCode())
                 || "VALIDATION_FAILED".equals(ex.getCode())
                 || "DUPLICATE_E2E_REF".equals(ex.getCode())
@@ -38,7 +38,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = isBadInput ? HttpStatus.BAD_REQUEST : HttpStatus.UNPROCESSABLE_ENTITY;
         log.warn("Business rule violation [{}] {}: {}", ex.getCode(), status.value(), ex.getMessage());
         return ResponseEntity.status(status)
-                .body(ErrorResponse.builder()
+                .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
                         .name(ex.getCode())
                         .message(ex.getMessage())
@@ -46,11 +46,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ErrorResponseV2> handleNotReadable(HttpMessageNotReadableException ex) {
         String detail = ex.getMostSpecificCause().getMessage();
         log.warn("Malformed request body: {}", detail);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.builder()
+                .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
                         .name("INVALID_REQUEST_BODY")
                         .message("Request body could not be parsed: " + detail)
@@ -58,7 +58,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+    public ResponseEntity<ErrorResponseV2> handleDataIntegrity(DataIntegrityViolationException ex) {
         String cause = ex.getMostSpecificCause().getMessage();
         log.warn("Data integrity violation: {}", cause);
 
@@ -76,7 +76,7 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.builder()
+                .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
                         .name(errorCode)
                         .message(message)
@@ -84,17 +84,17 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorResponseV2> handleValidation(MethodArgumentNotValidException ex) {
         BindingResult result = ex.getBindingResult();
-        List<ErrorResponse.FieldError> fieldErrors = result.getFieldErrors().stream()
-                .map(fe -> ErrorResponse.FieldError.builder()
+        List<ErrorResponseV2.FieldError> fieldErrors = result.getFieldErrors().stream()
+                .map(fe -> ErrorResponseV2.FieldError.builder()
                         .field(fe.getField())
                         .message(fe.getDefaultMessage())
                         .rejectedValue(fe.getRejectedValue())
                         .build())
                 .toList();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.builder()
+                .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
                         .name("VALIDATION_FAILED")
                         .message("Request validation failed")
@@ -103,10 +103,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
+    public ResponseEntity<ErrorResponseV2> handleGeneral(Exception ex) {
         log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ErrorResponse.builder()
+                .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
                         .name("INTERNAL_ERROR")
                         .message("An unexpected error occurred")

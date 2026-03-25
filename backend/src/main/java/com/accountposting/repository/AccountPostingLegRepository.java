@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,12 @@ public interface AccountPostingLegRepository extends JpaRepository<AccountPostin
     List<AccountPostingLegEntity> findByPostingIdOrderByLegOrder(Long postingId);
 
     Optional<AccountPostingLegEntity> findByPostingLegIdAndPostingId(Long postingLegId, Long postingId);
+
+    /**
+     * Fetches all legs belonging to any of the given postingIds.
+     * Used by the archival job to bulk-load legs for a batch of postings.
+     */
+    List<AccountPostingLegEntity> findByPostingIdIn(Collection<Long> postingIds);
 
     /**
      * Returns all non-SUCCESS legs for a posting ordered by legOrder.

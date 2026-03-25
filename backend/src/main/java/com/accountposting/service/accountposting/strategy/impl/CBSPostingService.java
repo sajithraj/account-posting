@@ -1,17 +1,17 @@
 package com.accountposting.service.accountposting.strategy.impl;
 
-import com.accountposting.dto.accountposting.AccountPostingRequest;
-import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
-import com.accountposting.dto.accountpostingleg.ExternalCallResult;
-import com.accountposting.dto.accountpostingleg.LegResponse;
+import com.accountposting.dto.accountposting.AccountPostingRequestV2;
+import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
+import com.accountposting.dto.accountpostingleg.ExternalCallResultV2;
+import com.accountposting.dto.accountpostingleg.LegResponseV2;
 import com.accountposting.entity.enums.LegMode;
 import com.accountposting.entity.enums.LegStatus;
-import com.accountposting.mapper.AccountPostingLegMapper;
-import com.accountposting.mapper.AccountPostingMapper;
-import com.accountposting.mapper.MappingUtils;
+import com.accountposting.mapper.AccountPostingLegMapperV2;
+import com.accountposting.mapper.AccountPostingMapperV2;
+import com.accountposting.mapper.MappingUtilsV2;
 import com.accountposting.service.accountposting.strategy.ExternalApiHelper;
 import com.accountposting.service.accountposting.strategy.PostingStrategy;
-import com.accountposting.service.accountpostingleg.AccountPostingLegService;
+import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,10 +24,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CBSPostingService implements PostingStrategy {
 
-    private final AccountPostingLegService legService;
-    private final AccountPostingLegMapper legMapper;
-    private final AccountPostingMapper postingMapper;
-    private final MappingUtils mappingUtils;
+    private final AccountPostingLegServiceV2 legService;
+    private final AccountPostingLegMapperV2 legMapper;
+    private final AccountPostingMapperV2 postingMapper;
+    private final MappingUtilsV2 mappingUtils;
     private final ExternalApiHelper externalApiHelper;
 
     private static final String TARGET_SYSTEM = "CBS";
@@ -39,8 +39,8 @@ public class CBSPostingService implements PostingStrategy {
     }
 
     @Override
-    public LegResponse process(Long postingId, int legOrder, AccountPostingRequest request,
-                               boolean isRetry, Long existingLegId) {
+    public LegResponseV2 process(Long postingId, int legOrder, AccountPostingRequestV2 request,
+                                 boolean isRetry, Long existingLegId) {
         log.info("CBS {} | postingId={} flow={}", isRetry ? "RETRY" : "CREATE", postingId, getPostingFlow());
 
         // ── Build CBS request ──────────────────────────────────────────────
@@ -66,7 +66,7 @@ public class CBSPostingService implements PostingStrategy {
         String referenceId = String.valueOf(cbsResponse.get("transaction_index"));
 
         // ── Update leg with result ─────────────────────────────────────────
-        ExternalCallResult result = new ExternalCallResult(
+        ExternalCallResultV2 result = new ExternalCallResultV2(
                 LegStatus.valueOf(finalStatus),
                 referenceId,
                 success ? null : "CBS returned status: " + cbsStatus,
@@ -74,7 +74,7 @@ public class CBSPostingService implements PostingStrategy {
                 responsePayloadJson,
                 isRetry ? LegMode.RETRY : LegMode.NORM
         );
-        AccountPostingLegResponse updated = legService.updateLeg(postingId, legId,
+        AccountPostingLegResponseV2 updated = legService.updateLeg(postingId, legId,
                 legMapper.toUpdateLegRequest(result));
         log.info("CBS | leg#{} finalStatus={}", legId, updated.getStatus());
 

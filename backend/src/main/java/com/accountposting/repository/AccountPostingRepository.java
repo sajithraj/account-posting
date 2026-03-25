@@ -2,6 +2,7 @@ package com.accountposting.repository;
 
 import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.enums.PostingStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -59,4 +60,18 @@ public interface AccountPostingRepository
     List<AccountPostingEntity> findByIdsAndLockUntil(
             @Param("ids") List<Long> ids,
             @Param("lockUntil") Instant lockUntil);
+
+    /**
+     * Returns the oldest postings whose {@code createdAt} is before {@code threshold},
+     * ordered by {@code createdAt} ascending so that the earliest records are archived first.
+     * Uses {@link Pageable} to process in fixed-size batches.
+     */
+    @Query("""
+            SELECT p FROM AccountPostingEntity p
+            WHERE p.createdAt < :threshold
+            ORDER BY p.createdAt ASC
+            """)
+    List<AccountPostingEntity> findEligibleForArchival(
+            @Param("threshold") Instant threshold,
+            Pageable pageable);
 }

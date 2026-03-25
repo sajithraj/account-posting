@@ -1,8 +1,8 @@
 package com.accountposting.service.accountposting.strategy;
 
 
-import com.accountposting.dto.accountposting.AccountPostingRequest;
-import com.accountposting.dto.accountpostingleg.LegResponse;
+import com.accountposting.dto.accountposting.AccountPostingRequestV2;
+import com.accountposting.dto.accountpostingleg.LegResponseV2;
 
 public interface PostingStrategy {
 
@@ -22,6 +22,6 @@ public interface PostingStrategy {
      * @param isRetry       when true, updates the existing leg instead of inserting a new one
      * @param existingLegId must be non-null when isRetry=true; identifies the leg to update
      */
-    LegResponse process(Long postingId, int legOrder, AccountPostingRequest request,
-                        boolean isRetry, Long existingLegId);
+    LegResponseV2 process(Long postingId, int legOrder, AccountPostingRequestV2 request,
+                          boolean isRetry, Long existingLegId);
 }

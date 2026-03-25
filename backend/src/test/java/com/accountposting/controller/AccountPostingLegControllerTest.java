@@ -1,14 +1,14 @@
 package com.accountposting.controller;
 
-import com.accountposting.dto.accountpostingleg.AccountPostingLegRequest;
-import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
-import com.accountposting.dto.accountpostingleg.UpdateLegRequest;
+import com.accountposting.dto.accountpostingleg.AccountPostingLegRequestV2;
+import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
+import com.accountposting.dto.accountpostingleg.UpdateLegRequestV2;
 import com.accountposting.entity.enums.LegMode;
 import com.accountposting.entity.enums.LegStatus;
 import com.accountposting.exception.BusinessException;
 import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
-import com.accountposting.service.accountpostingleg.AccountPostingLegService;
+import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,14 +22,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AccountPostingLegController.class)
+@WebMvcTest(AccountPostingLegControllerV2.class)
 @Import(GlobalExceptionHandler.class)
 class AccountPostingLegControllerTest {
 
@@ -40,20 +40,20 @@ class AccountPostingLegControllerTest {
     ObjectMapper objectMapper;
 
     @MockitoBean
-    AccountPostingLegService service;
+    AccountPostingLegServiceV2 service;
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private AccountPostingLegRequest validLegRequest() {
-        AccountPostingLegRequest req = new AccountPostingLegRequest();
+    private AccountPostingLegRequestV2 validLegRequest() {
+        AccountPostingLegRequestV2 req = new AccountPostingLegRequestV2();
         req.setLegOrder(1);
         req.setTargetSystem("CBS");
         req.setAccount("ACC-001");
         return req;
     }
 
-    private AccountPostingLegResponse sampleLegResponse(Long legId, Long postingId) {
-        AccountPostingLegResponse resp = new AccountPostingLegResponse();
+    private AccountPostingLegResponseV2 sampleLegResponse(Long legId, Long postingId) {
+        AccountPostingLegResponseV2 resp = new AccountPostingLegResponseV2();
         resp.setPostingLegId(legId);
         resp.setPostingId(postingId);
         resp.setLegOrder(1);
@@ -64,7 +64,7 @@ class AccountPostingLegControllerTest {
         return resp;
     }
 
-    // ── POST /account-posting/{postingId}/leg ──────────────────────────────────
+    // ── POST /v2/payment/account-posting/{postingId}/leg ──────────────────────
 
     @Nested
     class AddLeg {
@@ -73,7 +73,7 @@ class AccountPostingLegControllerTest {
         void returns201_whenValidRequest() throws Exception {
             when(service.addLeg(eq(10L), any())).thenReturn(sampleLegResponse(100L, 10L));
 
-            mockMvc.perform(post("/account-posting/10/leg")
+            mockMvc.perform(post("/v2/payment/account-posting/10/leg")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validLegRequest())))
                     .andExpect(status().isCreated())
@@ -84,7 +84,7 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns400_whenRequiredFieldsMissing() throws Exception {
-            mockMvc.perform(post("/account-posting/10/leg")
+            mockMvc.perform(post("/v2/payment/account-posting/10/leg")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isBadRequest())
@@ -96,10 +96,10 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns400_whenLegOrderIsZero() throws Exception {
-            AccountPostingLegRequest req = validLegRequest();
+            AccountPostingLegRequestV2 req = validLegRequest();
             req.setLegOrder(0);
 
-            mockMvc.perform(post("/account-posting/10/leg")
+            mockMvc.perform(post("/v2/payment/account-posting/10/leg")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -108,10 +108,10 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns400_whenTargetSystemBlank() throws Exception {
-            AccountPostingLegRequest req = validLegRequest();
+            AccountPostingLegRequestV2 req = validLegRequest();
             req.setTargetSystem("  ");
 
-            mockMvc.perform(post("/account-posting/10/leg")
+            mockMvc.perform(post("/v2/payment/account-posting/10/leg")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -123,7 +123,7 @@ class AccountPostingLegControllerTest {
             when(service.addLeg(eq(99L), any()))
                     .thenThrow(new ResourceNotFoundException("AccountPosting", 99L));
 
-            mockMvc.perform(post("/account-posting/99/leg")
+            mockMvc.perform(post("/v2/payment/account-posting/99/leg")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validLegRequest())))
                     .andExpect(status().isNotFound())
@@ -134,7 +134,7 @@ class AccountPostingLegControllerTest {
         void returns500_whenServiceThrows() throws Exception {
             when(service.addLeg(any(), any())).thenThrow(new RuntimeException("DB error"));
 
-            mockMvc.perform(post("/account-posting/10/leg")
+            mockMvc.perform(post("/v2/payment/account-posting/10/leg")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validLegRequest())))
                     .andExpect(status().isInternalServerError())
@@ -142,7 +142,7 @@ class AccountPostingLegControllerTest {
         }
     }
 
-    // ── GET /account-posting/{postingId}/leg ──────────────────────────────────
+    // ── GET /v2/payment/account-posting/{postingId}/leg ───────────────────────
 
     @Nested
     class ListLegs {
@@ -152,7 +152,7 @@ class AccountPostingLegControllerTest {
             when(service.listLegs(10L)).thenReturn(
                     List.of(sampleLegResponse(100L, 10L), sampleLegResponse(101L, 10L)));
 
-            mockMvc.perform(get("/account-posting/10/leg"))
+            mockMvc.perform(get("/v2/payment/account-posting/10/leg"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(2)))
                     .andExpect(jsonPath("$[0].posting_leg_id").value(100))
@@ -163,7 +163,7 @@ class AccountPostingLegControllerTest {
         void returns200_withEmptyListWhenNoLegs() throws Exception {
             when(service.listLegs(10L)).thenReturn(List.of());
 
-            mockMvc.perform(get("/account-posting/10/leg"))
+            mockMvc.perform(get("/v2/payment/account-posting/10/leg"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(0)));
         }
@@ -172,13 +172,13 @@ class AccountPostingLegControllerTest {
         void returns500_whenServiceThrows() throws Exception {
             when(service.listLegs(any())).thenThrow(new RuntimeException("Unexpected"));
 
-            mockMvc.perform(get("/account-posting/10/leg"))
+            mockMvc.perform(get("/v2/payment/account-posting/10/leg"))
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.name").value("INTERNAL_ERROR"));
         }
     }
 
-    // ── GET /account-posting/{postingId}/leg/{legId} ──────────────────────────
+    // ── GET /v2/payment/account-posting/{postingId}/leg/{legId} ──────────────
 
     @Nested
     class GetLeg {
@@ -187,7 +187,7 @@ class AccountPostingLegControllerTest {
         void returns200_whenLegExists() throws Exception {
             when(service.getLeg(10L, 100L)).thenReturn(sampleLegResponse(100L, 10L));
 
-            mockMvc.perform(get("/account-posting/10/leg/100"))
+            mockMvc.perform(get("/v2/payment/account-posting/10/leg/100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.posting_leg_id").value(100))
                     .andExpect(jsonPath("$.leg_order").value(1))
@@ -199,7 +199,7 @@ class AccountPostingLegControllerTest {
             when(service.getLeg(10L, 999L))
                     .thenThrow(new ResourceNotFoundException("AccountPostingLeg", 999L));
 
-            mockMvc.perform(get("/account-posting/10/leg/999"))
+            mockMvc.perform(get("/v2/payment/account-posting/10/leg/999"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.name").value("NOT_FOUND"))
                     .andExpect(jsonPath("$.message").value(containsString("999")));
@@ -209,28 +209,28 @@ class AccountPostingLegControllerTest {
         void returns500_whenServiceThrows() throws Exception {
             when(service.getLeg(any(), any())).thenThrow(new RuntimeException("Unexpected"));
 
-            mockMvc.perform(get("/account-posting/10/leg/100"))
+            mockMvc.perform(get("/v2/payment/account-posting/10/leg/100"))
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.name").value("INTERNAL_ERROR"));
         }
     }
 
-    // ── PUT /account-posting/{postingId}/leg/{legId} ──────────────────────────
+    // ── PUT /v2/payment/account-posting/{postingId}/leg/{legId} ──────────────
 
     @Nested
     class UpdateLeg {
 
         @Test
         void returns200_whenValidRequest() throws Exception {
-            UpdateLegRequest req = new UpdateLegRequest();
+            UpdateLegRequestV2 req = new UpdateLegRequestV2();
             req.setStatus(LegStatus.SUCCESS);
             req.setReferenceId("REF-001");
 
-            AccountPostingLegResponse resp = sampleLegResponse(100L, 10L);
+            AccountPostingLegResponseV2 resp = sampleLegResponse(100L, 10L);
             resp.setReferenceId("REF-001");
             when(service.updateLeg(eq(10L), eq(100L), any())).thenReturn(resp);
 
-            mockMvc.perform(put("/account-posting/10/leg/100")
+            mockMvc.perform(put("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
@@ -240,7 +240,7 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns400_whenStatusMissing() throws Exception {
-            mockMvc.perform(put("/account-posting/10/leg/100")
+            mockMvc.perform(put("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isBadRequest())
@@ -250,12 +250,12 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns404_whenLegNotFound() throws Exception {
-            UpdateLegRequest req = new UpdateLegRequest();
+            UpdateLegRequestV2 req = new UpdateLegRequestV2();
             req.setStatus(LegStatus.FAILED);
             when(service.updateLeg(eq(10L), eq(999L), any()))
                     .thenThrow(new ResourceNotFoundException("AccountPostingLeg", 999L));
 
-            mockMvc.perform(put("/account-posting/10/leg/999")
+            mockMvc.perform(put("/v2/payment/account-posting/10/leg/999")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isNotFound())
@@ -264,13 +264,13 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns422_whenBusinessRuleViolated() throws Exception {
-            UpdateLegRequest req = new UpdateLegRequest();
+            UpdateLegRequestV2 req = new UpdateLegRequestV2();
             req.setStatus(LegStatus.SUCCESS);
             when(service.updateLeg(any(), any(), any()))
                     .thenThrow(new BusinessException("INVALID_TRANSITION",
                             "Cannot transition leg from FAILED to SUCCESS directly"));
 
-            mockMvc.perform(put("/account-posting/10/leg/100")
+            mockMvc.perform(put("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isUnprocessableEntity())
@@ -279,11 +279,11 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns500_whenServiceThrows() throws Exception {
-            UpdateLegRequest req = new UpdateLegRequest();
+            UpdateLegRequestV2 req = new UpdateLegRequestV2();
             req.setStatus(LegStatus.SUCCESS);
             when(service.updateLeg(any(), any(), any())).thenThrow(new RuntimeException("Unexpected"));
 
-            mockMvc.perform(put("/account-posting/10/leg/100")
+            mockMvc.perform(put("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isInternalServerError())
@@ -291,19 +291,19 @@ class AccountPostingLegControllerTest {
         }
     }
 
-    // ── PATCH /account-posting/{postingId}/leg/{legId} ────────────────────────
+    // ── PATCH /v2/payment/account-posting/{postingId}/leg/{legId} ────────────
 
     @Nested
     class ManualUpdateLeg {
 
         @Test
         void returns200_whenValidStatus() throws Exception {
-            AccountPostingLegResponse resp = sampleLegResponse(100L, 10L);
+            AccountPostingLegResponseV2 resp = sampleLegResponse(100L, 10L);
             resp.setMode(LegMode.MANUAL);
-            when(service.manualUpdateLeg(eq(10L), eq(100L), eq(LegStatus.SUCCESS)))
+            when(service.manualUpdateLeg(eq(10L), eq(100L), eq(LegStatus.SUCCESS), isNull()))
                     .thenReturn(resp);
 
-            mockMvc.perform(patch("/account-posting/10/leg/100")
+            mockMvc.perform(patch("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"status\": \"SUCCESS\"}"))
                     .andExpect(status().isOk())
@@ -312,8 +312,26 @@ class AccountPostingLegControllerTest {
         }
 
         @Test
+        void returns200_withStatusAndReason() throws Exception {
+            AccountPostingLegResponseV2 resp = sampleLegResponse(100L, 10L);
+            resp.setMode(LegMode.MANUAL);
+            resp.setReason("Manually overridden after CBS timeout");
+            when(service.manualUpdateLeg(eq(10L), eq(100L), eq(LegStatus.SUCCESS),
+                    eq("Manually overridden after CBS timeout")))
+                    .thenReturn(resp);
+
+            mockMvc.perform(patch("/v2/payment/account-posting/10/leg/100")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\": \"SUCCESS\", \"reason\": \"Manually overridden after CBS timeout\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.posting_leg_id").value(100))
+                    .andExpect(jsonPath("$.mode").value("MANUAL"))
+                    .andExpect(jsonPath("$.reason").value("Manually overridden after CBS timeout"));
+        }
+
+        @Test
         void returns400_whenStatusIsNull() throws Exception {
-            mockMvc.perform(patch("/account-posting/10/leg/100")
+            mockMvc.perform(patch("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"status\": null}"))
                     .andExpect(status().isBadRequest())
@@ -323,7 +341,7 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns400_whenBodyIsEmpty() throws Exception {
-            mockMvc.perform(patch("/account-posting/10/leg/100")
+            mockMvc.perform(patch("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isBadRequest())
@@ -332,10 +350,10 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns404_whenLegNotFound() throws Exception {
-            when(service.manualUpdateLeg(eq(10L), eq(999L), any()))
+            when(service.manualUpdateLeg(eq(10L), eq(999L), any(), any()))
                     .thenThrow(new ResourceNotFoundException("AccountPostingLeg", 999L));
 
-            mockMvc.perform(patch("/account-posting/10/leg/999")
+            mockMvc.perform(patch("/v2/payment/account-posting/10/leg/999")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"status\": \"SUCCESS\"}"))
                     .andExpect(status().isNotFound())
@@ -344,10 +362,10 @@ class AccountPostingLegControllerTest {
 
         @Test
         void returns500_whenServiceThrows() throws Exception {
-            when(service.manualUpdateLeg(any(), any(), any()))
+            when(service.manualUpdateLeg(any(), any(), any(), any()))
                     .thenThrow(new RuntimeException("Unexpected"));
 
-            mockMvc.perform(patch("/account-posting/10/leg/100")
+            mockMvc.perform(patch("/v2/payment/account-posting/10/leg/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"status\": \"SUCCESS\"}"))
                     .andExpect(status().isInternalServerError())

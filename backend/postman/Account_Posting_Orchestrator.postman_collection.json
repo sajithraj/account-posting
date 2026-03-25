@@ -2,13 +2,13 @@
   "info": {
     "name": "Account Posting Orchestrator",
     "_postman_id": "apo-collection-v4",
-    "description": "Full API collection for the Account Posting Orchestrator service.\n\nBase URL: http://localhost:8080/api\n\n--- Naming convention ---\nPOST / PUT request bodies  → snake_case keys (Jackson SNAKE_CASE strategy)\nGET query parameters       → camelCase (Spring @ModelAttribute binding)\n\n--- Enums ---\ncredit_debit_indicator: CREDIT | DEBIT\nstatus / leg status:    PENDING | SUCCESS | FAILED\n\n--- Source names & request types (canonical from dev DB) ---\nIMX         → IMX_CBS_GL | IMX_OBPM\nRMS         → FED_RETURN | GL_RETURN | MCA_RETURN\nSTABLECOIN  → BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\n\n--- Target systems ---\nCBS | GL | OBPM\n\n--- Operations ---\nPOSTING | ADD_HOLD | REMOVE_HOLD",
+    "description": "Full API collection for the Account Posting Orchestrator service.\n\nBase URL: http://localhost:8080/api\n\n--- Naming convention ---\nPOST / PUT request bodies  \u00e2\u2020\u2019 snake_case keys (Jackson SNAKE_CASE strategy)\nGET query parameters       \u00e2\u2020\u2019 camelCase (Spring @ModelAttribute binding)\n\n--- Enums ---\ncredit_debit_indicator: CREDIT | DEBIT\nstatus / leg status:    PENDING | SUCCESS | FAILED\n\n--- Source names & request types (canonical from dev DB) ---\nIMX         \u00e2\u2020\u2019 IMX_CBS_GL | IMX_OBPM\nRMS         \u00e2\u2020\u2019 FED_RETURN | GL_RETURN | MCA_RETURN\nSTABLECOIN  \u00e2\u2020\u2019 BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\n\n--- Target systems ---\nCBS | GL | OBPM\n\n--- Operations ---\nPOSTING | ADD_HOLD | REMOVE_HOLD",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080/api",
+      "value": "http://localhost:8080",
       "type": "string"
     },
     {
@@ -30,18 +30,20 @@
   "item": [
     {
       "name": "Posting Config",
-      "description": "Manage routing config — maps source_name + request_type to ordered target systems.\n\nNotes:\n- order_seq determines the processing order of legs\n- Cached in memory; call POST /cache/flush after changes\n- Duplicate (request_type + order_seq) returns HTTP 422",
+      "description": "Manage routing config \u00e2\u20ac\u201d maps source_name + request_type to ordered target systems.\n\nNotes:\n- order_seq determines the processing order of legs\n- Cached in memory; call POST /cache/flush after changes\n- Duplicate (request_type + order_seq) returns HTTP 422",
       "item": [
         {
           "name": "GET All Config Entries",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config"
               ]
@@ -50,21 +52,23 @@
           }
         },
         {
-          "name": "GET Config by Request Type — IMX_CBS_GL",
+          "name": "GET Config by Request Type \u00e2\u20ac\u201d IMX_CBS_GL",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/IMX_CBS_GL",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/IMX_CBS_GL",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "IMX_CBS_GL"
               ]
             },
-            "description": "Returns the ordered legs for IMX_CBS_GL: CBS (order 1) → GL (order 2).\n\nOther valid request types: IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
+            "description": "Returns the ordered legs for IMX_CBS_GL: CBS (order 1) \u00e2\u2020\u2019 GL (order 2).\n\nOther valid request types: IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
           }
         },
         {
@@ -78,11 +82,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config"
               ]
@@ -105,11 +111,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/{{configId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "{{configId}}"
@@ -127,11 +135,13 @@
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/{{configId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "{{configId}}"
@@ -145,11 +155,13 @@
           "request": {
             "method": "POST",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/cache/flush",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/cache/flush",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "cache",
@@ -163,10 +175,10 @@
     },
     {
       "name": "Account Posting",
-      "description": "Core posting operations — create, search, get by ID, and retry.\n\nKey behaviours:\n- POST body fields must be snake_case (Jackson SNAKE_CASE strategy)\n- GET query params are camelCase (Spring ModelAttribute binding)\n- @Valid fires before service — validation failure returns HTTP 400 without creating any DB record\n- Duplicate end_to_end_reference_id → HTTP 422\n- reason field: 'Request processed successfully' on full success, else last failed leg's error",
+      "description": "Core posting operations \u00e2\u20ac\u201d create, search, get by ID, and retry.\n\nKey behaviours:\n- POST body fields must be snake_case (Jackson SNAKE_CASE strategy)\n- GET query params are camelCase (Spring ModelAttribute binding)\n- @Valid fires before service \u00e2\u20ac\u201d validation failure returns HTTP 400 without creating any DB record\n- Duplicate end_to_end_reference_id \u00e2\u2020\u2019 HTTP 422\n- reason field: 'Request processed successfully' on full success, else last failed leg's error",
       "item": [
         {
-          "name": "POST Create Posting — IMX IMX_CBS_GL (2 legs: CBS → GL)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d IMX IMX_CBS_GL (2 legs: CBS \u00e2\u2020\u2019 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -195,11 +207,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -207,11 +221,11 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1324658900\",\n  \"creditor_account\": \"9875312300\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"Invoice payment INV-2026-001\"\n}"
             },
-            "description": "Triggers 2 legs: CBS (order 1) → GL (order 2).\nPre-request script auto-generates unique IDs, a random amount, and today's date."
+            "description": "Triggers 2 legs: CBS (order 1) \u00e2\u2020\u2019 GL (order 2).\nPre-request script auto-generates unique IDs, a random amount, and today's date."
           }
         },
         {
-          "name": "POST Create Posting — IMX IMX_OBPM (1 leg: OBPM)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d IMX IMX_OBPM (1 leg: OBPM)",
           "event": [
             {
               "listen": "prerequest",
@@ -240,11 +254,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -256,7 +272,7 @@
           }
         },
         {
-          "name": "POST Create Posting — RMS FED_RETURN (2 legs: CBS → GL)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d RMS FED_RETURN (2 legs: CBS \u00e2\u2020\u2019 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -285,11 +301,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -297,11 +315,11 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"FED_RETURN\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1111222233\",\n  \"creditor_account\": \"4444555566\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Triggers 2 legs: CBS (order 1) → GL (order 2)."
+            "description": "Triggers 2 legs: CBS (order 1) \u00e2\u2020\u2019 GL (order 2)."
           }
         },
         {
-          "name": "POST Create Posting — RMS GL_RETURN (2 legs: GL → GL)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d RMS GL_RETURN (2 legs: GL \u00e2\u2020\u2019 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -330,11 +348,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -342,11 +362,11 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"GL_RETURN\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Triggers 2 legs: GL (order 1) → GL (order 2)."
+            "description": "Triggers 2 legs: GL (order 1) \u00e2\u2020\u2019 GL (order 2)."
           }
         },
         {
-          "name": "POST Create Posting — RMS MCA_RETURN (1 leg: OBPM)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d RMS MCA_RETURN (1 leg: OBPM)",
           "event": [
             {
               "listen": "prerequest",
@@ -375,11 +395,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -391,7 +413,7 @@
           }
         },
         {
-          "name": "POST Create Posting — STABLECOIN CUSTOMER_POSTING (2 legs: CBS → GL)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d STABLECOIN CUSTOMER_POSTING (2 legs: CBS \u00e2\u2020\u2019 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -420,11 +442,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -432,11 +456,11 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"CUSTOMER_POSTING\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"Stablecoin customer posting\"\n}"
             },
-            "description": "Triggers 2 legs: CBS (order 1) → GL (order 2)."
+            "description": "Triggers 2 legs: CBS (order 1) \u00e2\u2020\u2019 GL (order 2)."
           }
         },
         {
-          "name": "POST Create Posting — STABLECOIN BUY_CUSTOMER_POSTNG (2 legs: CBS → GL)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d STABLECOIN BUY_CUSTOMER_POSTNG (2 legs: CBS \u00e2\u2020\u2019 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -465,11 +489,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -477,11 +503,11 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTNG\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Note: 'BUY_CUSTOMER_POSTNG' (missing trailing 'I') is the actual value in the DB — preserve as-is.\nTriggers legs: CBS (order 2) → GL (order 3)."
+            "description": "Note: 'BUY_CUSTOMER_POSTNG' (missing trailing 'I') is the actual value in the DB \u00e2\u20ac\u201d preserve as-is.\nTriggers legs: CBS (order 2) \u00e2\u2020\u2019 GL (order 3)."
           }
         },
         {
-          "name": "POST Create Posting — STABLECOIN ADD_ACCOUNT_HOLD (1 leg: CBS ADD_HOLD)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d STABLECOIN ADD_ACCOUNT_HOLD (1 leg: CBS ADD_HOLD)",
           "event": [
             {
               "listen": "prerequest",
@@ -510,11 +536,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -526,7 +554,7 @@
           }
         },
         {
-          "name": "POST Create Posting — STABLECOIN BUY_CUSTOMER_POSTING (1 leg: CBS REMOVE_HOLD)",
+          "name": "POST Create Posting \u00e2\u20ac\u201d STABLECOIN BUY_CUSTOMER_POSTING (1 leg: CBS REMOVE_HOLD)",
           "event": [
             {
               "listen": "prerequest",
@@ -555,11 +583,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -571,7 +601,7 @@
           }
         },
         {
-          "name": "POST Create Posting — 400 Missing Required Fields",
+          "name": "POST Create Posting \u00e2\u20ac\u201d 400 Missing Required Fields",
           "request": {
             "method": "POST",
             "header": [
@@ -581,11 +611,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -593,11 +625,11 @@
               "mode": "raw",
               "raw": "{\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\"\n}"
             },
-            "description": "Missing: source_reference_id, amount, currency, credit_debit_indicator, debtor_account, creditor_account, requested_execution_date.\n@Valid fires at controller layer before service is called — no DB record created.\nExpected: HTTP 400 VALIDATION_FAILED with errors[] array."
+            "description": "Missing: source_reference_id, amount, currency, credit_debit_indicator, debtor_account, creditor_account, requested_execution_date.\n@Valid fires at controller layer before service is called \u00e2\u20ac\u201d no DB record created.\nExpected: HTTP 400 VALIDATION_FAILED with errors[] array."
           }
         },
         {
-          "name": "POST Create Posting — 400 Invalid source_name / request_type",
+          "name": "POST Create Posting \u00e2\u20ac\u201d 400 Invalid source_name / request_type",
           "request": {
             "method": "POST",
             "header": [
@@ -607,11 +639,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -619,11 +653,11 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"UNKNOWN_SRC\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-23\"\n}"
             },
-            "description": "All required fields present — Bean Validation passes.\nFails at AccountPostingRequestValidator.validateEnums().\nExpected: HTTP 400 INVALID_ENUM_VALUE."
+            "description": "All required fields present \u00e2\u20ac\u201d Bean Validation passes.\nFails at AccountPostingRequestValidator.validateEnums().\nExpected: HTTP 400 INVALID_ENUM_VALUE."
           }
         },
         {
-          "name": "POST Create Posting — 422 Duplicate E2E Reference",
+          "name": "POST Create Posting \u00e2\u20ac\u201d 422 Duplicate E2E Reference",
           "request": {
             "method": "POST",
             "header": [
@@ -633,11 +667,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             },
@@ -645,19 +681,21 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"SRC-DUP-001\",\n  \"end_to_end_reference_id\": \"E2E-DUP-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-23\"\n}"
             },
-            "description": "Send this request twice with the same end_to_end_reference_id.\nFirst call succeeds (201). Second call → HTTP 422 DUPLICATE_E2E_REF."
+            "description": "Send this request twice with the same end_to_end_reference_id.\nFirst call succeeds (201). Second call \u00e2\u2020\u2019 HTTP 422 DUPLICATE_E2E_REF."
           }
         },
         {
-          "name": "GET Search Postings — All",
+          "name": "GET Search Postings \u00e2\u20ac\u201d All",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -674,15 +712,17 @@
           }
         },
         {
-          "name": "GET Search Postings — by Status",
+          "name": "GET Search Postings \u00e2\u20ac\u201d by Status",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?status=PENDING&page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?status=PENDING&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -704,15 +744,17 @@
           }
         },
         {
-          "name": "GET Search Postings — by Source Name",
+          "name": "GET Search Postings \u00e2\u20ac\u201d by Source Name",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?sourceName=IMX&page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceName=IMX&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -735,15 +777,17 @@
           }
         },
         {
-          "name": "GET Search Postings — by Request Type",
+          "name": "GET Search Postings \u00e2\u20ac\u201d by Request Type",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?requestType=IMX_CBS_GL&page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?requestType=IMX_CBS_GL&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -765,15 +809,17 @@
           }
         },
         {
-          "name": "GET Search Postings — by Source Reference",
+          "name": "GET Search Postings \u00e2\u20ac\u201d by Source Reference",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?sourceReferenceId=SRC-001",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceReferenceId=SRC-001",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -786,15 +832,17 @@
           }
         },
         {
-          "name": "GET Search Postings — by End-to-End Reference",
+          "name": "GET Search Postings \u00e2\u20ac\u201d by End-to-End Reference",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId=E2E-001",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?endToEndReferenceId=E2E-001",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -807,15 +855,17 @@
           }
         },
         {
-          "name": "GET Search Postings — by Target System",
+          "name": "GET Search Postings \u00e2\u20ac\u201d by Target System",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?targetSystem=CBS&page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?targetSystem=CBS&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -837,15 +887,17 @@
           }
         },
         {
-          "name": "GET Search Postings — by Date Range",
+          "name": "GET Search Postings \u00e2\u20ac\u201d by Date Range",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?fromDate=2026-03-01&toDate=2026-03-31&page=0&size=20",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?fromDate=2026-03-01&toDate=2026-03-31&page=0&size=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -870,15 +922,17 @@
           }
         },
         {
-          "name": "GET Search Postings — Multi-filter",
+          "name": "GET Search Postings \u00e2\u20ac\u201d Multi-filter",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?sourceName=IMX&requestType=IMX_CBS_GL&status=PENDING&fromDate=2026-03-01&toDate=2026-03-31&page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceName=IMX&requestType=IMX_CBS_GL&status=PENDING&fromDate=2026-03-01&toDate=2026-03-31&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -920,11 +974,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}"
               ]
@@ -933,7 +989,7 @@
           }
         },
         {
-          "name": "POST Retry — All Non-SUCCESS Postings",
+          "name": "POST Retry \u00e2\u20ac\u201d All Non-SUCCESS Postings",
           "request": {
             "method": "POST",
             "header": [
@@ -943,11 +999,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting/retry",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/retry",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "retry"
               ]
@@ -956,11 +1014,11 @@
               "mode": "raw",
               "raw": "{}"
             },
-            "description": "Retries all non-SUCCESS postings. Empty body or no body — both accepted."
+            "description": "Retries all non-SUCCESS postings. Empty body or no body \u00e2\u20ac\u201d both accepted."
           }
         },
         {
-          "name": "POST Retry — Specific Posting IDs",
+          "name": "POST Retry \u00e2\u20ac\u201d Specific Posting IDs",
           "request": {
             "method": "POST",
             "header": [
@@ -970,11 +1028,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting/retry",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/retry",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "retry"
               ]
@@ -997,11 +1057,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg"
@@ -1015,11 +1077,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/{{legId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg",
@@ -1039,11 +1103,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/{{legId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg",
@@ -1068,11 +1134,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/{{legId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg",
@@ -1081,7 +1149,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"SUCCESS\"\n}"
+              "raw": "{\n  \"status\": \"SUCCESS\",\n  \"reason\": \"Manually confirmed - CBS ref CBS-20260325\"\n}"
             },
             "description": "Sets leg status manually from UI. Sets mode=MANUAL. Does NOT call any external system or increment attempt_number."
           }
@@ -1097,11 +1165,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/test/stub/status",
+              "raw": "{{baseUrl}}/v2/payment/test/stub/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "test",
                 "stub",
                 "status"
@@ -1111,7 +1181,7 @@
           }
         },
         {
-          "name": "POST Configure Stub — Fail CBS",
+          "name": "POST Configure Stub \u00e2\u20ac\u201d Fail CBS",
           "request": {
             "method": "POST",
             "header": [
@@ -1121,11 +1191,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/test/stub/configure",
+              "raw": "{{baseUrl}}/v2/payment/test/stub/configure",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "test",
                 "stub",
                 "configure"
@@ -1139,7 +1211,7 @@
           }
         },
         {
-          "name": "POST Configure Stub — Fail All Systems",
+          "name": "POST Configure Stub \u00e2\u20ac\u201d Fail All Systems",
           "request": {
             "method": "POST",
             "header": [
@@ -1149,11 +1221,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/test/stub/configure",
+              "raw": "{{baseUrl}}/v2/payment/test/stub/configure",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "test",
                 "stub",
                 "configure"
@@ -1170,17 +1244,19 @@
           "request": {
             "method": "POST",
             "url": {
-              "raw": "{{baseUrl}}/test/stub/clear",
+              "raw": "{{baseUrl}}/v2/payment/test/stub/clear",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "test",
                 "stub",
                 "clear"
               ]
             },
-            "description": "Resets the stub — all systems return SUCCESS again."
+            "description": "Resets the stub \u00e2\u20ac\u201d all systems return SUCCESS again."
           }
         }
       ]

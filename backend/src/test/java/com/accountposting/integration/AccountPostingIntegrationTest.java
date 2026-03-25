@@ -1,13 +1,13 @@
 package com.accountposting.integration;
 
-import com.accountposting.dto.accountposting.AccountPostingCreateResponse;
-import com.accountposting.dto.accountposting.AccountPostingRequest;
-import com.accountposting.dto.accountposting.AccountPostingResponse;
-import com.accountposting.dto.accountposting.AccountPostingSearchRequest;
-import com.accountposting.dto.accountpostingleg.LegCreateResponse;
-import com.accountposting.dto.accountpostingleg.LegResponse;
-import com.accountposting.dto.retry.RetryRequest;
-import com.accountposting.dto.retry.RetryResponse;
+import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingRequestV2;
+import com.accountposting.dto.accountposting.AccountPostingResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingSearchRequestV2;
+import com.accountposting.dto.accountpostingleg.LegCreateResponseV2;
+import com.accountposting.dto.accountpostingleg.LegResponseV2;
+import com.accountposting.dto.retry.RetryRequestV2;
+import com.accountposting.dto.retry.RetryResponseV2;
 import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.AccountPostingLegEntity;
 import com.accountposting.entity.PostingConfig;
@@ -20,7 +20,7 @@ import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.repository.AccountPostingLegRepository;
 import com.accountposting.repository.AccountPostingRepository;
 import com.accountposting.repository.PostingConfigRepository;
-import com.accountposting.service.accountposting.AccountPostingService;
+import com.accountposting.service.accountposting.AccountPostingServiceV2;
 import com.accountposting.service.accountposting.strategy.PostingStrategy;
 import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,7 +96,7 @@ class AccountPostingIntegrationTest {
     // ══════════════════════════════════════════════════════════════════
 
     @Autowired
-    private AccountPostingService service;
+    private AccountPostingServiceV2 service;
 
     @Autowired
     private AccountPostingRepository postingRepo;
@@ -182,11 +182,11 @@ class AccountPostingIntegrationTest {
     // ══════════════════════════════════════════════════════════════════
 
     /**
-     * Builds a valid AccountPostingRequest with a unique E2E ref per call.
+     * Builds a valid AccountPostingRequestV2 with a unique E2E ref per call.
      */
-    private AccountPostingRequest req(String sourceName, String requestType) {
+    private AccountPostingRequestV2 req(String sourceName, String requestType) {
         long n = seq.getAndIncrement();
-        AccountPostingRequest r = new AccountPostingRequest();
+        AccountPostingRequestV2 r = new AccountPostingRequestV2();
         r.setSourceReferenceId("SRC-IT-" + n);
         r.setEndToEndReferenceId("E2E-IT-" + n);
         r.setSourceName(sourceName);
@@ -208,7 +208,7 @@ class AccountPostingIntegrationTest {
     /**
      * Returns a PostingStrategy that:
      * 1. Updates the pre-inserted PENDING leg in DB to FAILED (so DB state is accurate)
-     * 2. Returns a FAILED LegResponse
+     * 2. Returns a FAILED LegResponseV2
      * <p>
      * Used with: doReturn(failStrategy("reason")).when(strategyFactory).resolve("CBS_POSTING")
      */
@@ -221,9 +221,9 @@ class AccountPostingIntegrationTest {
             }
 
             @Override
-            public LegResponse process(Long postingId, int legOrder,
-                                       AccountPostingRequest request,
-                                       boolean isRetry, Long existingLegId) {
+            public LegResponseV2 process(Long postingId, int legOrder,
+                                         AccountPostingRequestV2 request,
+                                         boolean isRetry, Long existingLegId) {
                 if (existingLegId != null) {
                     repo.findById(existingLegId).ifPresent(leg -> {
                         leg.setStatus(LegStatus.FAILED);
@@ -232,7 +232,7 @@ class AccountPostingIntegrationTest {
                         repo.save(leg);
                     });
                 }
-                LegResponse lr = new LegResponse();
+                LegResponseV2 lr = new LegResponseV2();
                 lr.setStatus("FAILED");
                 lr.setReason(reason);
                 return lr;
@@ -271,8 +271,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("IMX + IMX_OBPM → 1 OBPM leg persisted as SUCCESS")
         void imx_obpm_singleObpmLeg_success() {
-            AccountPostingRequest request = req("IMX", "IMX_OBPM");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "IMX_OBPM");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
             assertThat(response.getSourceReferenceId()).isEqualTo(request.getSourceReferenceId());
@@ -306,8 +306,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("IMX + ADD_ACCOUNT_HOLD → 1 CBS leg persisted as SUCCESS")
         void imx_addAccountHold_cbsOnly_success() {
-            AccountPostingRequest request = req("IMX", "ADD_ACCOUNT_HOLD");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "ADD_ACCOUNT_HOLD");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
             assertThat(response.getResponses()).hasSize(1);
@@ -326,8 +326,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("RMS + MCA_RETURN → 1 CBS leg persisted as SUCCESS")
         void rms_mcaReturn_cbsOnly_success() {
-            AccountPostingRequest request = req("RMS", "MCA_RETURN");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("RMS", "MCA_RETURN");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
 
@@ -346,8 +346,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("IMX + GL_RETURN → 1 GL leg persisted as SUCCESS")
         void imx_glReturn_glOnly_success() {
-            AccountPostingRequest request = req("IMX", "GL_RETURN");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "GL_RETURN");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
 
@@ -375,8 +375,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("IMX + IMX_CBS_GL → CBS(1) + GL(2), both SUCCESS in correct order")
         void imx_cbsGl_twoLegs_bothSuccess() {
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
             assertThat(response.getResponses()).hasSize(2);
@@ -412,8 +412,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("RMS + FED_RETURN → CBS(1) + GL(2), both SUCCESS")
         void rms_fedReturn_twoLegs_bothSuccess() {
-            AccountPostingRequest request = req("RMS", "FED_RETURN");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("RMS", "FED_RETURN");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
 
@@ -434,8 +434,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("STABLECOIN + BUY_CUSTOMER_POSTNG → OBPM(1) + GL(2), both SUCCESS")
         void stablecoin_buyCustomerPostng_twoLegs_bothSuccess() {
-            AccountPostingRequest request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
 
@@ -464,13 +464,13 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("IMX + CUSTOMER_POSTING → CBS(1) + OBPM(2) + GL(3), all 3 legs SUCCESS")
         void imx_customerPosting_threeLegs_allSuccess() {
-            AccountPostingRequest request = req("IMX", "CUSTOMER_POSTING");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "CUSTOMER_POSTING");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
             assertThat(response.getResponses()).hasSize(3);
             assertThat(response.getResponses())
-                    .extracting(LegCreateResponse::getName)
+                    .extracting(LegCreateResponseV2::getName)
                     .containsExactly("CBS", "OBPM", "GL");
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
@@ -504,8 +504,8 @@ class AccountPostingIntegrationTest {
         void cbsGl_firstLegFails_secondSucceeds_postingPending() {
             doReturn(failStrategy("CBS connection timeout")).when(strategyFactory).resolve("CBS_POSTING");
 
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
             assertThat(response.getResponses()).hasSize(2);
@@ -529,8 +529,8 @@ class AccountPostingIntegrationTest {
         void cbsGl_firstSucceeds_secondFails_postingPending() {
             doReturn(failStrategy("GL ledger unavailable")).when(strategyFactory).resolve("GL_POSTING");
 
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -549,8 +549,8 @@ class AccountPostingIntegrationTest {
             doReturn(failStrategy("CBS timeout")).when(strategyFactory).resolve("CBS_POSTING");
             doReturn(failStrategy("GL timeout")).when(strategyFactory).resolve("GL_POSTING");
 
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -569,8 +569,8 @@ class AccountPostingIntegrationTest {
         void imxObpm_singleLegFails_postingPending() {
             doReturn(failStrategy("OBPM timeout")).when(strategyFactory).resolve("OBPM_POSTING");
 
-            AccountPostingRequest request = req("IMX", "IMX_OBPM");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "IMX_OBPM");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -586,8 +586,8 @@ class AccountPostingIntegrationTest {
         void stablecoin_obpmFails_glSucceeds_postingPending() {
             doReturn(failStrategy("OBPM service down")).when(strategyFactory).resolve("OBPM_POSTING");
 
-            AccountPostingRequest request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -604,8 +604,8 @@ class AccountPostingIntegrationTest {
         void stablecoin_obpmSucceeds_glFails_postingPending() {
             doReturn(failStrategy("GL quota exceeded")).when(strategyFactory).resolve("GL_POSTING");
 
-            AccountPostingRequest request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -620,8 +620,8 @@ class AccountPostingIntegrationTest {
         void customerPosting_middleLegFails_postingPending() {
             doReturn(failStrategy("OBPM unavailable")).when(strategyFactory).resolve("OBPM_POSTING");
 
-            AccountPostingRequest request = req("IMX", "CUSTOMER_POSTING");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "CUSTOMER_POSTING");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -641,8 +641,8 @@ class AccountPostingIntegrationTest {
         void customerPosting_firstLegFails_postingPending() {
             doReturn(failStrategy("CBS down")).when(strategyFactory).resolve("CBS_POSTING");
 
-            AccountPostingRequest request = req("IMX", "CUSTOMER_POSTING");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "CUSTOMER_POSTING");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -660,8 +660,8 @@ class AccountPostingIntegrationTest {
             doReturn(failStrategy("OBPM down")).when(strategyFactory).resolve("OBPM_POSTING");
             doReturn(failStrategy("GL down")).when(strategyFactory).resolve("GL_POSTING");
 
-            AccountPostingRequest request = req("IMX", "CUSTOMER_POSTING");
-            AccountPostingCreateResponse response = service.create(request);
+            AccountPostingRequestV2 request = req("IMX", "CUSTOMER_POSTING");
+            AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
 
@@ -684,7 +684,7 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("Duplicate endToEndReferenceId → BusinessException, no second posting created")
         void duplicateE2eRef_throwsBusinessException_noSecondPosting() {
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             service.create(request);                          // first — succeeds
             long countAfterFirst = postingRepo.count();
 
@@ -714,7 +714,7 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("Invalid sourceName → BusinessException(INVALID_ENUM_VALUE), posting saved as FAILED")
         void invalidSourceName_throwsBusinessException_postingFailed() {
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             request.setSourceName("UNKNOWN_SOURCE");
 
             assertThatThrownBy(() -> service.create(request))
@@ -731,7 +731,7 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("Invalid requestType → BusinessException(INVALID_ENUM_VALUE), posting saved as FAILED")
         void invalidRequestType_throwsBusinessException_postingFailed() {
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             request.setRequestType("NOT_A_REAL_TYPE");
 
             assertThatThrownBy(() -> service.create(request))
@@ -747,7 +747,7 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("Both sourceName and requestType invalid → single BusinessException, posting FAILED")
         void bothEnumsInvalid_throwsBusinessException_postingFailed() {
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             request.setSourceName("BAD_SOURCE");
             request.setRequestType("BAD_TYPE");
 
@@ -764,8 +764,8 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("Multiple postings: first succeeds, second is duplicate → only 1 posting in DB")
         void firstSucceeds_secondDuplicate_onlyOnePosting() {
-            AccountPostingRequest request = req("RMS", "FED_RETURN");
-            AccountPostingCreateResponse first = service.create(request);
+            AccountPostingRequestV2 request = req("RMS", "FED_RETURN");
+            AccountPostingCreateResponseV2 first = service.create(request);
             assertThat(first.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
 
             assertThatThrownBy(() -> service.create(request))
@@ -788,7 +788,7 @@ class AccountPostingIntegrationTest {
         void retry_singlePendingPosting_cbsLegRecovers_becomesSuccess() {
             // Create with CBS failing
             doReturn(failStrategy("CBS timeout")).when(strategyFactory).resolve("CBS_POSTING");
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
@@ -797,7 +797,7 @@ class AccountPostingIntegrationTest {
             // CBS is now real (stubs always return SUCCESS)
             reset(strategyFactory);
 
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             // Only the failed CBS leg was retried — GL was already SUCCESS
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(1);
@@ -821,7 +821,7 @@ class AccountPostingIntegrationTest {
         void retry_bothLegsFailed_retrySucceedsBoth() {
             doReturn(failStrategy("CBS down")).when(strategyFactory).resolve("CBS_POSTING");
             doReturn(failStrategy("GL down")).when(strategyFactory).resolve("GL_POSTING");
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
@@ -830,7 +830,7 @@ class AccountPostingIntegrationTest {
 
             reset(strategyFactory);
 
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(2);
             assertThat(retryResp.getSuccessCount()).isEqualTo(2);
@@ -849,9 +849,9 @@ class AccountPostingIntegrationTest {
         void retry_bulkThreePendingPostings_allRecoverToSuccess() {
             doReturn(failStrategy("CBS failure")).when(strategyFactory).resolve("CBS_POSTING");
 
-            AccountPostingRequest req1 = req("IMX", "IMX_CBS_GL");
-            AccountPostingRequest req2 = req("IMX", "IMX_CBS_GL");
-            AccountPostingRequest req3 = req("RMS", "FED_RETURN");
+            AccountPostingRequestV2 req1 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 req2 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 req3 = req("RMS", "FED_RETURN");
             service.create(req1);
             service.create(req2);
             service.create(req3);
@@ -862,7 +862,7 @@ class AccountPostingIntegrationTest {
 
             reset(strategyFactory);
 
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             // Each posting had 1 failed CBS leg → 3 retried total
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(3);
@@ -878,9 +878,9 @@ class AccountPostingIntegrationTest {
         @DisplayName("Retry: specific posting IDs — only those 2 retried, third stays PENDING")
         void retry_specificPostingIds_onlyThoseProcessed() {
             doReturn(failStrategy("CBS failure")).when(strategyFactory).resolve("CBS_POSTING");
-            AccountPostingRequest req1 = req("IMX", "IMX_CBS_GL");
-            AccountPostingRequest req2 = req("IMX", "IMX_CBS_GL");
-            AccountPostingRequest req3 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 req1 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 req2 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 req3 = req("IMX", "IMX_CBS_GL");
             service.create(req1);
             service.create(req2);
             service.create(req3);
@@ -891,9 +891,9 @@ class AccountPostingIntegrationTest {
 
             reset(strategyFactory);
 
-            RetryRequest retryReq = new RetryRequest();
+            RetryRequestV2 retryReq = new RetryRequestV2();
             retryReq.setPostingIds(List.of(id1, id2));
-            RetryResponse retryResp = service.retry(retryReq);
+            RetryResponseV2 retryResp = service.retry(retryReq);
 
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(2);
 
@@ -907,12 +907,12 @@ class AccountPostingIntegrationTest {
         void retry_legStillFailsAfterRetry_postingRemainsAsPending() {
             // CBS fails both on create AND on retry (stub never reset)
             doReturn(failStrategy("CBS permanently down")).when(strategyFactory).resolve("CBS_POSTING");
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
 
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             assertThat(retryResp.getFailedCount()).isEqualTo(1);
             assertThat(retryResp.getSuccessCount()).isEqualTo(0);
@@ -923,7 +923,7 @@ class AccountPostingIntegrationTest {
         @DisplayName("Retry: 3-leg posting where OBPM was the only failure → retries only OBPM")
         void retry_threeLegPosting_onlyFailedLegRetried() {
             doReturn(failStrategy("OBPM crashed")).when(strategyFactory).resolve("OBPM_POSTING");
-            AccountPostingRequest request = req("IMX", "CUSTOMER_POSTING");
+            AccountPostingRequestV2 request = req("IMX", "CUSTOMER_POSTING");
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
@@ -931,7 +931,7 @@ class AccountPostingIntegrationTest {
             assertThat(getLegs(postingId).get(1).getStatus()).isEqualTo(LegStatus.FAILED);
 
             reset(strategyFactory);
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(1);  // only OBPM retried
             assertThat(retryResp.getSuccessCount()).isEqualTo(1);
@@ -952,7 +952,7 @@ class AccountPostingIntegrationTest {
                     .extracting(AccountPostingEntity::getStatus)
                     .containsOnly(PostingStatus.ACSP);
 
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(0);
             assertThat(retryResp.getResults()).isEmpty();
@@ -962,7 +962,7 @@ class AccountPostingIntegrationTest {
         @DisplayName("Retry: locked posting is skipped even when PENDING")
         void retry_lockedPosting_isSkipped() {
             doReturn(failStrategy("CBS down")).when(strategyFactory).resolve("CBS_POSTING");
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             service.create(request);
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
 
@@ -972,7 +972,7 @@ class AccountPostingIntegrationTest {
             postingRepo.save(posting);
 
             reset(strategyFactory);
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             // Posting was locked — skipped
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(0);
@@ -984,9 +984,9 @@ class AccountPostingIntegrationTest {
         void retry_mixedPool_onlyUnlockedPendingRetried() {
             doReturn(failStrategy("CBS fail")).when(strategyFactory).resolve("CBS_POSTING");
 
-            AccountPostingRequest pending1 = req("IMX", "IMX_CBS_GL");
-            AccountPostingRequest pending2 = req("IMX", "IMX_CBS_GL");
-            AccountPostingRequest locked = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 pending1 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 pending2 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 locked = req("IMX", "IMX_CBS_GL");
             service.create(pending1);
             service.create(pending2);
             service.create(locked);
@@ -999,7 +999,7 @@ class AccountPostingIntegrationTest {
             reset(strategyFactory);
             service.create(req("IMX", "IMX_OBPM")); // SUCCESS, must not be retried
 
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             // Only pending1 and pending2 are unlocked PENDING → 2 retried
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(2);
@@ -1032,14 +1032,14 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "ADD_ACCOUNT_HOLD")); // PENDING (CBS only)
             reset(strategyFactory);
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setStatus(PostingStatus.ACSP);
 
-            Page<AccountPostingResponse> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponse::getPostingStatus)
+                    .extracting(AccountPostingResponseV2::getPostingStatus)
                     .containsOnly(PostingStatus.ACSP);
         }
 
@@ -1053,14 +1053,14 @@ class AccountPostingIntegrationTest {
             service.create(req("RMS", "FED_RETURN"));   // PENDING
             reset(strategyFactory);
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setStatus(PostingStatus.PNDG);
 
-            Page<AccountPostingResponse> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponse::getPostingStatus)
+                    .extracting(AccountPostingResponseV2::getPostingStatus)
                     .containsOnly(PostingStatus.PNDG);
         }
 
@@ -1073,14 +1073,14 @@ class AccountPostingIntegrationTest {
             service.create(req("RMS", "MCA_RETURN"));
             service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG"));
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setSourceName("RMS");
 
-            Page<AccountPostingResponse> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponse::getSourceName)
+                    .extracting(AccountPostingResponseV2::getSourceName)
                     .containsOnly("RMS");
         }
 
@@ -1093,14 +1093,14 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_OBPM"));
             service.create(req("RMS", "FED_RETURN"));
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setRequestType("IMX_CBS_GL");
 
-            Page<AccountPostingResponse> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(3);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponse::getRequestType)
+                    .extracting(AccountPostingResponseV2::getRequestType)
                     .containsOnly("IMX_CBS_GL");
         }
 
@@ -1112,14 +1112,14 @@ class AccountPostingIntegrationTest {
             service.create(req("RMS", "MCA_RETURN"));          // CBS
             service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG")); // OBPM_GL
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setTargetSystem("CBS");   // matches CBS_GL and CBS
 
-            Page<AccountPostingResponse> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponse::getTargetSystems)
+                    .extracting(AccountPostingResponseV2::getTargetSystems)
                     .allMatch(ts -> ts != null && ts.contains("CBS"));
         }
 
@@ -1133,11 +1133,11 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_CBS_GL"));   // IMX PENDING
             reset(strategyFactory);
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setSourceName("IMX");
             criteria.setStatus(PostingStatus.ACSP);
 
-            Page<AccountPostingResponse> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent().get(0).getSourceName()).isEqualTo("IMX");
@@ -1156,8 +1156,8 @@ class AccountPostingIntegrationTest {
             Pageable page1 = PageRequest.of(0, 3, Sort.by("postingId").ascending());
             Pageable page2 = PageRequest.of(1, 3, Sort.by("postingId").ascending());
 
-            Page<AccountPostingResponse> resultPage1 = service.search(new AccountPostingSearchRequest(), page1);
-            Page<AccountPostingResponse> resultPage2 = service.search(new AccountPostingSearchRequest(), page2);
+            Page<AccountPostingResponseV2> resultPage1 = service.search(new AccountPostingSearchRequestV2(), page1);
+            Page<AccountPostingResponseV2> resultPage2 = service.search(new AccountPostingSearchRequestV2(), page2);
 
             assertThat(resultPage1.getTotalElements()).isEqualTo(5);
             assertThat(resultPage1.getContent()).hasSize(3);
@@ -1170,10 +1170,10 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_CBS_GL"));        // 2 legs
             service.create(req("IMX", "CUSTOMER_POSTING"));  // 3 legs
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setSourceName("IMX");
 
-            Page<AccountPostingResponse> result = service.search(
+            Page<AccountPostingResponseV2> result = service.search(
                     criteria, PageRequest.of(0, 10, Sort.by("postingId")));
 
             assertThat(result.getTotalElements()).isEqualTo(2);
@@ -1188,15 +1188,15 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("Search by endToEndReferenceId returns exactly that posting")
         void search_byEndToEndRef_returnsExactPosting() {
-            AccountPostingRequest req1 = req("IMX", "IMX_CBS_GL");
-            AccountPostingRequest req2 = req("IMX", "IMX_OBPM");
+            AccountPostingRequestV2 req1 = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 req2 = req("IMX", "IMX_OBPM");
             service.create(req1);
             service.create(req2);
 
-            AccountPostingSearchRequest criteria = new AccountPostingSearchRequest();
+            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setEndToEndReferenceId(req1.getEndToEndReferenceId());
 
-            Page<AccountPostingResponse> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent().get(0).getEndToEndReferenceId())
@@ -1215,11 +1215,11 @@ class AccountPostingIntegrationTest {
         @Test
         @DisplayName("findById returns full posting with all fields and legs including timestamps")
         void findById_returnsFullPostingWithLegsAndTimestamps() {
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPostingResponse resp = service.findById(postingId);
+            AccountPostingResponseV2 resp = service.findById(postingId);
 
             assertThat(resp.getPostingId()).isEqualTo(postingId);
             assertThat(resp.getSourceReferenceId()).isEqualTo(request.getSourceReferenceId());
@@ -1237,13 +1237,13 @@ class AccountPostingIntegrationTest {
 
             assertThat(resp.getResponses()).hasSize(2);
             assertThat(resp.getResponses())
-                    .extracting(LegResponse::getLegOrder)
+                    .extracting(LegResponseV2::getLegOrder)
                     .containsExactly(1, 2);
             assertThat(resp.getResponses())
-                    .extracting(LegResponse::getName)
+                    .extracting(LegResponseV2::getName)
                     .containsExactly("CBS", "GL");
             assertThat(resp.getResponses())
-                    .extracting(LegResponse::getStatus)
+                    .extracting(LegResponseV2::getStatus)
                     .containsOnly("SUCCESS");
             resp.getResponses().forEach(leg -> {
                 assertThat(leg.getReferenceId()).isNotBlank();
@@ -1255,15 +1255,15 @@ class AccountPostingIntegrationTest {
         @DisplayName("findById for a PENDING posting shows FAILED legs correctly")
         void findById_pendingPosting_showsFailedLegs() {
             doReturn(failStrategy("CBS down")).when(strategyFactory).resolve("CBS_POSTING");
-            AccountPostingRequest request = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 request = req("IMX", "IMX_CBS_GL");
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPostingResponse resp = service.findById(postingId);
+            AccountPostingResponseV2 resp = service.findById(postingId);
 
             assertThat(resp.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
             assertThat(resp.getResponses()).hasSize(2);
-            LegResponse cbsLeg = resp.getResponses().stream()
+            LegResponseV2 cbsLeg = resp.getResponses().stream()
                     .filter(l -> "CBS".equals(l.getName())).findFirst().orElseThrow();
             assertThat(cbsLeg.getStatus()).isEqualTo("FAILED");
             assertThat(cbsLeg.getReason()).isEqualTo("CBS down");
@@ -1369,12 +1369,12 @@ class AccountPostingIntegrationTest {
                     .isInstanceOf(BusinessException.class);
             seedConfigs();  // restore for remaining
 
-            AccountPostingRequest badSource = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 badSource = req("IMX", "IMX_CBS_GL");
             badSource.setSourceName("INVALID_SRC");
             assertThatThrownBy(() -> service.create(badSource))
                     .isInstanceOf(BusinessException.class);
 
-            AccountPostingRequest badType = req("IMX", "IMX_CBS_GL");
+            AccountPostingRequestV2 badType = req("IMX", "IMX_CBS_GL");
             badType.setRequestType("INVALID_TYPE");
             assertThatThrownBy(() -> service.create(badType))
                     .isInstanceOf(BusinessException.class);
@@ -1413,7 +1413,7 @@ class AccountPostingIntegrationTest {
                     .filter(p -> p.getStatus() == PostingStatus.PNDG).count()).isEqualTo(5);
 
             // Bulk retry — all 5 PENDING recover
-            RetryResponse retryResp = service.retry(new RetryRequest());
+            RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             assertThat(retryResp.getTotalLegsRetried()).isEqualTo(5);
             assertThat(retryResp.getSuccessCount()).isEqualTo(5);

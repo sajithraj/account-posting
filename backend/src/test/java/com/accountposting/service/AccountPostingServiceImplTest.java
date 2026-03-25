@@ -1,28 +1,30 @@
 package com.accountposting.service;
 
-import com.accountposting.dto.accountposting.AccountPostingCreateResponse;
-import com.accountposting.dto.accountposting.AccountPostingRequest;
-import com.accountposting.dto.accountpostingleg.AccountPostingLegRequest;
-import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
-import com.accountposting.dto.accountpostingleg.LegResponse;
-import com.accountposting.dto.retry.RetryRequest;
-import com.accountposting.dto.retry.RetryResponse;
+import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingRequestV2;
+import com.accountposting.dto.accountpostingleg.AccountPostingLegRequestV2;
+import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
+import com.accountposting.dto.accountpostingleg.LegResponseV2;
+import com.accountposting.dto.retry.RetryRequestV2;
+import com.accountposting.dto.retry.RetryResponseV2;
 import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.PostingConfig;
 import com.accountposting.entity.enums.CreditDebitIndicator;
 import com.accountposting.entity.enums.PostingStatus;
 import com.accountposting.event.PostingEventPublisher;
 import com.accountposting.exception.BusinessException;
-import com.accountposting.mapper.AccountPostingLegMapper;
-import com.accountposting.mapper.AccountPostingMapper;
-import com.accountposting.mapper.MappingUtils;
+import com.accountposting.mapper.AccountPostingLegMapperV2;
+import com.accountposting.mapper.AccountPostingMapperV2;
+import com.accountposting.mapper.MappingUtilsV2;
+import com.accountposting.repository.AccountPostingHistoryRepository;
+import com.accountposting.repository.AccountPostingLegHistoryRepository;
 import com.accountposting.repository.AccountPostingRepository;
 import com.accountposting.repository.PostingConfigRepository;
-import com.accountposting.service.accountposting.AccountPostingServiceImpl;
+import com.accountposting.service.accountposting.AccountPostingServiceImplV2;
 import com.accountposting.service.accountposting.strategy.PostingStrategy;
 import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
-import com.accountposting.service.accountpostingleg.AccountPostingLegService;
-import com.accountposting.service.retry.PostingRetryProcessor;
+import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
+import com.accountposting.service.retry.PostingRetryProcessorV2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,38 +50,41 @@ class AccountPostingServiceImplTest {
     @Mock
     AccountPostingRepository repository;
     @Mock
-    AccountPostingMapper mapper;
+    AccountPostingHistoryRepository historyRepository;
     @Mock
-    AccountPostingLegMapper legMapper;
+    AccountPostingLegHistoryRepository legHistoryRepository;
     @Mock
-    AccountPostingLegService legService;
+    AccountPostingMapperV2 mapper;
+    @Mock
+    AccountPostingLegMapperV2 legMapper;
+    @Mock
+    AccountPostingLegServiceV2 legService;
     @Mock
     PostingConfigRepository postingConfigRepository;
     @Mock
     PostingStrategyFactory strategyFactory;
     @Mock
-    PostingRetryProcessor retryProcessor;
+    PostingRetryProcessorV2 retryProcessor;
     @Mock
-    AccountPostingRequestValidator requestValidator;
+    AccountPostingRequestValidatorV2 requestValidator;
     @Mock
     PostingEventPublisher eventPublisher;
     @Mock
     PlatformTransactionManager transactionManager;
 
-    // Real ObjectMapper + MappingUtils — used for JSON serialization of request/response payloads
+    // Real ObjectMapper + MappingUtilsV2 — used for JSON serialization of request/response payloads
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
-    private final MappingUtils mappingUtils = new MappingUtils(objectMapper);
+    private final MappingUtilsV2 mappingUtils = new MappingUtilsV2(objectMapper);
 
-    private AccountPostingServiceImpl service;
+    private AccountPostingServiceImplV2 service;
 
     @BeforeEach
     void setUp() {
         // toCreateLegRequest copies targetSystem/operation/legOrder from its arguments
         // so that legService.addLeg() responses carry the correct values for strategy resolution.
-        // lenient: retry tests don't call create(), so this stub is unused in those tests.
         lenient().when(legMapper.toCreateLegRequest(any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> {
-                    AccountPostingLegRequest r = new AccountPostingLegRequest();
+                    AccountPostingLegRequestV2 r = new AccountPostingLegRequestV2();
                     r.setLegOrder(inv.getArgument(1));
                     r.setTargetSystem(inv.getArgument(2));
                     r.setOperation(inv.getArgument(4));
@@ -88,8 +93,9 @@ class AccountPostingServiceImplTest {
 
         // TransactionTemplate calls transactionManager.getTransaction() → null (Mockito default, fine)
         // and commit() → no-op (void, Mockito default). The callback always executes inline.
-        service = new AccountPostingServiceImpl(
-                repository, mapper, legMapper, legService, postingConfigRepository,
+        service = new AccountPostingServiceImplV2(
+                repository, historyRepository, legHistoryRepository,
+                mapper, legMapper, legService, postingConfigRepository,
                 strategyFactory, retryProcessor, requestValidator, mappingUtils,
                 Runnable::run, transactionManager
         );
@@ -99,7 +105,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_allLegsSucceed_postingStatusIsSavedAsSuccess() {
-        AccountPostingRequest request = buildRequest("e2e-001");
+        AccountPostingRequestV2 request = buildRequest("e2e-001");
         AccountPostingEntity posting = buildPosting(1L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
@@ -113,8 +119,8 @@ class AccountPostingServiceImplTest {
         when(postingConfigRepository.findByRequestTypeOrderByOrderSeqAsc("IMX_CBS_GL"))
                 .thenReturn(List.of(config1, config2));
         when(legService.addLeg(anyLong(), any())).thenAnswer(inv -> {
-            AccountPostingLegRequest r = inv.getArgument(1);
-            AccountPostingLegResponse resp = new AccountPostingLegResponse();
+            AccountPostingLegRequestV2 r = inv.getArgument(1);
+            AccountPostingLegResponseV2 resp = new AccountPostingLegResponseV2();
             resp.setPostingLegId((long) (Math.random() * 1000 + 1));
             resp.setTargetSystem(r.getTargetSystem());
             resp.setOperation(r.getOperation());
@@ -127,7 +133,7 @@ class AccountPostingServiceImplTest {
                 .thenReturn(legResponse("SUCCESS"));
         when(strategy2.process(eq(1L), eq(2), any(), eq(false), any()))
                 .thenReturn(legResponse("SUCCESS"));
-        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponse.builder().build());
+        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponseV2.builder().build());
 
         service.create(request);
 
@@ -147,7 +153,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_noConfigFound_savesFailedStatusAndThrowsBusinessException() {
-        AccountPostingRequest request = buildRequest("e2e-002");
+        AccountPostingRequestV2 request = buildRequest("e2e-002");
         AccountPostingEntity posting = buildPosting(2L, PostingStatus.PNDG);
 
         when(repository.existsByEndToEndReferenceId("e2e-002")).thenReturn(false);
@@ -160,7 +166,7 @@ class AccountPostingServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("No posting config found");
 
-        // FAILED status must be persisted before the exception is thrown
+        // RJCT status must be persisted before the exception is thrown
         ArgumentCaptor<AccountPostingEntity> captor = ArgumentCaptor.forClass(AccountPostingEntity.class);
         verify(repository, atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues())
@@ -175,7 +181,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_duplicateE2eRef_throwsBusinessExceptionWithoutPersisting() {
-        AccountPostingRequest request = buildRequest("e2e-dup");
+        AccountPostingRequestV2 request = buildRequest("e2e-dup");
         when(repository.existsByEndToEndReferenceId("e2e-dup")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
@@ -190,7 +196,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_oneLegFails_postingStatusIsSavedAsPending() {
-        AccountPostingRequest request = buildRequest("e2e-003");
+        AccountPostingRequestV2 request = buildRequest("e2e-003");
         AccountPostingEntity posting = buildPosting(3L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
@@ -204,8 +210,8 @@ class AccountPostingServiceImplTest {
         when(postingConfigRepository.findByRequestTypeOrderByOrderSeqAsc("IMX_CBS_GL"))
                 .thenReturn(List.of(config1, config2));
         when(legService.addLeg(anyLong(), any())).thenAnswer(inv -> {
-            AccountPostingLegRequest r = inv.getArgument(1);
-            AccountPostingLegResponse resp = new AccountPostingLegResponse();
+            AccountPostingLegRequestV2 r = inv.getArgument(1);
+            AccountPostingLegResponseV2 resp = new AccountPostingLegResponseV2();
             resp.setPostingLegId((long) (Math.random() * 1000 + 1));
             resp.setTargetSystem(r.getTargetSystem());
             resp.setOperation(r.getOperation());
@@ -218,7 +224,7 @@ class AccountPostingServiceImplTest {
                 .thenReturn(legResponse("SUCCESS"));
         when(strategy2.process(eq(3L), eq(2), any(), eq(false), any()))
                 .thenReturn(legResponse("FAILED"));
-        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponse.builder().build());
+        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponseV2.builder().build());
 
         service.create(request);
 
@@ -233,7 +239,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_allLegsFail_postingStatusIsSavedAsPending() {
-        AccountPostingRequest request = buildRequest("e2e-004");
+        AccountPostingRequestV2 request = buildRequest("e2e-004");
         AccountPostingEntity posting = buildPosting(4L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
@@ -245,8 +251,8 @@ class AccountPostingServiceImplTest {
         when(postingConfigRepository.findByRequestTypeOrderByOrderSeqAsc("IMX_CBS_GL"))
                 .thenReturn(List.of(config1));
         when(legService.addLeg(anyLong(), any())).thenAnswer(inv -> {
-            AccountPostingLegRequest r = inv.getArgument(1);
-            AccountPostingLegResponse resp = new AccountPostingLegResponse();
+            AccountPostingLegRequestV2 r = inv.getArgument(1);
+            AccountPostingLegResponseV2 resp = new AccountPostingLegResponseV2();
             resp.setPostingLegId((long) (Math.random() * 1000 + 1));
             resp.setTargetSystem(r.getTargetSystem());
             resp.setOperation(r.getOperation());
@@ -256,7 +262,7 @@ class AccountPostingServiceImplTest {
         when(strategyFactory.resolve("CBS_POSTING")).thenReturn(strategy1);
         when(strategy1.process(eq(4L), eq(1), any(), eq(false), any()))
                 .thenReturn(legResponse("FAILED"));
-        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponse.builder().build());
+        when(mapper.toCreateResponse(any(AccountPostingEntity.class))).thenReturn(AccountPostingCreateResponseV2.builder().build());
 
         service.create(request);
 
@@ -287,9 +293,9 @@ class AccountPostingServiceImplTest {
         when(retryProcessor.process(11L)).thenReturn(List.of(
                 legRetryResult(2L, 11L, "FAILED", "SUCCESS")));
 
-        RetryRequest retryRequest = new RetryRequest(); // null postingIds → bulk
+        RetryRequestV2 retryRequest = new RetryRequestV2(); // null postingIds → bulk
 
-        RetryResponse response = service.retry(retryRequest);
+        RetryResponseV2 response = service.retry(retryRequest);
 
         assertThat(response.getTotalLegsRetried()).isEqualTo(2);
         assertThat(response.getSuccessCount()).isEqualTo(2);
@@ -312,10 +318,10 @@ class AccountPostingServiceImplTest {
         when(retryProcessor.process(20L)).thenReturn(List.of(
                 legRetryResult(5L, 20L, "FAILED", "FAILED")));
 
-        RetryRequest retryRequest = new RetryRequest();
+        RetryRequestV2 retryRequest = new RetryRequestV2();
         retryRequest.setPostingIds(List.of(20L));
 
-        RetryResponse response = service.retry(retryRequest);
+        RetryResponseV2 response = service.retry(retryRequest);
 
         assertThat(response.getTotalLegsRetried()).isEqualTo(1);
         assertThat(response.getSuccessCount()).isEqualTo(0);
@@ -331,7 +337,7 @@ class AccountPostingServiceImplTest {
         when(repository.findEligibleForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
                 .thenReturn(List.of());
 
-        RetryResponse response = service.retry(new RetryRequest());
+        RetryResponseV2 response = service.retry(new RetryRequestV2());
 
         assertThat(response.getTotalLegsRetried()).isEqualTo(0);
         verifyNoInteractions(retryProcessor);
@@ -348,7 +354,7 @@ class AccountPostingServiceImplTest {
         when(repository.lockForRetry(anyList(), any(), any(), any())).thenReturn(0);
         when(repository.findByIdsAndLockUntil(anyList(), any())).thenReturn(List.of());
 
-        RetryResponse response = service.retry(new RetryRequest());
+        RetryResponseV2 response = service.retry(new RetryRequestV2());
 
         assertThat(response.getTotalLegsRetried()).isEqualTo(0);
         verifyNoInteractions(retryProcessor);
@@ -356,8 +362,8 @@ class AccountPostingServiceImplTest {
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    private AccountPostingRequest buildRequest(String e2eRef) {
-        AccountPostingRequest req = new AccountPostingRequest();
+    private AccountPostingRequestV2 buildRequest(String e2eRef) {
+        AccountPostingRequestV2 req = new AccountPostingRequestV2();
         req.setSourceReferenceId("SRC-001");
         req.setEndToEndReferenceId(e2eRef);
         req.setSourceName("IMX");
@@ -389,15 +395,15 @@ class AccountPostingServiceImplTest {
         return c;
     }
 
-    private LegResponse legResponse(String status) {
-        LegResponse r = new LegResponse();
+    private LegResponseV2 legResponse(String status) {
+        LegResponseV2 r = new LegResponseV2();
         r.setStatus(status);
         return r;
     }
 
-    private RetryResponse.LegRetryResult legRetryResult(Long legId, Long postingId,
-                                                        String prev, String next) {
-        return RetryResponse.LegRetryResult.builder()
+    private RetryResponseV2.LegRetryResult legRetryResult(Long legId, Long postingId,
+                                                          String prev, String next) {
+        return RetryResponseV2.LegRetryResult.builder()
                 .postingLegId(legId)
                 .postingId(postingId)
                 .previousStatus(prev)

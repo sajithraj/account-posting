@@ -29,8 +29,8 @@ export default function PostingDetailPage() {
   });
 
   const updateLegMutation = useMutation({
-    mutationFn: ({ legId, status }: { legId: number; status: string }) =>
-      postingApi.updateLegStatus(id, legId, status),
+    mutationFn: ({ legId, status, reason }: { legId: number; status: string; reason?: string }) =>
+      postingApi.updateLegStatus(id, legId, status, reason),
     onSuccess: () => {
       setUpdatingLegId(null);
       queryClient.invalidateQueries({ queryKey: ['posting', postingId] });
@@ -47,9 +47,9 @@ export default function PostingDetailPage() {
 
   const canRetry = posting.postingStatus === 'PNDG';
 
-  const handleUpdateLegStatus = (legId: number, status: string) => {
+  const handleUpdateLegStatus = (legId: number, status: string, reason?: string) => {
     setUpdatingLegId(legId);
-    updateLegMutation.mutate({ legId, status });
+    updateLegMutation.mutate({ legId, status, reason });
   };
 
   return (

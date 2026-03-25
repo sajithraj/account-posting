@@ -1,18 +1,18 @@
 package com.accountposting.controller;
 
-import com.accountposting.dto.accountposting.AccountPostingCreateResponse;
-import com.accountposting.dto.accountposting.AccountPostingRequest;
-import com.accountposting.dto.accountposting.AccountPostingResponse;
-import com.accountposting.dto.accountposting.AccountPostingSearchRequest;
-import com.accountposting.dto.accountpostingleg.LegResponse;
-import com.accountposting.dto.retry.RetryRequest;
-import com.accountposting.dto.retry.RetryResponse;
+import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingRequestV2;
+import com.accountposting.dto.accountposting.AccountPostingResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingSearchRequestV2;
+import com.accountposting.dto.accountpostingleg.LegResponseV2;
+import com.accountposting.dto.retry.RetryRequestV2;
+import com.accountposting.dto.retry.RetryResponseV2;
 import com.accountposting.entity.enums.CreditDebitIndicator;
 import com.accountposting.entity.enums.PostingStatus;
 import com.accountposting.exception.BusinessException;
 import com.accountposting.exception.GlobalExceptionHandler;
 import com.accountposting.exception.ResourceNotFoundException;
-import com.accountposting.service.accountposting.AccountPostingService;
+import com.accountposting.service.accountposting.AccountPostingServiceV2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AccountPostingController.class)
+@WebMvcTest(AccountPostingControllerV2.class)
 @Import(GlobalExceptionHandler.class)
 class AccountPostingControllerTest {
 
@@ -50,12 +50,12 @@ class AccountPostingControllerTest {
     ObjectMapper objectMapper;
 
     @MockitoBean
-    AccountPostingService service;
+    AccountPostingServiceV2 service;
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private AccountPostingRequest validRequest() {
-        AccountPostingRequest req = new AccountPostingRequest();
+    private AccountPostingRequestV2 validRequest() {
+        AccountPostingRequestV2 req = new AccountPostingRequestV2();
         req.setSourceReferenceId("SRC-001");
         req.setEndToEndReferenceId("E2E-001");
         req.setSourceName("IMX");
@@ -69,16 +69,16 @@ class AccountPostingControllerTest {
         return req;
     }
 
-    private AccountPostingCreateResponse sampleCreateResponse() {
-        return AccountPostingCreateResponse.builder()
+    private AccountPostingCreateResponseV2 sampleCreateResponse() {
+        return AccountPostingCreateResponseV2.builder()
                 .sourceReferenceId("SRC-001")
                 .endToEndReferenceId("E2E-001")
                 .postingStatus(PostingStatus.ACSP)
                 .build();
     }
 
-    private AccountPostingResponse sampleResponse(Long id) {
-        return AccountPostingResponse.builder()
+    private AccountPostingResponseV2 sampleResponse(Long id) {
+        return AccountPostingResponseV2.builder()
                 .postingId(id)
                 .sourceReferenceId("SRC-001")
                 .endToEndReferenceId("E2E-001")
@@ -86,7 +86,7 @@ class AccountPostingControllerTest {
                 .build();
     }
 
-    // ── POST /account-posting ──────────────────────────────────────────────────
+    // ── POST /v2/payment/account-posting ──────────────────────────────────────
 
     @Nested
     class Create {
@@ -95,7 +95,7 @@ class AccountPostingControllerTest {
         void returns201_whenValidRequest() throws Exception {
             when(service.create(any())).thenReturn(sampleCreateResponse());
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isCreated())
@@ -106,7 +106,7 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenAllRequiredFieldsMissing() throws Exception {
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isBadRequest())
@@ -119,10 +119,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenSourceReferenceIdBlank() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setSourceReferenceId("   ");
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -132,10 +132,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenAmountIsZero() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setAmount(BigDecimal.ZERO);
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -144,10 +144,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenAmountIsNegative() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setAmount(new BigDecimal("-10.00"));
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -156,10 +156,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenCurrencyIsWrongLength() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setCurrency("US");
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -168,10 +168,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenSourceNameMissing() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setSourceName(null);
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -180,10 +180,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenRequestTypeMissing() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setRequestType(null);
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -192,10 +192,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenCreditDebitIndicatorMissing() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setCreditDebitIndicator(null);
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -204,10 +204,10 @@ class AccountPostingControllerTest {
 
         @Test
         void returns400_whenRequestedExecutionDateMissing() throws Exception {
-            AccountPostingRequest req = validRequest();
+            AccountPostingRequestV2 req = validRequest();
             req.setRequestedExecutionDate(null);
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -220,7 +220,7 @@ class AccountPostingControllerTest {
                     .thenThrow(new BusinessException("DUPLICATE_E2E_REF",
                             "Posting with this endToEndReferenceId already exists"));
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isBadRequest())
@@ -234,7 +234,7 @@ class AccountPostingControllerTest {
                     .thenThrow(new BusinessException("NO_CONFIG_FOUND",
                             "No posting config found for requestType: PAYMENT"));
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isUnprocessableEntity())
@@ -245,7 +245,7 @@ class AccountPostingControllerTest {
         void returns500_whenServiceThrowsUnexpectedException() throws Exception {
             when(service.create(any())).thenThrow(new RuntimeException("DB connection lost"));
 
-            mockMvc.perform(post("/account-posting")
+            mockMvc.perform(post("/v2/payment/account-posting")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isInternalServerError())
@@ -254,19 +254,19 @@ class AccountPostingControllerTest {
         }
     }
 
-    // ── GET /account-posting ───────────────────────────────────────────────────
+    // ── GET /v2/payment/account-posting ───────────────────────────────────────
 
     @Nested
     class Search {
 
         @Test
         void returns200_withPagedResults() throws Exception {
-            Page<AccountPostingResponse> page = new PageImpl<>(
+            Page<AccountPostingResponseV2> page = new PageImpl<>(
                     List.of(sampleResponse(1L), sampleResponse(2L)));
-            when(service.search(any(AccountPostingSearchRequest.class), any(Pageable.class)))
+            when(service.search(any(AccountPostingSearchRequestV2.class), any(Pageable.class)))
                     .thenReturn(page);
 
-            mockMvc.perform(get("/account-posting"))
+            mockMvc.perform(get("/v2/payment/account-posting"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content", hasSize(2)))
                     .andExpect(jsonPath("$.total_elements").value(2));
@@ -276,7 +276,7 @@ class AccountPostingControllerTest {
         void returns200_withEmptyResults() throws Exception {
             when(service.search(any(), any())).thenReturn(Page.empty());
 
-            mockMvc.perform(get("/account-posting"))
+            mockMvc.perform(get("/v2/payment/account-posting"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content", hasSize(0)));
         }
@@ -285,7 +285,7 @@ class AccountPostingControllerTest {
         void returns200_withSearchCriteriaParams() throws Exception {
             when(service.search(any(), any())).thenReturn(Page.empty());
 
-            mockMvc.perform(get("/account-posting")
+            mockMvc.perform(get("/v2/payment/account-posting")
                             .param("postingStatus", "ACSP")
                             .param("sourceName", "TEST-SOURCE")
                             .param("requestType", "PAYMENT"))
@@ -298,32 +298,32 @@ class AccountPostingControllerTest {
         void returns500_whenServiceThrows() throws Exception {
             when(service.search(any(), any())).thenThrow(new RuntimeException("Unexpected"));
 
-            mockMvc.perform(get("/account-posting"))
+            mockMvc.perform(get("/v2/payment/account-posting"))
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.name").value("INTERNAL_ERROR"));
         }
     }
 
-    // ── GET /account-posting/{postingId} ──────────────────────────────────────
+    // ── GET /v2/payment/account-posting/{postingId} ───────────────────────────
 
     @Nested
     class FindById {
 
         @Test
         void returns200_whenPostingExists() throws Exception {
-            LegResponse leg = new LegResponse();
+            LegResponseV2 leg = new LegResponseV2();
             leg.setName("CBS");
             leg.setType("POSTING");
             leg.setLegOrder(1);
 
-            AccountPostingResponse resp = AccountPostingResponse.builder()
+            AccountPostingResponseV2 resp = AccountPostingResponseV2.builder()
                     .postingId(42L)
                     .postingStatus(PostingStatus.ACSP)
                     .responses(List.of(leg))
                     .build();
             when(service.findById(42L)).thenReturn(resp);
 
-            mockMvc.perform(get("/account-posting/42"))
+            mockMvc.perform(get("/v2/payment/account-posting/42"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.posting_id").value(42))
                     .andExpect(jsonPath("$.responses", hasSize(1)))
@@ -336,7 +336,7 @@ class AccountPostingControllerTest {
             when(service.findById(99L))
                     .thenThrow(new ResourceNotFoundException("AccountPosting", 99L));
 
-            mockMvc.perform(get("/account-posting/99"))
+            mockMvc.perform(get("/v2/payment/account-posting/99"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.name").value("NOT_FOUND"))
                     .andExpect(jsonPath("$.message").value(containsString("99")));
@@ -346,30 +346,30 @@ class AccountPostingControllerTest {
         void returns500_whenServiceThrows() throws Exception {
             when(service.findById(any())).thenThrow(new RuntimeException("Unexpected"));
 
-            mockMvc.perform(get("/account-posting/1"))
+            mockMvc.perform(get("/v2/payment/account-posting/1"))
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.name").value("INTERNAL_ERROR"));
         }
     }
 
-    // ── POST /account-posting/retry ────────────────────────────────────────────
+    // ── POST /v2/payment/account-posting/retry ────────────────────────────────
 
     @Nested
     class Retry {
 
         @Test
         void returns200_withExplicitPostingIds() throws Exception {
-            RetryRequest req = new RetryRequest();
+            RetryRequestV2 req = new RetryRequestV2();
             req.setPostingIds(List.of(1L, 2L));
 
-            RetryResponse resp = RetryResponse.builder()
+            RetryResponseV2 resp = RetryResponseV2.builder()
                     .totalLegsRetried(2)
                     .successCount(2)
                     .failedCount(0)
                     .build();
             when(service.retry(any())).thenReturn(resp);
 
-            mockMvc.perform(post("/account-posting/retry")
+            mockMvc.perform(post("/v2/payment/account-posting/retry")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
@@ -380,15 +380,14 @@ class AccountPostingControllerTest {
 
         @Test
         void returns200_withEmptyBodyRetriesAll() throws Exception {
-            RetryResponse resp = RetryResponse.builder()
+            RetryResponseV2 resp = RetryResponseV2.builder()
                     .totalLegsRetried(3)
                     .successCount(2)
                     .failedCount(1)
                     .build();
             when(service.retry(any())).thenReturn(resp);
 
-            // No body — retries all non-SUCCESS postings
-            mockMvc.perform(post("/account-posting/retry")
+            mockMvc.perform(post("/v2/payment/account-posting/retry")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.total_legs_retried").value(3));
@@ -398,12 +397,11 @@ class AccountPostingControllerTest {
         void returns500_whenServiceThrows() throws Exception {
             when(service.retry(any())).thenThrow(new RuntimeException("Unexpected"));
 
-            mockMvc.perform(post("/account-posting/retry")
+            mockMvc.perform(post("/v2/payment/account-posting/retry")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.name").value("INTERNAL_ERROR"));
         }
     }
-
 }

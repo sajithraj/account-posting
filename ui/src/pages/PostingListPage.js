@@ -1,0 +1,330 @@
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { useState, Fragment } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { postingApi, getErrorMessage } from '../api/postingApi';
+import StatusBadge from '../components/StatusBadge';
+import LegTable from '../components/LegTable';
+export default function PostingListPage() {
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const [pageSize, setPageSize] = useState(10);
+    const [params, setParams] = useState({ page: 0, size: 10 });
+    const [draft, setDraft] = useState({});
+    const [selected, setSelected] = useState(new Set());
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ['postings', params],
+        queryFn: () => postingApi.search(params),
+    });
+    const [retryingId, setRetryingId] = useState(null);
+    const retryAllMutation = useMutation({
+        mutationFn: () => postingApi.retry(),
+        onSuccess: () => {
+            alert('Retry triggered successfully');
+            queryClient.invalidateQueries({ queryKey: ['postings'] });
+        },
+        onError: (err) => alert(`Retry failed: ${getErrorMessage(err)}`),
+    });
+    const retrySelectedMutation = useMutation({
+        mutationFn: (ids) => postingApi.retry(ids),
+        onSuccess: () => {
+            setSelected(new Set());
+            queryClient.invalidateQueries({ queryKey: ['postings'] });
+        },
+        onError: (err) => alert(`Retry failed: ${getErrorMessage(err)}`),
+    });
+    const retryOneMutation = useMutation({
+        mutationFn: (postingId) => postingApi.retry([postingId]),
+        onSuccess: () => {
+            setRetryingId(null);
+            queryClient.invalidateQueries({ queryKey: ['postings'] });
+        },
+        onError: (err) => {
+            setRetryingId(null);
+            alert(`Retry failed: ${getErrorMessage(err)}`);
+        },
+    });
+    const handleSearch = (e) => {
+        e.preventDefault();
+        setParams({ ...draft, page: 0, size: pageSize });
+    };
+    const currentPage = params.page ?? 0;
+    const totalPages = data?.totalPages ?? 0;
+    const totalElements = data?.totalElements ?? 0;
+    const from = totalElements === 0 ? 0 : currentPage * pageSize + 1;
+    const to = Math.min((currentPage + 1) * pageSize, totalElements);
+    const pendingIds = (data?.content ?? [])
+        .filter(p => p.postingStatus === 'PNDG')
+        .map(p => p.postingId);
+    const hasPending = pendingIds.length > 0;
+    const selectedPendingIds = [...selected].filter(id => (data?.content ?? []).some(p => p.postingId === id && p.postingStatus === 'PNDG'));
+    const hasSelectedPending = selectedPendingIds.length > 0;
+    const [expandedIds, setExpandedIds] = useState(new Set());
+    const toggleExpand = (id, e) => {
+        e.stopPropagation();
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id))
+                next.delete(id);
+            else
+                next.add(id);
+            return next;
+        });
+    };
+    const toggleRow = (id) => {
+        setSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(id))
+                next.delete(id);
+            else
+                next.add(id);
+            return next;
+        });
+    };
+    const toggleAll = () => {
+        if (!data)
+            return;
+        const allIds = data.content.map(p => p.postingId);
+        const allSelected = allIds.every(id => selected.has(id));
+        if (allSelected) {
+            setSelected(new Set());
+        }
+        else {
+            setSelected(new Set(allIds));
+        }
+    };
+    return (_jsxs("div", { style: s.page, children: [_jsxs("div", { style: s.header, children: [_jsx("h2", { style: s.title, children: "Account Posting Search" }), _jsxs("div", { style: s.headerActions, children: [_jsx("button", { style: {
+                                    ...s.outlineBtn,
+                                    ...(Object.values(draft).every(v => v === undefined || v === '') ? s.disabledBtn : {}),
+                                }, onClick: () => {
+                                    setDraft({});
+                                    setParams({ page: 0, size: pageSize });
+                                }, disabled: Object.values(draft).every(v => v === undefined || v === ''), children: "\u2715 CLEAR FILTERS" }), _jsx("button", { style: {
+                                    ...s.outlineBtn,
+                                    ...(hasSelectedPending ? {} : s.disabledBtn),
+                                }, onClick: () => retrySelectedMutation.mutate(selectedPendingIds), disabled: !hasSelectedPending || retrySelectedMutation.isPending, children: retrySelectedMutation.isPending ? 'Processing...' : '⟳ RETRY SELECTED' }), _jsx("button", { style: {
+                                    ...s.solidBtn,
+                                    ...(!hasPending || retryAllMutation.isPending ? s.disabledBtn : {}),
+                                }, onClick: () => retryAllMutation.mutate(), disabled: !hasPending || retryAllMutation.isPending, children: retryAllMutation.isPending ? 'Processing...' : '⟳ RETRY ALL PENDING' })] })] }), _jsxs("form", { onSubmit: handleSearch, style: s.filterBar, children: [_jsx("input", { style: s.filterInput, placeholder: "End to End Reference", value: draft.endToEndReferenceId ?? '', onChange: e => setDraft(d => ({ ...d, endToEndReferenceId: e.target.value || undefined })) }), _jsx("input", { style: s.filterInput, placeholder: "Source Reference", value: draft.sourceReferenceId ?? '', onChange: e => setDraft(d => ({ ...d, sourceReferenceId: e.target.value || undefined })) }), _jsxs("select", { style: s.filterSelect, value: draft.sourceName ?? '', onChange: e => setDraft(d => ({ ...d, sourceName: e.target.value || undefined })), children: [_jsx("option", { value: "", children: "Source Name" }), _jsx("option", { value: "IMX", children: "IMX" }), _jsx("option", { value: "RMS", children: "RMS" }), _jsx("option", { value: "STABLECOIN", children: "STABLECOIN" })] }), _jsxs("select", { style: s.filterSelect, value: draft.targetSystem ?? '', onChange: e => setDraft(d => ({ ...d, targetSystem: e.target.value || undefined })), children: [_jsx("option", { value: "", children: "Target System" }), _jsx("option", { value: "CBS", children: "CBS" }), _jsx("option", { value: "GL", children: "GL" }), _jsx("option", { value: "OBPM", children: "OBPM" })] }), _jsxs("select", { style: s.filterSelect, value: draft.status ?? '', onChange: e => setDraft(d => ({ ...d, status: e.target.value || undefined })), children: [_jsx("option", { value: "", children: "Posting Status" }), _jsx("option", { value: "PNDG", children: "PNDG" }), _jsx("option", { value: "ACSP", children: "ACSP" }), _jsx("option", { value: "RJCT", children: "RJCT" })] }), _jsxs("select", { style: s.filterSelect, value: draft.requestType ?? '', onChange: e => setDraft(d => ({ ...d, requestType: e.target.value || undefined })), children: [_jsx("option", { value: "", children: "Request Type" }), _jsx("option", { value: "IMX_OBPM", children: "IMX_OBPM" }), _jsx("option", { value: "IMX_CBS_GL", children: "IMX_CBS_GL" }), _jsx("option", { value: "FED_RETURN", children: "FED_RETURN" }), _jsx("option", { value: "GL_RETURN", children: "GL_RETURN" }), _jsx("option", { value: "MCA_RETURN", children: "MCA_RETURN" }), _jsx("option", { value: "BUY_CUSTOMER_POSTNG", children: "BUY_CUSTOMER_POSTNG" }), _jsx("option", { value: "ADD_ACCOUNT_HOLD", children: "ADD_ACCOUNT_HOLD" }), _jsx("option", { value: "CUSTOMER_POSTING", children: "CUSTOMER_POSTING" })] }), _jsxs("div", { style: s.dateRange, children: [_jsx("input", { type: "date", style: s.filterInput, value: draft.fromDate ?? '', onChange: e => setDraft(d => ({ ...d, fromDate: e.target.value || undefined })) }), _jsx("span", { style: s.dateSep, children: "\u2013" }), _jsx("input", { type: "date", style: s.filterInput, value: draft.toDate ?? '', onChange: e => setDraft(d => ({ ...d, toDate: e.target.value || undefined })) })] }), _jsx("button", { type: "submit", style: s.searchIconBtn, title: "Search", children: "\uD83D\uDD0D" })] }), isLoading && _jsx("div", { style: s.statusMsg, children: "Loading..." }), isError && _jsx("div", { style: { ...s.statusMsg, color: '#c0392b' }, children: "Failed to load postings." }), data && (_jsxs(_Fragment, { children: [_jsxs("table", { style: s.table, children: [_jsx("thead", { children: _jsxs("tr", { style: s.theadRow, children: [_jsx("th", { style: { ...s.th, width: 32 }, children: _jsx("input", { type: "checkbox", checked: data.content.length > 0 && data.content.every(p => selected.has(p.postingId)), onChange: toggleAll }) }), _jsx("th", { style: s.th, children: "Reference Number" }), _jsx("th", { style: s.th, children: "Source Reference" }), _jsx("th", { style: s.th, children: "Source Name" }), _jsx("th", { style: s.th, children: "Request Type" }), _jsx("th", { style: s.th, children: "Target Systems" }), _jsx("th", { style: s.th, children: "Exec. Date" }), _jsx("th", { style: s.th, children: "Amount" }), _jsx("th", { style: s.th, children: "Currency" }), _jsx("th", { style: s.th, children: "Payment Status" }), _jsx("th", { style: s.th, children: "Reason" }), _jsx("th", { style: { ...s.th, width: 90 } })] }) }), _jsx("tbody", { children: data.content.map(p => {
+                                    const expanded = expandedIds.has(p.postingId);
+                                    return (_jsxs(Fragment, { children: [_jsxs("tr", { onClick: () => navigate(`/postings/${p.postingId}`), style: { ...s.tbodyRow, background: expanded ? '#eef2ff' : 'white' }, onMouseEnter: e => (e.currentTarget.style.background = '#f5f8ff'), onMouseLeave: e => (e.currentTarget.style.background = expanded ? '#eef2ff' : 'white'), children: [_jsx("td", { style: { ...s.td, width: 32 }, onClick: e => e.stopPropagation(), children: _jsx("input", { type: "checkbox", checked: selected.has(p.postingId), onChange: () => toggleRow(p.postingId) }) }), _jsx("td", { style: { ...s.td, ...s.linkCell }, children: p.endToEndReferenceId }), _jsx("td", { style: s.td, children: p.sourceReferenceId }), _jsx("td", { style: s.td, children: p.sourceName }), _jsx("td", { style: s.td, children: p.requestType }), _jsx("td", { style: s.td, children: p.targetSystems ?? '—' }), _jsx("td", { style: s.td, children: p.requestedExecutionDate }), _jsx("td", { style: s.td, children: p.amount }), _jsx("td", { style: s.td, children: p.currency }), _jsx("td", { style: s.td, children: _jsx(StatusBadge, { status: p.postingStatus }) }), _jsx("td", { style: { ...s.td, ...s.reasonCell }, title: p.reason ?? '', children: p.reason ?? '—' }), _jsx("td", { style: { ...s.td, width: 90 }, onClick: e => e.stopPropagation(), children: _jsxs("div", { style: { display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'flex-end' }, children: [p.postingStatus === 'PNDG' && (_jsx("button", { style: {
+                                                                        ...s.retryRowBtn,
+                                                                        ...(retryingId === p.postingId ? s.disabledBtn : {}),
+                                                                    }, disabled: retryingId === p.postingId, onClick: () => {
+                                                                        setRetryingId(p.postingId);
+                                                                        retryOneMutation.mutate(p.postingId);
+                                                                    }, children: retryingId === p.postingId ? '...' : '⟳' })), _jsx("button", { style: {
+                                                                        ...s.expandBtn,
+                                                                        ...(expanded ? s.expandBtnActive : {}),
+                                                                    }, onClick: e => toggleExpand(p.postingId, e), title: expanded ? 'Collapse legs' : 'Expand legs', children: expanded ? '▲' : '▼' })] }) })] }), expanded && (_jsx("tr", { style: { background: '#f4f7ff' }, children: _jsxs("td", { colSpan: 12, style: s.expandedCell, children: [_jsx("div", { style: s.expandedLabel, children: "Posting Legs" }), _jsx(LegTable, { legs: p.responses ?? [] })] }) }))] }, p.postingId));
+                                }) })] }), _jsxs("div", { style: s.pagination, children: [_jsx("span", { style: s.paginationLabel, children: "Rows per page:" }), _jsx("select", { style: s.pageSizeSelect, value: pageSize, onChange: e => {
+                                    const sz = Number(e.target.value);
+                                    setPageSize(sz);
+                                    setParams(p => ({ ...p, size: sz, page: 0 }));
+                                }, children: [10, 20, 50].map(sz => _jsx("option", { value: sz, children: sz }, sz)) }), _jsxs("span", { style: s.paginationLabel, children: [from, "\u2013", to, " of ", totalElements] }), _jsx("button", { style: s.pageBtn, disabled: currentPage === 0, onClick: () => setParams(p => ({ ...p, page: currentPage - 1 })), children: "\u2039" }), _jsx("button", { style: s.pageBtn, disabled: currentPage + 1 >= totalPages, onClick: () => setParams(p => ({ ...p, page: currentPage + 1 })), children: "\u203A" })] })] }))] }));
+}
+const s = {
+    page: {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#222',
+    },
+    header: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    title: {
+        margin: 0,
+        fontSize: 22,
+        fontWeight: 600,
+        color: '#1a2a3a',
+    },
+    headerActions: {
+        display: 'flex',
+        gap: 8,
+    },
+    outlineBtn: {
+        padding: '7px 14px',
+        border: '1px solid #003b5c',
+        borderRadius: 4,
+        background: 'white',
+        cursor: 'pointer',
+        fontSize: 13,
+        fontWeight: 500,
+        color: '#003b5c',
+    },
+    solidBtn: {
+        padding: '7px 14px',
+        border: 'none',
+        borderRadius: 4,
+        background: '#003b5c',
+        color: 'white',
+        cursor: 'pointer',
+        fontSize: 13,
+        fontWeight: 500,
+    },
+    disabledBtn: {
+        opacity: 0.4,
+        cursor: 'not-allowed',
+    },
+    filterBar: {
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        padding: '12px 16px',
+        background: '#f4f6f9',
+        border: '1px solid #dde2ea',
+        borderRadius: 6,
+        marginBottom: 16,
+    },
+    filterInput: {
+        padding: '5px 10px',
+        border: '1px solid #c5cdd8',
+        borderRadius: 4,
+        fontSize: 13,
+        height: 30,
+        outline: 'none',
+        background: 'white',
+    },
+    filterSelect: {
+        padding: '5px 8px',
+        border: '1px solid #c5cdd8',
+        borderRadius: 4,
+        fontSize: 13,
+        height: 30,
+        background: 'white',
+        cursor: 'pointer',
+    },
+    dateRange: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+    },
+    dateSep: {
+        color: '#888',
+        fontSize: 14,
+    },
+    searchIconBtn: {
+        padding: '5px 12px',
+        background: '#003b5c',
+        color: 'white',
+        border: 'none',
+        borderRadius: 4,
+        cursor: 'pointer',
+        fontSize: 15,
+        height: 30,
+    },
+    statusMsg: {
+        padding: 24,
+        textAlign: 'center',
+        color: '#666',
+    },
+    table: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        fontSize: 13,
+        border: '1px solid #dde2ea',
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    theadRow: {
+        background: '#eef1f5',
+        borderBottom: '2px solid #c5cdd8',
+    },
+    th: {
+        padding: '10px 12px',
+        textAlign: 'left',
+        fontWeight: 600,
+        color: '#444',
+        whiteSpace: 'nowrap',
+        borderBottom: '1px solid #dde2ea',
+    },
+    tbodyRow: {
+        background: 'white',
+        cursor: 'pointer',
+        transition: 'background 0.1s',
+    },
+    td: {
+        padding: '10px 12px',
+        borderBottom: '1px solid #eef1f5',
+        verticalAlign: 'middle',
+    },
+    linkCell: {
+        color: '#0072ce',
+        fontWeight: 500,
+    },
+    pagination: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '12px 4px',
+        justifyContent: 'flex-end',
+        fontSize: 13,
+        color: '#555',
+    },
+    paginationLabel: {
+        color: '#666',
+    },
+    pageSizeSelect: {
+        border: '1px solid #c5cdd8',
+        borderRadius: 4,
+        padding: '2px 6px',
+        fontSize: 13,
+    },
+    pageBtn: {
+        padding: '4px 10px',
+        border: '1px solid #c5cdd8',
+        borderRadius: 4,
+        background: 'white',
+        cursor: 'pointer',
+        fontSize: 16,
+        lineHeight: 1,
+    },
+    retryRowBtn: {
+        padding: '3px 10px',
+        border: '1px solid #003b5c',
+        borderRadius: 4,
+        background: 'white',
+        color: '#003b5c',
+        cursor: 'pointer',
+        fontSize: 13,
+        fontWeight: 600,
+    },
+    expandBtn: {
+        padding: '3px 8px',
+        border: '1px solid #c5cdd8',
+        borderRadius: 4,
+        background: 'white',
+        color: '#555',
+        cursor: 'pointer',
+        fontSize: 10,
+        lineHeight: 1,
+    },
+    expandBtnActive: {
+        background: '#e8eeff',
+        borderColor: '#7b9ef0',
+        color: '#1a3fa8',
+    },
+    expandedCell: {
+        padding: '12px 20px 16px',
+        borderBottom: '2px solid #c5cdd8',
+    },
+    reasonCell: {
+        maxWidth: 220,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        color: '#555',
+        fontSize: 12,
+    },
+    expandedLabel: {
+        fontSize: 11,
+        fontWeight: 600,
+        color: '#666',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 8,
+    },
+};

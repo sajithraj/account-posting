@@ -1,9 +1,9 @@
 package com.accountposting.service;
 
-import com.accountposting.dto.accountposting.AccountPostingRequest;
-import com.accountposting.dto.accountpostingleg.AccountPostingLegResponse;
-import com.accountposting.dto.accountpostingleg.LegResponse;
-import com.accountposting.dto.retry.RetryResponse;
+import com.accountposting.dto.accountposting.AccountPostingRequestV2;
+import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
+import com.accountposting.dto.accountpostingleg.LegResponseV2;
+import com.accountposting.dto.retry.RetryResponseV2;
 import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.enums.CreditDebitIndicator;
 import com.accountposting.entity.enums.LegStatus;
@@ -12,8 +12,8 @@ import com.accountposting.event.PostingEventPublisher;
 import com.accountposting.repository.AccountPostingRepository;
 import com.accountposting.service.accountposting.strategy.PostingStrategy;
 import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
-import com.accountposting.service.accountpostingleg.AccountPostingLegService;
-import com.accountposting.service.retry.PostingRetryProcessor;
+import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
+import com.accountposting.service.retry.PostingRetryProcessorV2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ class PostingRetryProcessorTest {
     @Mock
     AccountPostingRepository postingRepository;
     @Mock
-    AccountPostingLegService legService;
+    AccountPostingLegServiceV2 legService;
     @Mock
     PostingStrategyFactory strategyFactory;
     @Mock
@@ -43,11 +43,11 @@ class PostingRetryProcessorTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
-    private PostingRetryProcessor processor;
+    private PostingRetryProcessorV2 processor;
 
     @BeforeEach
     void setUp() {
-        processor = new PostingRetryProcessor(postingRepository, legService, strategyFactory, objectMapper);
+        processor = new PostingRetryProcessorV2(postingRepository, legService, strategyFactory, objectMapper);
     }
 
     // ── posting not found ──────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ class PostingRetryProcessorTest {
     void process_postingNotFound_returnsEmptyList() {
         when(postingRepository.findById(99L)).thenReturn(java.util.Optional.empty());
 
-        List<RetryResponse.LegRetryResult> results = processor.process(99L);
+        List<RetryResponseV2.LegRetryResult> results = processor.process(99L);
 
         assertThat(results).isEmpty();
         verifyNoInteractions(legService, strategyFactory);
@@ -70,7 +70,7 @@ class PostingRetryProcessorTest {
         when(postingRepository.findById(1L)).thenReturn(java.util.Optional.of(posting));
         when(legService.listNonSuccessLegs(1L)).thenReturn(List.of());
 
-        List<RetryResponse.LegRetryResult> results = processor.process(1L);
+        List<RetryResponseV2.LegRetryResult> results = processor.process(1L);
 
         assertThat(results).isEmpty();
         verifyNoInteractions(strategyFactory);
@@ -81,10 +81,10 @@ class PostingRetryProcessorTest {
     @Test
     void process_onePendingLeg_retriesAndUpdatesPostingToSuccess() {
         AccountPostingEntity posting = buildPosting(1L, "FT");
-        AccountPostingLegResponse leg = buildLegResponse(10L, 1, "CBS", LegStatus.FAILED);
+        AccountPostingLegResponseV2 leg = buildLegResponse(10L, 1, "CBS", LegStatus.FAILED);
 
         PostingStrategy strategy = mock(PostingStrategy.class);
-        LegResponse legResult = buildLegResponse("SUCCESS", 10L);
+        LegResponseV2 legResult = buildLegResponseV2("SUCCESS", 10L);
 
         when(postingRepository.findById(1L)).thenReturn(java.util.Optional.of(posting));
         when(legService.listNonSuccessLegs(1L)).thenReturn(List.of(leg));
@@ -93,7 +93,7 @@ class PostingRetryProcessorTest {
         when(legService.listLegs(1L)).thenReturn(List.of(buildLegResponseSuccess(10L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponse.LegRetryResult> results = processor.process(1L);
+        List<RetryResponseV2.LegRetryResult> results = processor.process(1L);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getPreviousStatus()).isEqualTo("FAILED");
@@ -108,8 +108,8 @@ class PostingRetryProcessorTest {
     @Test
     void process_multipleFailedLegs_retriesSequentiallyByOrder() {
         AccountPostingEntity posting = buildPosting(2L, "FT");
-        AccountPostingLegResponse leg1 = buildLegResponse(11L, 1, "CBS", LegStatus.FAILED);
-        AccountPostingLegResponse leg2 = buildLegResponse(12L, 2, "GL", LegStatus.PENDING);
+        AccountPostingLegResponseV2 leg1 = buildLegResponse(11L, 1, "CBS", LegStatus.FAILED);
+        AccountPostingLegResponseV2 leg2 = buildLegResponse(12L, 2, "GL", LegStatus.PENDING);
 
         PostingStrategy cbsStrategy = mock(PostingStrategy.class);
         PostingStrategy glStrategy = mock(PostingStrategy.class);
@@ -119,17 +119,17 @@ class PostingRetryProcessorTest {
         when(strategyFactory.resolve("CBS_POSTING")).thenReturn(cbsStrategy);
         when(strategyFactory.resolve("GL_POSTING")).thenReturn(glStrategy);
         when(cbsStrategy.process(eq(2L), eq(1), any(), eq(true), eq(11L)))
-                .thenReturn(buildLegResponse("SUCCESS", 11L));
+                .thenReturn(buildLegResponseV2("SUCCESS", 11L));
         when(glStrategy.process(eq(2L), eq(2), any(), eq(true), eq(12L)))
-                .thenReturn(buildLegResponse("SUCCESS", 12L));
+                .thenReturn(buildLegResponseV2("SUCCESS", 12L));
         when(legService.listLegs(2L)).thenReturn(
                 List.of(buildLegResponseSuccess(11L), buildLegResponseSuccess(12L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponse.LegRetryResult> results = processor.process(2L);
+        List<RetryResponseV2.LegRetryResult> results = processor.process(2L);
 
         assertThat(results).hasSize(2);
-        assertThat(results).extracting(RetryResponse.LegRetryResult::getNewStatus)
+        assertThat(results).extracting(RetryResponseV2.LegRetryResult::getNewStatus)
                 .containsExactly("SUCCESS", "SUCCESS");
 
         // Verify execution order: CBS before GL
@@ -145,19 +145,19 @@ class PostingRetryProcessorTest {
     @Test
     void process_legStillFailsAfterRetry_postingRemainsAsPending() {
         AccountPostingEntity posting = buildPosting(3L, "FT");
-        AccountPostingLegResponse leg = buildLegResponse(20L, 1, "OBPM", LegStatus.FAILED);
+        AccountPostingLegResponseV2 leg = buildLegResponse(20L, 1, "OBPM", LegStatus.FAILED);
 
         PostingStrategy strategy = mock(PostingStrategy.class);
         when(postingRepository.findById(3L)).thenReturn(java.util.Optional.of(posting));
         when(legService.listNonSuccessLegs(3L)).thenReturn(List.of(leg));
         when(strategyFactory.resolve("OBPM_POSTING")).thenReturn(strategy);
         when(strategy.process(eq(3L), eq(1), any(), eq(true), eq(20L)))
-                .thenReturn(buildLegResponse("FAILED", 20L));
+                .thenReturn(buildLegResponseV2("FAILED", 20L));
         // One leg still FAILED in full list
         when(legService.listLegs(3L)).thenReturn(List.of(buildLegResponseFailed(20L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponse.LegRetryResult> results = processor.process(3L);
+        List<RetryResponseV2.LegRetryResult> results = processor.process(3L);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getNewStatus()).isEqualTo("FAILED");
@@ -169,7 +169,7 @@ class PostingRetryProcessorTest {
     @Test
     void process_strategyThrows_legRecordedAsFailedAndContinues() {
         AccountPostingEntity posting = buildPosting(4L, "FT");
-        AccountPostingLegResponse leg = buildLegResponse(30L, 1, "CBS", LegStatus.FAILED);
+        AccountPostingLegResponseV2 leg = buildLegResponse(30L, 1, "CBS", LegStatus.FAILED);
 
         PostingStrategy strategy = mock(PostingStrategy.class);
         when(postingRepository.findById(4L)).thenReturn(java.util.Optional.of(posting));
@@ -180,7 +180,7 @@ class PostingRetryProcessorTest {
         when(legService.listLegs(4L)).thenReturn(List.of(buildLegResponseFailed(30L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponse.LegRetryResult> results = processor.process(4L);
+        List<RetryResponseV2.LegRetryResult> results = processor.process(4L);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getNewStatus()).isEqualTo("FAILED");
@@ -196,7 +196,7 @@ class PostingRetryProcessorTest {
         p.setStatus(PostingStatus.PNDG);
         p.setRequestType(requestType);
         try {
-            AccountPostingRequest req = new AccountPostingRequest();
+            AccountPostingRequestV2 req = new AccountPostingRequestV2();
             req.setSourceReferenceId("SRC");
             req.setEndToEndReferenceId("e2e-" + id);
             req.setSourceName("IMX");
@@ -213,9 +213,9 @@ class PostingRetryProcessorTest {
         return p;
     }
 
-    private AccountPostingLegResponse buildLegResponse(Long legId, int order,
-                                                       String targetSystem, LegStatus status) {
-        AccountPostingLegResponse r = new AccountPostingLegResponse();
+    private AccountPostingLegResponseV2 buildLegResponse(Long legId, int order,
+                                                         String targetSystem, LegStatus status) {
+        AccountPostingLegResponseV2 r = new AccountPostingLegResponseV2();
         r.setPostingLegId(legId);
         r.setLegOrder(order);
         r.setTargetSystem(targetSystem);
@@ -225,24 +225,24 @@ class PostingRetryProcessorTest {
         return r;
     }
 
-    private AccountPostingLegResponse buildLegResponseSuccess(Long legId) {
-        AccountPostingLegResponse r = new AccountPostingLegResponse();
+    private AccountPostingLegResponseV2 buildLegResponseSuccess(Long legId) {
+        AccountPostingLegResponseV2 r = new AccountPostingLegResponseV2();
         r.setPostingLegId(legId);
         r.setStatus(LegStatus.SUCCESS);
         r.setAttemptNumber(2);
         return r;
     }
 
-    private AccountPostingLegResponse buildLegResponseFailed(Long legId) {
-        AccountPostingLegResponse r = new AccountPostingLegResponse();
+    private AccountPostingLegResponseV2 buildLegResponseFailed(Long legId) {
+        AccountPostingLegResponseV2 r = new AccountPostingLegResponseV2();
         r.setPostingLegId(legId);
         r.setStatus(LegStatus.FAILED);
         r.setAttemptNumber(2);
         return r;
     }
 
-    private LegResponse buildLegResponse(String status, Long legId) {
-        LegResponse r = new LegResponse();
+    private LegResponseV2 buildLegResponseV2(String status, Long legId) {
+        LegResponseV2 r = new LegResponseV2();
         r.setStatus(status);
         return r;
     }

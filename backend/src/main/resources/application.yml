@@ -3,6 +3,16 @@ app:
     enabled: false
     topic:
       posting-success: account-posting-success
+  archival:
+    enabled: true
+    # Cron — default: daily at 02:00 server time.
+    # To run every 90 days use: 0 0 2 1 */3 ? (quarterly on the 1st)
+    cron: "0 0 2 * * ?"
+    # Records older than this many days are moved to history tables.
+    # Set to 80 if you want an early-archival buffer before a 90-day SLA.
+    threshold-days: 90
+    # Rows processed per committed transaction — tune for DB throughput.
+    batch-size: 500
 
 spring:
   application:
@@ -50,8 +60,6 @@ spring:
 
 server:
   port: 8080
-  servlet:
-    context-path: /api
 
 management:
   endpoints:

@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "Account Posting Validator",
-    "description": "Complete test suite. Run in order using the Collection Runner — the first CREATE request sets collection variables (postingId, legId, configId) used by all subsequent requests.",
+    "description": "Complete test suite. Run in order using the Collection Runner \u00e2\u20ac\u201d the first CREATE request sets collection variables (postingId, legId, configId) used by all subsequent requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080/api",
+      "value": "http://localhost:8080",
       "type": "string"
     },
     {
@@ -83,11 +83,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Salary payment DMS CBS_GL\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -114,11 +116,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?end_to_end_reference_id={{e2eRef}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?end_to_end_reference_id={{e2eRef}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -171,11 +175,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 2000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"DMS OBPM payment\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -223,11 +229,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"EFD_RETURN\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -273,11 +281,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"USDNT_GL_RETURN\",\n  \"amount\": 750.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -322,11 +332,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"USDNT\",\n  \"request_type\": \"GL_RETURN\",\n  \"amount\": 300.00,\n  \"currency\": \"EUR\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -373,11 +385,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"LCD\",\n  \"request_type\": \"USDNT_GL\",\n  \"amount\": 10000.00,\n  \"currency\": \"GBP\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -424,11 +438,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"NPSS\",\n  \"request_type\": \"NPSS_PAYMENT\",\n  \"amount\": 5000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -474,11 +490,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DBA\",\n  \"request_type\": \"DBA_ACCOUNT_HOLD\",\n  \"amount\": 999.99,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -525,11 +543,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BNK_CUSTOMER\",\n  \"amount\": 25000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -575,11 +595,13 @@
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BNK_CANCEL_HOLD\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -619,11 +641,13 @@
               "raw": "{\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -657,11 +681,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -694,11 +720,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-002\",\n  \"end_to_end_reference_id\": \"E2E-ERR-002\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -731,11 +759,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-003\",\n  \"end_to_end_reference_id\": \"E2E-ERR-003\",\n  \"source_name\": \"DMS\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -768,11 +798,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-004\",\n  \"end_to_end_reference_id\": \"E2E-ERR-004\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 0,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -805,11 +837,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-005\",\n  \"end_to_end_reference_id\": \"E2E-ERR-005\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": -500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -842,11 +876,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-006\",\n  \"end_to_end_reference_id\": \"E2E-ERR-006\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USDT\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -879,11 +915,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-007\",\n  \"end_to_end_reference_id\": \"E2E-ERR-007\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CRDT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -917,11 +955,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-008\",\n  \"end_to_end_reference_id\": \"E2E-ERR-008\",\n  \"source_name\": \"UNKNOWN_SRC\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -955,11 +995,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-009\",\n  \"end_to_end_reference_id\": \"E2E-ERR-009\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -992,11 +1034,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-010\",\n  \"end_to_end_reference_id\": \"E2E-ERR-010\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -1029,11 +1073,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-ERR-011\",\n  \"end_to_end_reference_id\": \"E2E-ERR-011\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -1066,11 +1112,13 @@
               "raw": "{ this is not valid json }"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -1095,7 +1143,7 @@
                 "exec": [
                   "const status = pm.response.code;",
                   "if (status === 201) {",
-                  "  pm.test('First call succeeded — re-run this request to get 422', () => pm.expect(status).to.eql(201));",
+                  "  pm.test('First call succeeded \u00e2\u20ac\u201d re-run this request to get 422', () => pm.expect(status).to.eql(201));",
                   "} else {",
                   "  pm.test('Status 422', () => pm.response.to.have.status(422));",
                   "  pm.test('Error is DUPLICATE_E2E_REF', () => pm.expect(pm.response.json().name).to.eql('DUPLICATE_E2E_REF'));",
@@ -1117,11 +1165,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-DUP-001\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -1152,11 +1202,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -1180,11 +1232,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?status=SUCCESS",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?status=SUCCESS",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1215,11 +1269,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?status=PENDING",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?status=PENDING",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1250,11 +1306,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?status=FAILED",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?status=FAILED",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1284,11 +1342,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?sourceName=DMS",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceName=DMS",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1318,11 +1378,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?requestType=CBS_GL",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?requestType=CBS_GL",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1353,11 +1415,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId=E2E-DMS-CBS-{{postingId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?endToEndReferenceId=E2E-DMS-CBS-{{postingId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1388,11 +1452,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?targetSystem=CBS_POSTING",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?targetSystem=CBS_POSTING",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1422,11 +1488,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?fromDate=2026-01-01&toDate=2026-12-31",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?fromDate=2026-01-01&toDate=2026-12-31",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1462,11 +1530,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?page=0&size=3",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?page=0&size=3",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1503,11 +1573,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?status=SUCCESS&sourceName=DMS",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?status=SUCCESS&sourceName=DMS",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -1550,11 +1622,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}"
               ]
@@ -1578,11 +1652,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/999999",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/999999",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "999999"
               ]
@@ -1625,11 +1701,13 @@
               "raw": ""
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/retry",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/retry",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "retry"
               ]
@@ -1664,11 +1742,13 @@
               "raw": "{\n  \"posting_ids\": []\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/retry",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/retry",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "retry"
               ]
@@ -1704,11 +1784,13 @@
               "raw": "{\n  \"posting_ids\": [{{postingId}}]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/retry",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/retry",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "retry"
               ]
@@ -1745,11 +1827,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg"
@@ -1779,11 +1863,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/{{legId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg",
@@ -1823,11 +1909,13 @@
               "raw": "{\n  \"leg_order\": 99,\n  \"target_system\": \"CBS_POSTING\",\n  \"account\": \"9876543210\",\n  \"status\": \"PENDING\",\n  \"mode\": \"NORM\",\n  \"operation\": \"POSTING\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg"
@@ -1865,11 +1953,13 @@
               "raw": "{\n  \"status\": \"SUCCESS\",\n  \"reference_id\": \"REF-UPDATED-001\",\n  \"reason\": \"Updated via PUT test\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/{{legId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg",
@@ -1904,14 +1994,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"FAILED\"\n}"
+              "raw": "{\n  \"status\": \"FAILED\",\n  \"reason\": \"Manually confirmed - CBS ref CBS-20260325\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/{{legId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/{{legId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg",
@@ -1937,11 +2029,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/{{postingId}}/leg/999999",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/999999",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "{{postingId}}",
                 "leg",
@@ -1967,11 +2061,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/999999/leg/{{legId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/999999/leg/{{legId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "999999",
                 "leg",
@@ -2006,11 +2102,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config"
               ]
@@ -2038,11 +2136,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/CBS_GL",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/CBS_GL",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "CBS_GL"
@@ -2070,11 +2170,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/NPSS_PAYMENT",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/NPSS_PAYMENT",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "NPSS_PAYMENT"
@@ -2100,11 +2202,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/UNKNOWN_TYPE",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/UNKNOWN_TYPE",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "UNKNOWN_TYPE"
@@ -2144,11 +2248,13 @@
               "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"CBS_POSTING\",\n  \"operation\": \"CBS_PROCESS\",\n  \"order_seq\": 1\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config"
               ]
@@ -2185,11 +2291,13 @@
               "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"GL_POSTING\",\n  \"operation\": \"GL_PROCESS\",\n  \"order_seq\": 1\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/{{configId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "{{configId}}"
@@ -2224,11 +2332,13 @@
               "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"target_system\": \"CBS_POSTING\",\n  \"operation\": \"CBS_PROCESS\",\n  \"order_seq\": 1\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config"
               ]
@@ -2251,11 +2361,13 @@
           "request": {
             "method": "POST",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/cache/flush",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/cache/flush",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "cache",
@@ -2280,11 +2392,13 @@
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/{{configId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "{{configId}}"
@@ -2309,11 +2423,13 @@
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/account-posting/config/{{configId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/{{configId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "config",
                 "{{configId}}"
@@ -2325,7 +2441,7 @@
     },
     {
       "name": "08 - Failure Simulation (Leg-level)",
-      "description": "Uses StubSimulatorController (POST /test/stub/configure) to force specific systems to return FAILED. All results persist to DB — posting ends up PENDING (retryable), failed legs end up FAILED.",
+      "description": "Uses StubSimulatorController (POST /v2/payment/test/stub/configure) to force specific systems to return FAILED. All results persist to DB \u00e2\u20ac\u201d posting ends up PENDING (retryable), failed legs end up FAILED.",
       "item": [
         {
           "name": "[Setup] Clear simulator",
@@ -2344,11 +2460,13 @@
           "request": {
             "method": "POST",
             "url": {
-              "raw": "{{baseUrl}}/test/stub/clear",
+              "raw": "{{baseUrl}}/v2/payment/test/stub/clear",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "test",
                 "stub",
                 "clear"
@@ -2373,11 +2491,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/test/stub/status",
+              "raw": "{{baseUrl}}/v2/payment/test/stub/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "test",
                 "stub",
                 "status"
@@ -2386,7 +2506,7 @@
           }
         },
         {
-          "name": "Leg 1 fails (CBS_POSTING) — DMS CBS_GL",
+          "name": "Leg 1 fails (CBS_POSTING) \u00e2\u20ac\u201d DMS CBS_GL",
           "description": "CBS leg (leg 1) fails, GL leg (leg 2) succeeds. Posting saved as PENDING. Both legs persisted to DB.",
           "event": [
             {
@@ -2397,7 +2517,7 @@
                   "// Configure CBS to fail before this request",
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
                   "pm.sendRequest({",
-                  "  url: baseUrl + '/test/stub/configure',",
+                  "  url: baseUrl + '/v2/payment/test/stub/configure',",
                   "  method: 'POST',",
                   "  header: [{ key: 'Content-Type', value: 'application/json' }],",
                   "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['CBS_POSTING'] }) }",
@@ -2435,21 +2555,23 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — CBS leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d CBS leg failure\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
           }
         },
         {
-          "name": "Verify Leg 1 fail — posting in DB as PENDING",
+          "name": "Verify Leg 1 fail \u00e2\u20ac\u201d posting in DB as PENDING",
           "event": [
             {
               "listen": "prerequest",
@@ -2458,7 +2580,7 @@
                 "exec": [
                   "// Clear simulator after previous test",
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
-                  "pm.sendRequest({ url: baseUrl + '/test/stub/clear', method: 'POST' }, () => {});"
+                  "pm.sendRequest({ url: baseUrl + '/v2/payment/test/stub/clear', method: 'POST' }, () => {});"
                 ]
               }
             },
@@ -2483,11 +2605,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId={{failedPostingE2e}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?endToEndReferenceId={{failedPostingE2e}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -2500,7 +2624,7 @@
           }
         },
         {
-          "name": "Leg 2 fails (GL_POSTING) — DMS CBS_GL",
+          "name": "Leg 2 fails (GL_POSTING) \u00e2\u20ac\u201d DMS CBS_GL",
           "description": "CBS leg (leg 1) succeeds, GL leg (leg 2) fails. Posting saved as PENDING.",
           "event": [
             {
@@ -2510,7 +2634,7 @@
                 "exec": [
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
                   "pm.sendRequest({",
-                  "  url: baseUrl + '/test/stub/configure',",
+                  "  url: baseUrl + '/v2/payment/test/stub/configure',",
                   "  method: 'POST',",
                   "  header: [{ key: 'Content-Type', value: 'application/json' }],",
                   "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['GL_POSTING'] }) }",
@@ -2546,21 +2670,23 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — GL leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d GL leg failure\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
           }
         },
         {
-          "name": "All legs fail (CBS + GL) — DMS CBS_GL",
+          "name": "All legs fail (CBS + GL) \u00e2\u20ac\u201d DMS CBS_GL",
           "description": "Both CBS and GL legs fail. Posting saved as PENDING. All legs FAILED in DB.",
           "event": [
             {
@@ -2570,7 +2696,7 @@
                 "exec": [
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
                   "pm.sendRequest({",
-                  "  url: baseUrl + '/test/stub/configure',",
+                  "  url: baseUrl + '/v2/payment/test/stub/configure',",
                   "  method: 'POST',",
                   "  header: [{ key: 'Content-Type', value: 'application/json' }],",
                   "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['CBS_POSTING', 'GL_POSTING'] }) }",
@@ -2606,21 +2732,23 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — all legs fail\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d all legs fail\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
           }
         },
         {
-          "name": "Single-leg failure — OBPM (DMS OBPM)",
+          "name": "Single-leg failure \u00e2\u20ac\u201d OBPM (DMS OBPM)",
           "description": "OBPM is the only leg and it fails. Posting saved as PENDING.",
           "event": [
             {
@@ -2630,7 +2758,7 @@
                 "exec": [
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
                   "pm.sendRequest({",
-                  "  url: baseUrl + '/test/stub/configure',",
+                  "  url: baseUrl + '/v2/payment/test/stub/configure',",
                   "  method: 'POST',",
                   "  header: [{ key: 'Content-Type', value: 'application/json' }],",
                   "  body: { mode: 'raw', raw: JSON.stringify({ fail_systems: ['OBPM_POSTING'] }) }",
@@ -2665,21 +2793,23 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test — OBPM single leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d OBPM single leg failure\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
           }
         },
         {
-          "name": "Retry after leg failure — restores SUCCESS",
+          "name": "Retry after leg failure \u00e2\u20ac\u201d restores SUCCESS",
           "description": "Clear the simulator so stubs succeed again, then retry the PENDING posting from the CBS failure test. Legs should go SUCCESS and posting promoted to SUCCESS.",
           "event": [
             {
@@ -2687,9 +2817,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Clear simulator — stubs will return SUCCESS on retry",
+                  "// Clear simulator \u00e2\u20ac\u201d stubs will return SUCCESS on retry",
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
-                  "pm.sendRequest({ url: baseUrl + '/test/stub/clear', method: 'POST' }, () => {});"
+                  "pm.sendRequest({ url: baseUrl + '/v2/payment/test/stub/clear', method: 'POST' }, () => {});"
                 ]
               }
             },
@@ -2720,11 +2850,13 @@
               "raw": "{\n  \"posting_ids\": [{{pendingPostingId}}]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting/retry",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/retry",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting",
                 "retry"
               ]
@@ -2732,7 +2864,7 @@
           }
         },
         {
-          "name": "Validation error — invalid source_name (persists FAILED to DB)",
+          "name": "Validation error \u00e2\u20ac\u201d invalid source_name (persists FAILED to DB)",
           "description": "Posting is saved as PENDING first, then fails validation and is updated to FAILED in DB. The FAILED record is retrievable via GET.",
           "event": [
             {
@@ -2742,7 +2874,7 @@
                 "exec": [
                   "// Make sure simulator is clear",
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
-                  "pm.sendRequest({ url: baseUrl + '/test/stub/clear', method: 'POST' }, () => {});",
+                  "pm.sendRequest({ url: baseUrl + '/v2/payment/test/stub/clear', method: 'POST' }, () => {});",
                   "pm.collectionVariables.set('validationFailE2e', 'E2E-VAL-FAIL-' + Date.now());"
                 ]
               }
@@ -2773,11 +2905,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-VAL-FAIL\",\n  \"end_to_end_reference_id\": \"{{validationFailE2e}}\",\n  \"source_name\": \"BAD_SOURCE\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -2804,11 +2938,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId={{validationFailE2e}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?endToEndReferenceId={{validationFailE2e}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -2821,7 +2957,7 @@
           }
         },
         {
-          "name": "No config found — persists FAILED to DB",
+          "name": "No config found \u00e2\u20ac\u201d persists FAILED to DB",
           "description": "source_name and request_type are valid enums but no posting_config row exists for this combination. Posting saved as FAILED.",
           "event": [
             {
@@ -2857,11 +2993,13 @@
               "raw": "{\n  \"source_reference_id\": \"SRC-NO-CFG\",\n  \"end_to_end_reference_id\": \"{{noConfigE2e}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"USDNT_GL_RETURN\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/account-posting",
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ]
             }
@@ -2888,11 +3026,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/account-posting?endToEndReferenceId={{noConfigE2e}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?endToEndReferenceId={{noConfigE2e}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "account-posting"
               ],
               "query": [
@@ -2921,11 +3061,13 @@
           "request": {
             "method": "POST",
             "url": {
-              "raw": "{{baseUrl}}/test/stub/clear",
+              "raw": "{{baseUrl}}/v2/payment/test/stub/clear",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "v2",
+                "payment",
                 "test",
                 "stub",
                 "clear"

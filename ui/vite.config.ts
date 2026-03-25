@@ -6,8 +6,8 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      // Forward /api calls to the account-posting backend during local dev
-      '/api': {
+      // Forward /v2 calls to the account-posting backend during local dev
+      '/v2': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },

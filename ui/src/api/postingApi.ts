@@ -33,7 +33,9 @@ function transformKeys(obj: unknown, transform: (k: string) => string): unknown 
 
 // ── axios instance with interceptors ─────────────────────────────────────────
 
-const http = axios.create({ baseURL: '/api' });
+const BASE = '/v2/payment/account-posting';
+
+const http = axios.create({ baseURL: '' });
 
 // Outgoing: convert camelCase body → snake_case (POST / PUT / PATCH only)
 http.interceptors.request.use(config => {
@@ -60,57 +62,62 @@ export function getErrorMessage(err: unknown): string {
 
 export const postingApi = {
   create: async (request: AccountPostingRequest): Promise<AccountPostingResponse> => {
-    const res = await http.post<AccountPostingResponse>('/account-posting', request);
+    const res = await http.post<AccountPostingResponse>(BASE, request);
     return res.data;
   },
 
   search: async (params: PostingSearchParams): Promise<PageResponse<AccountPostingResponse>> => {
-    const res = await http.get<PageResponse<AccountPostingResponse>>('/account-posting', { params });
+    const res = await http.get<PageResponse<AccountPostingResponse>>(BASE, { params });
     return res.data;
   },
 
   getById: async (postingId: number): Promise<AccountPostingResponse> => {
-    const res = await http.get<AccountPostingResponse>(`/account-posting/${postingId}`);
+    const res = await http.get<AccountPostingResponse>(`${BASE}/${postingId}`);
     return res.data;
   },
 
   retry: async (postingIds?: number[]): Promise<unknown> => {
-    const res = await http.post<unknown>('/account-posting/retry', { postingIds });
+    const res = await http.post<unknown>(`${BASE}/retry`, { postingIds });
     return res.data;
   },
 
   getAllConfigs: async (): Promise<PostingConfigResponse[]> => {
-    const res = await http.get<PostingConfigResponse[]>('/account-posting/config');
+    const res = await http.get<PostingConfigResponse[]>(`${BASE}/config`);
     return res.data;
   },
 
   getConfig: async (requestType: string): Promise<PostingConfigResponse[]> => {
-    const res = await http.get<PostingConfigResponse[]>(`/account-posting/config/${requestType}`);
+    const res = await http.get<PostingConfigResponse[]>(`${BASE}/config/${requestType}`);
     return res.data;
   },
 
   createConfig: async (request: PostingConfigRequest): Promise<PostingConfigResponse> => {
-    const res = await http.post<PostingConfigResponse>('/account-posting/config', request);
+    const res = await http.post<PostingConfigResponse>(`${BASE}/config`, request);
     return res.data;
   },
 
   updateConfig: async (configId: number, request: PostingConfigRequest): Promise<PostingConfigResponse> => {
-    const res = await http.put<PostingConfigResponse>(`/account-posting/config/${configId}`, request);
+    const res = await http.put<PostingConfigResponse>(`${BASE}/config/${configId}`, request);
     return res.data;
   },
 
   deleteConfig: async (configId: number): Promise<void> => {
-    await http.delete(`/account-posting/config/${configId}`);
+    await http.delete(`${BASE}/config/${configId}`);
   },
 
   flushConfigCache: async (): Promise<void> => {
-    await http.post('/account-posting/config/cache/flush');
+    await http.post(`${BASE}/config/cache/flush`);
   },
 
-  updateLegStatus: async (postingId: number, postingLegId: number, status: string): Promise<unknown> => {
+  updateLegStatus: async (
+    postingId: number,
+    postingLegId: number,
+    status: string,
+    reason?: string,
+  ): Promise<unknown> => {
     const res = await http.patch<unknown>(
-      `/account-posting/${postingId}/leg/${postingLegId}`,
-      { status },
+      `${BASE}/${postingId}/leg/${postingLegId}`,
+      { status, ...(reason ? { reason } : {}) },
     );
     return res.data;
   },
