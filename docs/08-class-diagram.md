@@ -11,7 +11,7 @@ classDiagram
     class PostingStrategy {
         <<interface>>
         +getPostingFlow() String
-        +process(AccountPostingRequest request, Long existingLegId, boolean isRetry) LegResponse
+        +process(Long postingId, int legOrder, AccountPostingRequestV2 request, boolean isRetry, Long existingLegId) LegResponseV2
     }
 
     class PostingStrategyFactory {
@@ -21,35 +21,43 @@ classDiagram
     }
 
     class CBSPostingService {
-        -AccountPostingLegService legService
+        -AccountPostingLegServiceV2 legService
         +getPostingFlow() String
-        +process(AccountPostingRequest, Long, boolean) LegResponse
-        -buildExternalRequest(AccountPostingRequest, AccountPostingLeg) Object
-        -callExternalSystem(Object) ExternalCallResult
+        +process(postingId, legOrder, request, isRetry, existingLegId) LegResponseV2
     }
 
     class GLPostingService {
-        -AccountPostingLegService legService
+        -AccountPostingLegServiceV2 legService
         +getPostingFlow() String
-        +process(AccountPostingRequest, Long, boolean) LegResponse
-        -buildExternalRequest(AccountPostingRequest, AccountPostingLeg) Object
-        -callExternalSystem(Object) ExternalCallResult
+        +process(postingId, legOrder, request, isRetry, existingLegId) LegResponseV2
     }
 
     class OBPMPostingService {
-        -AccountPostingLegService legService
+        -AccountPostingLegServiceV2 legService
         +getPostingFlow() String
-        +process(AccountPostingRequest, Long, boolean) LegResponse
-        -buildExternalRequest(AccountPostingRequest, AccountPostingLeg) Object
-        -callExternalSystem(Object) ExternalCallResult
+        +process(postingId, legOrder, request, isRetry, existingLegId) LegResponseV2
+    }
+
+    class CBSAddHoldService {
+        -AccountPostingLegServiceV2 legService
+        +getPostingFlow() String
+        +process(postingId, legOrder, request, isRetry, existingLegId) LegResponseV2
+    }
+
+    class CBSRemoveHoldService {
+        -AccountPostingLegServiceV2 legService
+        +getPostingFlow() String
+        +process(postingId, legOrder, request, isRetry, existingLegId) LegResponseV2
     }
 
     PostingStrategy <|.. CBSPostingService : implements
     PostingStrategy <|.. GLPostingService : implements
     PostingStrategy <|.. OBPMPostingService : implements
+    PostingStrategy <|.. CBSAddHoldService : implements
+    PostingStrategy <|.. CBSRemoveHoldService : implements
     PostingStrategyFactory o-- PostingStrategy : indexes by getPostingFlow()
 
-    note for PostingStrategyFactory "getPostingFlow() values:\nCBS_POSTING\nGL_POSTING\nOBPM_POSTING"
+    note for PostingStrategyFactory "getPostingFlow() values:\nCBS_POSTING\nGL_POSTING\nOBPM_POSTING\nCBS_ADD_HOLD\nCBS_REMOVE_HOLD"
 ```
 
 ---
@@ -86,9 +94,9 @@ classDiagram
 
     class PostingStatus {
         <<enumeration>>
-        PENDING
-        SUCCESS
-        FAILED
+        PNDG
+        ACSP
+        RJCT
     }
 
     class CreditDebitIndicator {

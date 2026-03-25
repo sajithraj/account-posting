@@ -61,7 +61,7 @@ com.accountposting
 │   ├── AccountPostingEntity        account_posting table
 │   ├── AccountPostingLegEntity     account_posting_leg table
 │   ├── PostingConfig               posting_config table
-│   └── enums/                      PostingStatus, LegStatus, LegMode, CreditDebitIndicator
+│   └── enums/                      PostingStatus (PNDG/ACSP/RJCT), LegStatus (PENDING/SUCCESS/FAILED), LegMode, CreditDebitIndicator
 ├── repository/
 │   ├── AccountPostingRepository    JpaSpecificationExecutor + custom @Modifying queries
 │   ├── AccountPostingLegRepository listByPostingId, lockForRetry
@@ -77,10 +77,12 @@ com.accountposting
 │   │   ├── AccountPostingRequestValidator     single validate() — field + enum checks
 │   │   └── strategy/
 │   │       ├── PostingStrategy (interface)    getPostingFlow() + process()
-│   │       ├── PostingStrategyFactory         resolves strategy by target_system
-│   │       ├── CBSPostingService              CBS stub — replace with real HTTP client
-│   │       ├── GLPostingService               GL stub — replace with real HTTP client
-│   │       ├── OBPMPostingService             OBPM stub — replace with real HTTP client
+│   │       ├── PostingStrategyFactory         resolves by "{targetSystem}_{operation}" key
+│   │       ├── CBSPostingService              CBS_POSTING — stub, replace with real HTTP client
+│   │       ├── GLPostingService               GL_POSTING  — stub, replace with real HTTP client
+│   │       ├── OBPMPostingService             OBPM_POSTING — stub, replace with real HTTP client
+│   │       ├── CBSAddHoldService              CBS_ADD_HOLD — stub (ADD_ACCOUNT_HOLD flow)
+│   │       ├── CBSRemoveHoldService           CBS_REMOVE_HOLD — stub (BUY_CUSTOMER_POSTING flow)
 │   │       └── ExternalApiHelper              builds outbound payloads + stub call methods
 │   ├── accountpostingleg/
 │   │   └── AccountPostingLegServiceImpl       addLeg / listLegs / getLeg / updateLeg / manualUpdate
@@ -116,10 +118,10 @@ com.accountposting
 
 ### POST /account-posting/retry
 
-1. Resolve target posting IDs — if none supplied, fetch all PENDING not currently locked
-2. Lock postings atomically: single `@Modifying` UPDATE sets `retry_locked_until = NOW() + 2 min`
-3. Dispatch one `CompletableFuture` per locked posting to `retryExecutor` thread pool
-4. Each `PostingRetryProcessor.process()` runs in its own transaction: retry non-SUCCESS legs, update posting status
+1. Resolve candidate IDs — if none supplied, `findEligibleIdsForRetry(PNDG, now)` returns IDs where `status=PNDG` and the lock has expired or is null
+2. Lock atomically: `lockEligibleByIds` (`@Modifying` JPQL UPDATE) sets `retry_locked_until = NOW() + 2 min`
+3. Dispatch one `CompletableFuture` per locked ID to the `retryExecutor` thread pool
+4. Each `PostingRetryProcessorV2.process()` runs in its own `@Transactional`: retries non-SUCCESS legs via the matching strategy (key = `{targetSystem}_{operation}`), updates posting to `ACSP` or `PNDG`, and **clears `retry_locked_until`** so the posting is immediately retryable again
 
 ### GET /account-posting (search)
 
@@ -138,7 +140,7 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
 | `POST` | `/account-posting`             | 201    | Submit a new posting            |
 | `GET`  | `/account-posting`             | 200    | Search with filters (paginated) |
 | `GET`  | `/account-posting/{postingId}` | 200    | Get posting with all legs       |
-| `POST` | `/account-posting/retry`       | 200    | Retry PENDING/FAILED legs       |
+| `POST` | `/account-posting/retry`       | 200    | Retry non-SUCCESS legs on PNDG postings |
 
 **POST /account-posting — request body:**
 
@@ -146,8 +148,8 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
 {
   "source_reference_id": "SRC-1001",
   "end_to_end_reference_id": "E2E-1001",
-  "source_name": "DMS",
-  "request_type": "CBS_GL",
+  "source_name": "IMX",
+  "request_type": "IMX_CBS_GL",
   "amount": 1500.00,
   "currency": "USD",
   "credit_debit_indicator": "CREDIT",
@@ -162,7 +164,7 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
 
 | Param                     | Type                       | Description                |
 |---------------------------|----------------------------|----------------------------|
-| `status`                  | `PENDING\|SUCCESS\|FAILED` | Filter by posting status   |
+| `status`                  | `PNDG\|ACSP\|RJCT`        | Filter by posting status   |
 | `source_reference_id`     | string                     | Exact match                |
 | `end_to_end_reference_id` | string                     | Exact match                |
 | `source_name`             | string                     | Exact match                |
@@ -229,8 +231,7 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
   never imports from `posting`.
 - **Pre-insert legs** — All legs are saved as `PENDING` before any external call. If a call fails mid-flight, every leg
   already exists for retry.
-- **Atomic retry lock** — A single `@Modifying` UPDATE sets `retry_locked_until = NOW() + 2 min` on the posting row. No
-  row-level DB lock needed.
+- **Two-step retry lock** — `findEligibleIdsForRetry` (JPQL SELECT) + `lockEligibleByIds` (`@Modifying` JPQL UPDATE) sets `retry_locked_until = NOW() + 2 min`. The processor clears the lock after processing so the posting is immediately retryable. H2 and PostgreSQL compatible (no `UPDATE ... RETURNING`).
 - **ExternalApiHelper** — All build/stub methods for CBS, GL, and OBPM live in one `@Component`. Replace stub `call*()`
   methods with real HTTP clients before go-live.
 - **Kafka conditional** — `PostingEventPublisher` is only wired when `app.kafka.enabled=true`. The service null-checks

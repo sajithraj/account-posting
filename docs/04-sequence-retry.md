@@ -32,33 +32,30 @@ sequenceDiagram
 
     Ctrl->>Svc: retryPostings(RetryRequest)
 
-    Note over Svc: Step 1 — Resolve target postings
+    Note over Svc: Step 1 — Resolve candidate IDs
     alt postingIds provided in request
-        Svc->>PostRepo: findAllById(postingIds)
-        PostRepo-->>Svc: List<AccountPosting> (may include non-PENDING)
-    else no postingIds — retry all non-SUCCESS
-        Svc->>PostRepo: findByStatusNot(SUCCESS)
-        PostRepo-->>Svc: List<AccountPosting> [42(PENDING), 43(PENDING)]
+        Svc->>Svc: use provided IDs directly
+    else no postingIds — retry all eligible PNDG
+        Svc->>PostRepo: findEligibleIdsForRetry(status=PNDG, now)
+        Note right of PostRepo: SELECT postingId WHERE status=PNDG<br/>AND (retryLockedUntil IS NULL<br/>  OR retryLockedUntil < now)
+        PostRepo-->>Svc: List<Long> [42, 43]
     end
 
-    Note over Svc: Step 2 — Atomic lock via single UPDATE
-    Svc->>PostRepo: lockForRetry(postingIds, lockedUntil = NOW() + 2min)
-    Note right of PostRepo: Single @Modifying JPQL:<br/>UPDATE account_posting<br/>SET retry_locked_until = :until<br/>WHERE posting_id IN :ids<br/>AND (retry_locked_until IS NULL<br/>  OR retry_locked_until < NOW())
-    PostRepo-->>Svc: updatedCount (number actually locked)
+    Note over Svc: Step 2 — Atomic lock via single @Modifying UPDATE
+    Svc->>PostRepo: lockEligibleByIds(ids, status=PNDG, now, lockUntil=NOW()+2min)
+    Note right of PostRepo: JPQL UPDATE account_posting<br/>SET retry_locked_until = :lockUntil<br/>WHERE postingId IN :ids<br/>AND status = :status<br/>AND (retryLockedUntil IS NULL<br/>  OR retryLockedUntil < :now)
+    PostRepo-->>Svc: rowsLocked (int)
 
-    Svc->>PostRepo: findLockedForRetry(postingIds, NOW())
-    PostRepo-->>Svc: List<AccountPosting> actually locked (skip already-locked)
-
-    Note over Svc: Step 3 — Dispatch one CompletableFuture per locked posting
-    loop for each locked posting
-        Svc->>Executor: CompletableFuture.supplyAsync(<br/>  () -> processor.process(posting), retryExecutor)
+    Note over Svc: Step 3 — Dispatch one CompletableFuture per locked ID
+    loop for each locked ID
+        Svc->>Executor: CompletableFuture.supplyAsync(<br/>  () -> processor.process(id), retryExecutor)
     end
 
     Note over Svc: Step 4 — Wait for all futures
     Svc->>Svc: CompletableFuture.allOf(futures).join()
 
-    Svc->>Svc: Collect results into RetryResponse
-    Svc-->>Ctrl: RetryResponse { attempted: 2, succeeded: 1, failed: 1, skipped: 0 }
+    Svc->>Svc: Aggregate LegRetryResults into RetryResponse
+    Svc-->>Ctrl: RetryResponse { totalLegsRetried: 2, successCount: 1, failedCount: 1 }
     Ctrl-->>Client: 200 OK { data: RetryResponse }
 ```
 
@@ -70,67 +67,68 @@ sequenceDiagram
 sequenceDiagram
     autonumber
 
-    participant Processor as PostingRetryProcessor
+    participant Processor as PostingRetryProcessorV2
     participant PostRepo as AccountPostingRepository
-    participant LegRepo as AccountPostingLegRepository
-    participant LegSvc as AccountPostingLegService
+    participant LegSvc as AccountPostingLegServiceV2
     participant Factory as PostingStrategyFactory
-    participant Strategy as Strategy Impl
+    participant Strategy as Strategy Impl<br/>(CBS/GL/OBPM/CBS_ADD_HOLD/CBS_REMOVE_HOLD)
     participant Ext as External System
     participant Publisher as PostingEventPublisher
     participant Kafka as Kafka
 
-    Note over Processor: Running in retryExecutor thread<br/>MDC: traceId + postingId
+    Note over Processor: Running in retryExecutor thread<br/>@Transactional — owns its own TX<br/>MDC: traceId + postingId + e2eRef
 
     Processor->>PostRepo: findById(postingId=42)
-    PostRepo-->>Processor: AccountPosting { status=PENDING, requestPayload=JSON }
+    PostRepo-->>Processor: AccountPostingEntity { status=PNDG, requestPayload=JSON }
 
-    Processor->>Processor: deserialize requestPayload → AccountPostingRequest
+    Processor->>Processor: deserializeRequest(requestPayload)<br/>— handles H2 double-encoded JSONB via JsonNode.isTextual()
 
     Note over Processor: Step a — Fetch non-SUCCESS legs ordered by legOrder
-    Processor->>LegRepo: findNonSuccessByPostingId(postingId=42)
-    LegRepo-->>Processor: List<AccountPostingLeg> [leg(id=101,order=1,status=FAILED),<br/>leg(id=102,order=2,status=PENDING)]
+    Processor->>LegSvc: listNonSuccessLegs(postingId=42)
+    LegSvc-->>Processor: List [leg(id=101,order=1,status=FAILED),<br/>leg(id=102,order=2,status=PENDING)]
 
     Note over Processor: Step b — Execute each leg's strategy
     loop for each non-SUCCESS leg (ascending legOrder)
-        Processor->>Factory: getStrategy(leg.targetSystem)
-        Factory-->>Processor: matching Strategy
+        Processor->>Factory: resolve(targetSystem + "_" + operation)
+        Note right of Factory: key examples:<br/>CBS_POSTING | GL_POSTING | OBPM_POSTING<br/>CBS_ADD_HOLD | CBS_REMOVE_HOLD
+        Factory-->>Processor: matching PostingStrategy
 
-        Processor->>Strategy: process(accountPostingRequest,<br/>existingLegId=leg.id, isRetry=true)
+        Processor->>Strategy: process(postingId, legOrder, request,<br/>isRetry=true, existingLegId=leg.id)
 
         Strategy->>Strategy: buildExternalRequest()
-        Strategy->>LegSvc: updateLegMode(legId, mode=RETRY,<br/>attemptNumber=leg.attemptNumber+1)
-
-        Strategy->>Ext: submitPosting(externalRequest)
+        Strategy->>Ext: callExternal(request)
 
         alt External call succeeds
-            Ext-->>Strategy: ExternalCallResult { success=true, referenceId }
-            Strategy->>LegSvc: updateLeg(status=SUCCESS, referenceId,<br/>postedTime=NOW(), responsePayload)
+            Ext-->>Strategy: response { status=SUCCESS, referenceId }
+            Strategy->>LegSvc: updateLeg(legId, status=SUCCESS, referenceId,<br/>postedTime=NOW(), mode=RETRY, responsePayload)
             LegSvc-->>Strategy: updated leg
-            Strategy-->>Processor: LegResponse { status=SUCCESS }
+            Strategy-->>Processor: LegResponseV2 { status=SUCCESS }
         else External call fails again
-            Ext-->>Strategy: ExternalCallResult { success=false, reason }
-            Strategy->>LegSvc: updateLeg(status=FAILED, reason, responsePayload)
+            Ext-->>Strategy: response { status=FAILED, reason }
+            Strategy->>LegSvc: updateLeg(legId, status=FAILED, reason, mode=RETRY)
             LegSvc-->>Strategy: updated leg
-            Strategy-->>Processor: LegResponse { status=FAILED }
+            Strategy-->>Processor: LegResponseV2 { status=FAILED }
         end
     end
 
     Note over Processor: Step c — Re-evaluate posting status
-    Processor->>LegRepo: findAllByPostingId(42)
-    LegRepo-->>Processor: all legs
+    Processor->>LegSvc: listLegs(postingId=42)
+    LegSvc-->>Processor: all legs
+
+    Note over Processor: Step d — Clear the retry lock (always)
+    Processor->>PostRepo: save(retryLockedUntil=null)
+    Note right of PostRepo: Lock always cleared after processing<br/>so posting is immediately retryable again
 
     alt All legs are SUCCESS
-        Processor->>PostRepo: save(status=SUCCESS, updatedAt=NOW())
-        Note over Processor: Step d — Publish success event
+        Processor->>PostRepo: save(status=ACSP, reason="Request processed successfully")
+        Note over Processor: Step e — Publish success event
         Processor->>Publisher: publish(PostingSuccessEvent { postingId=42 })
         Publisher->>Kafka: send("posting.success", event)
         Kafka-->>Publisher: ack
-        Processor-->>Processor: return RetryResult { postingId=42, outcome=SUCCEEDED }
+        Processor-->>Processor: return List<LegRetryResult> (all SUCCESS)
     else Some legs still FAILED or PENDING
-        Processor->>PostRepo: save(status=PENDING, updatedAt=NOW())
-        Note over Processor: retry_locked_until expires naturally<br/>posting available for next retry cycle
-        Processor-->>Processor: return RetryResult { postingId=42, outcome=STILL_PENDING }
+        Processor->>PostRepo: save(status=PNDG, reason=lastFailReason)
+        Processor-->>Processor: return List<LegRetryResult> (mixed)
     end
 ```
 
@@ -141,14 +139,13 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A[POST /retry received] --> B{postingIds<br/>provided?}
-    B -- Yes --> C[findAllById]
-    B -- No --> D[findByStatusNot SUCCESS]
-    C --> E[lockForRetry UPDATE]
+    B -- Yes --> C[use provided IDs directly]
+    B -- No --> D[findEligibleIdsForRetry<br/>status=PNDG AND lock expired/null]
+    C --> E[lockEligibleByIds @Modifying UPDATE]
     D --> E
-    E --> F{rows actually<br/>updated?}
-    F -- 0 rows<br/>all already locked --> G[Return: skipped=N, attempted=0]
-    F -- N rows locked --> H[findLockedForRetry]
-    H --> I[Dispatch N CompletableFutures<br/>to retryExecutor pool]
+    E --> F{rowsLocked > 0?}
+    F -- 0 rows<br/>all already locked or none eligible --> G[Return: totalLegsRetried=0]
+    F -- N rows locked --> I[Dispatch N CompletableFutures<br/>to retryExecutor pool]
     I --> J[allOf.join — wait for all]
     J --> K[Aggregate RetryResponse]
     K --> L[Return to client]
@@ -161,12 +158,14 @@ flowchart TD
 
 ## Key Notes
 
-| Aspect                         | Detail                                                                                                                                                                                                                                |
-|--------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Lock mechanism**             | `retry_locked_until` is set atomically in a single `UPDATE ... WHERE retry_locked_until IS NULL OR retry_locked_until < NOW()`. This prevents two concurrent retry requests from picking up the same posting. No DB row lock is held. |
-| **Lock expiry**                | After 2 minutes, `retry_locked_until` becomes stale and the posting is eligible for another retry cycle automatically.                                                                                                                |
-| **Parallel execution**         | Each posting gets its own `CompletableFuture` on the `retryExecutor` thread pool (configured in `AsyncConfig`). Leg execution within a posting is still sequential (must respect `leg_order`).                                        |
-| **isRetry flag**               | Strategies receive `isRetry=true`, allowing them to set `mode=RETRY` and increment `attempt_number` on the leg.                                                                                                                       |
-| **Already-locked skip**        | Postings where `retry_locked_until > NOW()` are skipped (counted in `skipped` in the response). Prevents stampede on slow retries.                                                                                                    |
-| **MDC in async threads**       | `PostingRetryProcessor` re-seeds MDC with `postingId` and `e2eRef` at the start of each `CompletableFuture` task since MDC is thread-local.                                                                                           |
-| **No leg pre-insert on retry** | Unlike create flow, retry uses the existing `PENDING`/`FAILED` legs — it does not create new rows. It only processes legs that are not yet `SUCCESS`.                                                                                 |
+| Aspect                         | Detail                                                                                                                                                                                                                                                  |
+|--------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Lock mechanism**             | Two JPQL steps: `findEligibleIdsForRetry` (SELECT) → `lockEligibleByIds` (@Modifying UPDATE). The UPDATE's WHERE clause re-checks `status=PNDG AND lock expired/null`, so races between concurrent callers are harmless. No DB row lock is held.        |
+| **Lock cleared after retry**   | `PostingRetryProcessorV2` always sets `retry_locked_until = null` after processing, regardless of outcome. The posting is therefore immediately eligible for the next retry cycle instead of waiting 2 minutes.                                          |
+| **Lock TTL fallback**          | The 2-minute TTL (`LOCK_TTL_SECONDS = 120`) protects against processor crashes. If the JVM dies mid-retry, the lock expires naturally and the posting becomes eligible again.                                                                            |
+| **Strategy resolution**        | `PostingStrategyFactory.resolve(targetSystem + "_" + operation)` — e.g. `CBS_POSTING`, `GL_POSTING`, `OBPM_POSTING`, `CBS_ADD_HOLD`, `CBS_REMOVE_HOLD`. Adding a new operation requires only a new `@Service` implementing `PostingStrategy`.           |
+| **Parallel execution**         | Each posting gets its own `CompletableFuture` on the `retryExecutor` thread pool (configured in `AsyncConfig`). Leg execution within a posting is still sequential (must respect `leg_order`).                                                          |
+| **isRetry flag**               | Strategies receive `isRetry=true`, causing them to set `mode=RETRY` on the leg update.                                                                                                                                                                  |
+| **MDC in async threads**       | Parent MDC map is captured before dispatch and restored inside each `CompletableFuture` task, since MDC is thread-local.                                                                                                                                 |
+| **No leg pre-insert on retry** | Unlike the create flow, retry uses the existing `PENDING`/`FAILED` legs — it does not create new rows. It only processes legs not yet `SUCCESS`.                                                                                                        |
+| **H2 JSONB compatibility**     | `deserializeRequest()` uses `JsonNode.isTextual()` to detect H2's double-encoding of JSONB columns (`columnDefinition = "jsonb"`). If the root token is a string, the inner text value is deserialized. PostgreSQL is unaffected.                       |

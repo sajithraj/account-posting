@@ -2,15 +2,14 @@ openapi: 3.0.3
 
 info:
   title: Account Posting Orchestrator API
-  version: 1.0.0
+  version: 2.0.0
   description: |
     Accepts posting requests from upstream systems, delivers them to a core banking
     orchestrator, tracks every response leg, and provides retry capability.
 
     ## Naming Convention
-    All JSON request bodies and response payloads use **snake_case** field names
-    (Jackson `SNAKE_CASE` property naming strategy).
-    GET query parameters use **camelCase** (Spring `@ModelAttribute` binding).
+    All JSON request bodies, response payloads, and query parameters use **snake_case**
+    field names (Jackson `SNAKE_CASE` property naming strategy applied globally).
 
     ## Error Envelope
     All error responses share the same structure — see the `ErrorResponse` schema.
@@ -19,20 +18,20 @@ info:
     | Enum | Values |
     |------|--------|
     | `credit_debit_indicator` | `CREDIT` \| `DEBIT` |
-    | `posting_status` | `PENDING` \| `SUCCESS` \| `FAILED` |
+    | `posting_status` | `PNDG` (pending) \| `ACSP` (accepted/success) \| `RJCT` (rejected) |
     | `leg_status` | `PENDING` \| `SUCCESS` \| `FAILED` |
     | `leg_mode` | `NORM` \| `RETRY` \| `MANUAL` |
 
     ## Source Names → Request Types (canonical from dev DB)
     | source_name | request_type | target legs |
     |-------------|-------------|------------|
-    | `IMX` | `IMX_CBS_GL` | CBS (order 1) → GL (order 2) |
-    | `IMX` | `IMX_OBPM` | OBPM (order 1) |
-    | `RMS` | `FED_RETURN` | CBS (order 1) → GL (order 2) |
-    | `RMS` | `GL_RETURN` | GL (order 1) → GL (order 2) |
-    | `RMS` | `MCA_RETURN` | OBPM (order 1) |
-    | `STABLECOIN` | `CUSTOMER_POSTING` | CBS (order 1) → GL (order 2) |
-    | `STABLECOIN` | `BUY_CUSTOMER_POSTNG` | CBS (order 2) → GL (order 3) |
+    | `IMX` | `IMX_CBS_GL` | CBS POSTING (order 1) → GL POSTING (order 2) |
+    | `IMX` | `IMX_OBPM` | OBPM POSTING (order 1) |
+    | `RMS` | `FED_RETURN` | CBS POSTING (order 1) → GL POSTING (order 2) |
+    | `RMS` | `GL_RETURN` | GL POSTING (order 1) → GL POSTING (order 2) |
+    | `RMS` | `MCA_RETURN` | OBPM POSTING (order 1) |
+    | `STABLECOIN` | `CUSTOMER_POSTING` | CBS POSTING (order 1) → GL POSTING (order 2) |
+    | `STABLECOIN` | `BUY_CUSTOMER_POSTNG` | CBS POSTING (order 2) → GL POSTING (order 3) |
     | `STABLECOIN` | `BUY_CUSTOMER_POSTING` | CBS REMOVE_HOLD (order 1) |
     | `STABLECOIN` | `ADD_ACCOUNT_HOLD` | CBS ADD_HOLD (order 1) |
 
@@ -46,28 +45,24 @@ info:
     | `OBPM` | `POSTING` |
 
 servers:
-  - url: http://localhost:8080/api
-    description: Local development (H2 in-memory)
-  - url: http://localhost:8080/api
+  - url: http://localhost:8080
+    description: Local development (H2 in-memory, profile=local)
+  - url: http://localhost:8080
     description: Dev (PostgreSQL via Docker, profile=dev)
-  - url: http://localhost:8080/api
+  - url: http://localhost:8080
     description: QA
-  - url: http://localhost:8080/api
+  - url: http://localhost:8080
     description: UAT
-  - url: http://localhost:8080/api
+  - url: http://localhost:8080
     description: Production
 
 tags:
   - name: Account Posting
-    description: Core posting lifecycle — create, search, retrieve, and retry
+    description: Core posting lifecycle — create, search, retrieve, retry, and history
   - name: Posting Legs
     description: Manage individual legs of a posting
   - name: Posting Config
     description: Routing configuration — maps source_name + request_type to ordered target systems
-  - name: Stub Simulator
-    description: |
-      Test-only endpoints to simulate external system failures.
-      **Not available in production** (`@Profile("!prod")`).
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
@@ -76,20 +71,20 @@ paths:
 
   # ── Account Posting ─────────────────────────────────────────────────────────
 
-  /account-posting:
+  /v2/payment/account-posting:
     post:
       tags: [ Account Posting ]
       summary: Create a posting
       description: |
         Submits a new posting request. The service:
-        1. Validates the payload (bean validation + enum validation)
-        2. Checks idempotency on `end_to_end_reference_id`
-        3. Persists the posting with status `PENDING`
-        4. Resolves the routing config for `source_name` + `request_type`
-        5. Calls each target system in `order_seq` order (stub in current impl)
-        6. Updates the posting status to `SUCCESS` or `FAILED`
-
-        Validation fires **before** the service is invoked — a failed validation never creates a DB record.
+        1. Checks idempotency on `end_to_end_reference_id` — duplicate returns HTTP 422
+        2. Persists the posting with status `PNDG`
+        3. Validates the payload (bean validation + enum validation) — failure marks posting `RJCT`
+        4. Resolves the routing config for `request_type` from `posting_config`
+        5. Pre-inserts all legs as `PENDING` before calling any external system
+        6. Calls each target system in `order_seq` order via the matching `PostingStrategy`
+        7. Updates the posting status to `ACSP` (all legs SUCCESS) or `PNDG` (any leg failed)
+        8. Publishes a `PostingSuccessEvent` to Kafka if `ACSP` and Kafka is enabled
       operationId: createPosting
       requestBody:
         required: true
@@ -99,7 +94,7 @@ paths:
               $ref: '#/components/schemas/AccountPostingRequest'
             examples:
               imx_cbs_gl:
-                summary: IMX IMX_CBS_GL — 2 legs (CBS → GL)
+                summary: IMX — IMX_CBS_GL (CBS → GL, 2 legs)
                 value:
                   source_reference_id: "SRC-001"
                   end_to_end_reference_id: "E2E-001"
@@ -112,16 +107,55 @@ paths:
                   creditor_account: "9875312300"
                   requested_execution_date: "2026-03-23"
                   remittance_information: "Invoice payment INV-2026-001"
-              rms_fed_return:
-                summary: RMS FED_RETURN — 2 legs (CBS → GL)
+              imx_obpm:
+                summary: IMX — IMX_OBPM (OBPM, 1 leg)
                 value:
                   source_reference_id: "SRC-002"
                   end_to_end_reference_id: "E2E-002"
+                  source_name: "IMX"
+                  request_type: "IMX_OBPM"
+                  amount: 800.00
+                  currency: "USD"
+                  credit_debit_indicator: "CREDIT"
+                  debtor_account: "1234567890"
+                  creditor_account: "0987654321"
+                  requested_execution_date: "2026-03-23"
+              rms_fed_return:
+                summary: RMS — FED_RETURN (CBS → GL, 2 legs)
+                value:
+                  source_reference_id: "SRC-003"
+                  end_to_end_reference_id: "E2E-003"
                   source_name: "RMS"
                   request_type: "FED_RETURN"
                   amount: 500.00
                   currency: "USD"
                   credit_debit_indicator: "CREDIT"
+                  debtor_account: "1234567890"
+                  creditor_account: "0987654321"
+                  requested_execution_date: "2026-03-23"
+              stablecoin_add_hold:
+                summary: STABLECOIN — ADD_ACCOUNT_HOLD (CBS ADD_HOLD, 1 leg)
+                value:
+                  source_reference_id: "SRC-004"
+                  end_to_end_reference_id: "E2E-004"
+                  source_name: "STABLECOIN"
+                  request_type: "ADD_ACCOUNT_HOLD"
+                  amount: 5000.00
+                  currency: "USD"
+                  credit_debit_indicator: "DEBIT"
+                  debtor_account: "1234567890"
+                  creditor_account: "0987654321"
+                  requested_execution_date: "2026-03-23"
+              stablecoin_buy_customer_posting:
+                summary: STABLECOIN — BUY_CUSTOMER_POSTING (CBS REMOVE_HOLD, 1 leg)
+                value:
+                  source_reference_id: "SRC-005"
+                  end_to_end_reference_id: "E2E-005"
+                  source_name: "STABLECOIN"
+                  request_type: "BUY_CUSTOMER_POSTING"
+                  amount: 5000.00
+                  currency: "USD"
+                  credit_debit_indicator: "DEBIT"
                   debtor_account: "1234567890"
                   creditor_account: "0987654321"
                   requested_execution_date: "2026-03-23"
@@ -135,7 +169,7 @@ paths:
               example:
                 source_reference_id: "SRC-001"
                 end_to_end_reference_id: "E2E-001"
-                posting_status: "SUCCESS"
+                posting_status: "ACSP"
                 processed_at: "2026-03-23T10:15:30Z"
                 responses:
                   - name: "CBS"
@@ -193,25 +227,37 @@ paths:
             | `name` | Cause |
             |--------|-------|
             | `DUPLICATE_E2E_REF` | `end_to_end_reference_id` already exists |
+            | `NO_CONFIG_FOUND` | No `posting_config` entry for the given `request_type` |
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                id: "a1b2c3d4-0000-0000-0000-000000000001"
-                name: "DUPLICATE_E2E_REF"
-                message: "A posting with this end-to-end reference ID already exists"
-                errors: null
+              examples:
+                duplicate_e2e:
+                  summary: Duplicate end-to-end reference
+                  value:
+                    id: "a1b2c3d4-0000-0000-0000-000000000001"
+                    name: "DUPLICATE_E2E_REF"
+                    message: "A posting with this end-to-end reference ID already exists"
+                    errors: null
+                no_config:
+                  summary: No routing config found
+                  value:
+                    id: "a1b2c3d4-0000-0000-0000-000000000002"
+                    name: "NO_CONFIG_FOUND"
+                    message: "No posting config found for requestType: UNKNOWN_TYPE"
+                    errors: null
         '500':
           $ref: '#/components/responses/InternalError'
 
     get:
       tags: [ Account Posting ]
-      summary: Search postings
+      summary: Search postings (active table)
       description: |
-        Paginated search with optional filters. All parameters are optional and composable.
+        Paginated search of the active `account_posting` table with optional filters.
+        All parameters are optional and composable. Returns an empty page if no results.
 
-        **Note:** Query parameters use `camelCase` (Spring `@ModelAttribute` binding, not Jackson).
+        Use `GET /v2/payment/account-posting/history` to query archived records.
       operationId: searchPostings
       parameters:
         - name: status
@@ -219,44 +265,44 @@ paths:
           description: Filter by posting status
           schema:
             $ref: '#/components/schemas/PostingStatus'
-        - name: sourceName
+        - name: source_name
           in: query
           description: Filter by originating system name
           schema:
             type: string
             example: IMX
-        - name: requestType
+        - name: request_type
           in: query
           description: Filter by request type
           schema:
             type: string
-            example: CBS_GL
-        - name: sourceReferenceId
+            example: IMX_CBS_GL
+        - name: source_reference_id
           in: query
-          description: Filter by source system reference
+          description: Filter by source system reference (exact match)
           schema:
             type: string
-        - name: endToEndReferenceId
+        - name: end_to_end_reference_id
           in: query
-          description: Filter by end-to-end reference
+          description: Filter by end-to-end reference (exact match)
           schema:
             type: string
-        - name: targetSystem
+        - name: target_system
           in: query
-          description: Filter by target system (matches postings that routed to this system)
+          description: Filter by target system (LIKE match on target_systems column)
           schema:
             type: string
             example: CBS
-        - name: fromDate
+        - name: from_date
           in: query
-          description: Filter by requested_execution_date >= fromDate (ISO 8601 date)
+          description: Filter by requested_execution_date >= from_date (ISO 8601 date)
           schema:
             type: string
             format: date
             example: "2026-03-01"
-        - name: toDate
+        - name: to_date
           in: query
-          description: Filter by requested_execution_date <= toDate (ISO 8601 date)
+          description: Filter by requested_execution_date <= to_date (ISO 8601 date)
           schema:
             type: string
             format: date
@@ -278,10 +324,10 @@ paths:
             maximum: 200
         - name: sort
           in: query
-          description: Sort field and direction (e.g. `postingId,desc`)
+          description: Sort field and direction (e.g. `posting_id,desc`)
           schema:
             type: string
-            example: postingId,desc
+            example: posting_id,desc
       responses:
         '200':
           description: Paginated list of postings
@@ -292,11 +338,93 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /account-posting/{postingId}:
+  /v2/payment/account-posting/history:
+    get:
+      tags: [ Account Posting ]
+      summary: Search postings (history / archive table)
+      description: |
+        Paginated search of the `account_posting_history` table (records moved there by the
+        archival job after the configured retention period).
+
+        Accepts the same filter parameters as `GET /v2/payment/account-posting`.
+        `GET /v2/payment/account-posting/{postingId}` is transparent — it checks the active
+        table first and falls back to history automatically. Use this endpoint only when you
+        need to explicitly query historical data in bulk.
+      operationId: searchPostingsHistory
+      parameters:
+        - name: status
+          in: query
+          description: Filter by posting status
+          schema:
+            $ref: '#/components/schemas/PostingStatus'
+        - name: source_name
+          in: query
+          schema:
+            type: string
+            example: IMX
+        - name: request_type
+          in: query
+          schema:
+            type: string
+            example: IMX_CBS_GL
+        - name: source_reference_id
+          in: query
+          schema:
+            type: string
+        - name: end_to_end_reference_id
+          in: query
+          schema:
+            type: string
+        - name: target_system
+          in: query
+          schema:
+            type: string
+            example: CBS
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2026-01-01"
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2026-03-31"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: posting_id,desc
+      responses:
+        '200':
+          description: Paginated list of archived postings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAccountPostingResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v2/payment/account-posting/{posting_id}:
     get:
       tags: [ Account Posting ]
       summary: Get posting by ID
-      description: Returns a single posting with all its legs.
+      description: |
+        Returns a single posting with all its legs.
+        Checks the active table first; if not found, transparently falls back to the history
+        table. Callers do not need to know which table holds the record.
       operationId: getPostingById
       parameters:
         - $ref: '#/components/parameters/PostingId'
@@ -312,17 +440,28 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /account-posting/retry:
+  /v2/payment/account-posting/retry:
     post:
       tags: [ Account Posting ]
-      summary: Retry non-SUCCESS postings
+      summary: Retry non-SUCCESS legs on PNDG postings
       description: |
-        Re-processes failed or pending legs.
+        Re-processes failed or pending legs on `PNDG` postings.
 
-        - If `posting_ids` is omitted or empty — all non-SUCCESS postings are retried.
-        - If `posting_ids` is provided — only those postings are retried.
-        - Postings locked within the retry window (120 s) are skipped.
-        - Each retried leg gets `mode = RETRY` and increments `attempt_number`.
+        **Flow:**
+        1. Resolve candidate IDs — if `posting_ids` omitted, `findEligibleIdsForRetry` selects
+           all `PNDG` postings where `retry_locked_until` is null or expired
+        2. Lock atomically — single `@Modifying` JPQL UPDATE sets `retry_locked_until = NOW() + 120s`
+        3. Dispatch one `CompletableFuture` per locked posting to the `retryExecutor` thread pool
+        4. Each `PostingRetryProcessorV2` runs in its own transaction:
+           - Fetches non-SUCCESS legs ordered by `leg_order`
+           - Resolves strategy by `{target_system}_{operation}` key
+           - Calls the external system stub; updates leg to SUCCESS or FAILED
+           - Re-evaluates all legs: posts → `ACSP` if all SUCCESS, else `PNDG`
+           - **Always clears `retry_locked_until`** — posting immediately retryable again
+        5. Aggregates results and returns
+
+        **Strategies resolved during retry:**
+        `CBS_POSTING` | `GL_POSTING` | `OBPM_POSTING` | `CBS_ADD_HOLD` | `CBS_REMOVE_HOLD`
       operationId: retryPostings
       requestBody:
         required: false
@@ -332,10 +471,10 @@ paths:
               $ref: '#/components/schemas/RetryRequest'
             examples:
               retry_all:
-                summary: Retry all non-SUCCESS
+                summary: Retry all eligible PNDG postings
                 value: { }
               retry_specific:
-                summary: Retry specific IDs
+                summary: Retry specific posting IDs
                 value:
                   posting_ids: [ 1, 2, 3 ]
       responses:
@@ -370,7 +509,7 @@ paths:
 
   # ── Posting Legs ────────────────────────────────────────────────────────────
 
-  /account-posting/{postingId}/leg:
+  /v2/payment/account-posting/{posting_id}/leg:
     post:
       tags: [ Posting Legs ]
       summary: Add a leg to a posting
@@ -419,7 +558,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /account-posting/{postingId}/leg/{postingLegId}:
+  /v2/payment/account-posting/{posting_id}/leg/{posting_leg_id}:
     get:
       tags: [ Posting Legs ]
       summary: Get a single leg
@@ -443,8 +582,8 @@ paths:
       tags: [ Posting Legs ]
       summary: Update a leg (system / retry path)
       description: |
-        Full update of a leg — used by the retry processor after calling the external system.
-        Sets `mode = RETRY` and increments `attempt_number`.
+        Full update of a leg after an external system call. Sets `mode = RETRY` on retry path.
+        Used internally by `PostingRetryProcessorV2`; also callable via API for manual corrections.
       operationId: updateLeg
       parameters:
         - $ref: '#/components/parameters/PostingId'
@@ -475,6 +614,7 @@ paths:
       description: |
         Sets the leg status directly from the UI. Sets `mode = MANUAL`.
         Does **not** increment `attempt_number` or call any external system.
+        An optional `reason` can be provided to record the override explanation.
       operationId: manualUpdateLeg
       parameters:
         - $ref: '#/components/parameters/PostingId'
@@ -485,8 +625,17 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ManualUpdateLegRequest'
-            example:
-              status: "SUCCESS"
+            examples:
+              mark_success:
+                summary: Manually mark leg as SUCCESS
+                value:
+                  status: "SUCCESS"
+                  reason: "Confirmed by ops team"
+              mark_failed:
+                summary: Manually mark leg as FAILED
+                value:
+                  status: "FAILED"
+                  reason: "Rejected by CBS — duplicate transaction"
       responses:
         '200':
           description: Leg status updated manually
@@ -503,7 +652,7 @@ paths:
 
   # ── Posting Config ──────────────────────────────────────────────────────────
 
-  /account-posting/config:
+  /v2/payment/account-posting/config:
     get:
       tags: [ Posting Config ]
       summary: Get all config entries
@@ -526,7 +675,7 @@ paths:
       summary: Create a config entry
       description: |
         Adds a new routing rule. Duplicate `(request_type, order_seq)` → HTTP 422.
-        Call `POST /account-posting/config/cache/flush` after bulk changes.
+        Call `POST /v2/payment/account-posting/config/cache/flush` after bulk changes.
       operationId: createConfig
       requestBody:
         required: true
@@ -563,13 +712,14 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /account-posting/config/cache/flush:
+  /v2/payment/account-posting/config/cache/flush:
     post:
       tags: [ Posting Config ]
       summary: Flush the config cache
       description: |
-        Evicts the in-memory routing config cache so the next request reloads from the database.
-        Call this after bulk SQL inserts/updates or after applying a Flyway migration that modifies `posting_config`.
+        Evicts the in-memory Caffeine cache (`configsByRequestType`, 500 max, 1h TTL)
+        so the next request reloads from the database.
+        Call this after bulk SQL inserts/updates or after a Flyway migration that modifies `posting_config`.
       operationId: flushConfigCache
       responses:
         '204':
@@ -577,14 +727,16 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /account-posting/config/{requestType}:
+  /v2/payment/account-posting/config/{request_type}:
     get:
       tags: [ Posting Config ]
       summary: Get config entries by request type
-      description: Returns the ordered legs (target_system + operation) for a given `request_type`.
+      description: |
+        Returns the ordered legs (target_system + operation) for a given `request_type`.
+        Result is cached — stale after config changes until `cache/flush` is called.
       operationId: getConfigByRequestType
       parameters:
-        - name: requestType
+        - name: request_type
           in: path
           required: true
           description: The request type to look up (e.g. `IMX_CBS_GL`, `FED_RETURN`)
@@ -618,7 +770,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /account-posting/config/{configId}:
+  /v2/payment/account-posting/config/{config_id}:
     put:
       tags: [ Posting Config ]
       summary: Update a config entry
@@ -665,93 +817,6 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  # ── Stub Simulator (non-prod only) ─────────────────────────────────────────
-
-  /test/stub/configure:
-    post:
-      tags: [ Stub Simulator ]
-      summary: Configure systems to simulate as failing
-      description: |
-        Sets which external target systems the stub should return a failure response for.
-        Replaces the current failing-systems list on every call.
-
-        **Not available in production.**
-      operationId: stubConfigure
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                fail_systems:
-                  type: array
-                  description: Target system keys to simulate as failing
-                  items:
-                    type: string
-                    enum: [ CBS, GL, OBPM ]
-            examples:
-              fail_cbs:
-                summary: Make CBS fail
-                value:
-                  fail_systems: [ "CBS" ]
-              fail_all:
-                summary: Make all systems fail
-                value:
-                  fail_systems: [ "CBS", "GL", "OBPM" ]
-              clear_via_configure:
-                summary: Clear all failures
-                value:
-                  fail_systems: [ ]
-      responses:
-        '200':
-          description: Simulator configured
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StubStatusResponse'
-              example:
-                message: "Stub simulator configured"
-                failing_systems: [ "CBS" ]
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /test/stub/clear:
-    post:
-      tags: [ Stub Simulator ]
-      summary: Clear all failure simulations
-      description: Resets the stub — all external systems return SUCCESS again.
-      operationId: stubClear
-      responses:
-        '200':
-          description: Simulator cleared
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StubStatusResponse'
-              example:
-                message: "Stub simulator cleared"
-                failing_systems: [ ]
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /test/stub/status:
-    get:
-      tags: [ Stub Simulator ]
-      summary: Get current simulator state
-      operationId: stubStatus
-      responses:
-        '200':
-          description: Current failing systems
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StubStatusResponse'
-              example:
-                failing_systems: [ "CBS" ]
-        '500':
-          $ref: '#/components/responses/InternalError'
-
 # ─────────────────────────────────────────────────────────────────────────────
 # COMPONENTS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -760,7 +825,7 @@ components:
   # ── Parameters ──────────────────────────────────────────────────────────────
   parameters:
     PostingId:
-      name: postingId
+      name: posting_id
       in: path
       required: true
       description: Unique posting identifier
@@ -770,7 +835,7 @@ components:
         example: 1
 
     PostingLegId:
-      name: postingLegId
+      name: posting_leg_id
       in: path
       required: true
       description: Unique posting leg identifier
@@ -780,7 +845,7 @@ components:
         example: 1
 
     ConfigId:
-      name: configId
+      name: config_id
       in: path
       required: true
       description: Unique posting config identifier
@@ -836,8 +901,12 @@ components:
     # ── Enums ─────────────────────────────────────────────────────────────────
     PostingStatus:
       type: string
-      enum: [ PENDING, SUCCESS, FAILED ]
-      description: Lifecycle status of an account posting
+      enum: [ PNDG, ACSP, RJCT ]
+      description: |
+        Lifecycle status of an account posting:
+        - `PNDG` — pending (initial state; also set when one or more legs fail)
+        - `ACSP` — accepted / all legs succeeded
+        - `RJCT` — rejected (validation failure or no routing config found)
 
     LegStatus:
       type: string
@@ -887,13 +956,13 @@ components:
         source_name:
           type: string
           maxLength: 100
-          description: Name of the originating system. Must be a value known to `posting_config`.
+          description: "Name of the originating system. Valid values: IMX | RMS | STABLECOIN"
           example: "IMX"
         request_type:
           type: string
           maxLength: 50
           description: Transaction type that determines the routing strategy from `posting_config`.
-          example: "CBS_GL"
+          example: "IMX_CBS_GL"
         amount:
           type: number
           format: decimal
@@ -932,14 +1001,15 @@ components:
     RetryRequest:
       type: object
       description: |
-        Specifies which postings to retry. Omit `posting_ids` (or send an empty object) to retry all non-SUCCESS postings.
+        Specifies which postings to retry. Omit `posting_ids` (or send an empty object)
+        to retry all eligible `PNDG` postings (those not currently locked).
       properties:
         posting_ids:
           type: array
           items:
             type: integer
             format: int64
-          description: Specific posting IDs to retry. If absent or empty, all non-SUCCESS postings are targeted.
+          description: Specific posting IDs to retry. If absent or empty, all eligible PNDG postings are targeted.
           example: [ 1, 2, 3 ]
 
     AccountPostingLegRequest:
@@ -958,7 +1028,7 @@ components:
         target_system:
           type: string
           maxLength: 100
-          description: External system this leg targets (e.g. `CBS`)
+          description: "External system this leg targets. Valid values: CBS | GL | OBPM"
           example: "CBS"
         account:
           type: string
@@ -966,9 +1036,7 @@ components:
           description: Account associated with this leg
           example: "1324658900"
         status:
-          type: string
-          description: Initial leg status (defaults to `PENDING` if omitted)
-          example: "PENDING"
+          $ref: '#/components/schemas/LegStatus'
         reference_id:
           type: string
           maxLength: 100
@@ -984,16 +1052,16 @@ components:
           description: Timestamp when the leg was posted (ISO 8601)
         request_payload:
           type: string
-          description: JSON payload sent to the target system (stored as-is)
+          description: JSON payload sent to the target system (stored as JSONB)
         response_payload:
           type: string
-          description: JSON response received from the target system (stored as-is)
+          description: JSON response received from the target system (stored as JSONB)
         mode:
           $ref: '#/components/schemas/LegMode'
         operation:
           type: string
           maxLength: 20
-          description: Operation type (e.g. `POSTING`, `ADD_HOLD`, `CANCEL_HOLD`)
+          description: "Operation type. Valid values: POSTING | ADD_HOLD | REMOVE_HOLD"
           example: "POSTING"
 
     UpdateLegRequest:
@@ -1024,15 +1092,25 @@ components:
           description: JSON response from the target system
         mode:
           $ref: '#/components/schemas/LegMode'
+        attempt_number:
+          type: integer
+          minimum: 1
+          description: Attempt count to set on this leg
+          example: 2
 
     ManualUpdateLegRequest:
       type: object
-      description: Payload for manually overriding a leg status from the UI
+      description: Payload for manually overriding a leg status from the UI. Sets `mode = MANUAL`.
       required:
         - status
       properties:
         status:
           $ref: '#/components/schemas/LegStatus'
+        reason:
+          type: string
+          maxLength: 500
+          description: Optional explanation for the manual override
+          example: "Confirmed by ops team — CBS reference verified manually"
 
     PostingConfigRequest:
       type: object
@@ -1046,19 +1124,19 @@ components:
       properties:
         source_name:
           type: string
-          description: Originating system name
+          description: "Originating system name. Valid values: IMX | RMS | STABLECOIN"
           example: "IMX"
         request_type:
           type: string
           description: Transaction type
-          example: "CBS_GL"
+          example: "IMX_CBS_GL"
         target_system:
           type: string
-          description: External system to route to (e.g. `CBS`)
+          description: "External system to route to. Valid values: CBS | GL | OBPM"
           example: "CBS"
         operation:
           type: string
-          description: Operation to perform on the target system (e.g. `POSTING`)
+          description: "Operation to perform. Valid values: POSTING | ADD_HOLD | REMOVE_HOLD"
           example: "POSTING"
         order_seq:
           type: integer
@@ -1096,7 +1174,7 @@ components:
       properties:
         name:
           type: string
-          description: Leg name / target system identifier
+          description: Target system identifier
           example: "CBS"
         type:
           type: string
@@ -1119,6 +1197,7 @@ components:
         reason:
           type: string
           description: Error message if failed, null on success
+          nullable: true
           example: null
 
     AccountPostingResponse:
@@ -1140,7 +1219,7 @@ components:
           example: "IMX"
         request_type:
           type: string
-          example: "CBS_GL"
+          example: "IMX_CBS_GL"
         amount:
           type: number
           format: decimal
@@ -1163,6 +1242,7 @@ components:
           example: "2026-03-23"
         remittance_information:
           type: string
+          nullable: true
           example: "Invoice payment INV-2026-001"
         posting_status:
           $ref: '#/components/schemas/PostingStatus'
@@ -1172,6 +1252,7 @@ components:
           example: "CBS_GL"
         reason:
           type: string
+          nullable: true
           description: |
             Processing outcome:
             - `"Request processed successfully"` — all legs succeeded
@@ -1180,6 +1261,7 @@ components:
         processed_at:
           type: string
           format: date-time
+          nullable: true
           example: "2026-03-23T10:15:30Z"
         created_at:
           type: string
@@ -1191,7 +1273,7 @@ components:
           example: "2026-03-23T10:15:30Z"
         responses:
           type: array
-          description: Leg results (populated by the search/get endpoints)
+          description: Leg results
           items:
             $ref: '#/components/schemas/LegResponse'
 
@@ -1208,6 +1290,7 @@ components:
           example: 1
         name:
           type: string
+          description: Target system identifier
           example: "CBS"
         type:
           type: string
@@ -1217,16 +1300,19 @@ components:
           example: "1324658900"
         reference_id:
           type: string
+          nullable: true
           example: "CBS-TXN-001"
         posted_time:
           type: string
           format: date-time
+          nullable: true
           example: "2026-03-23T10:15:30Z"
         status:
           type: string
           example: "SUCCESS"
         reason:
           type: string
+          nullable: true
           example: null
         mode:
           type: string
@@ -1257,9 +1343,11 @@ components:
           $ref: '#/components/schemas/LegStatus'
         reference_id:
           type: string
+          nullable: true
           example: "CBS-TXN-001"
         reason:
           type: string
+          nullable: true
           example: null
         attempt_number:
           type: integer
@@ -1268,11 +1356,13 @@ components:
         posted_time:
           type: string
           format: date-time
+          nullable: true
           example: "2026-03-23T10:15:30Z"
         mode:
           $ref: '#/components/schemas/LegMode'
         operation:
           type: string
+          description: "Operation type: POSTING | ADD_HOLD | REMOVE_HOLD"
           example: "POSTING"
         created_at:
           type: string
@@ -1296,7 +1386,7 @@ components:
           example: "IMX"
         request_type:
           type: string
-          example: "CBS_GL"
+          example: "IMX_CBS_GL"
         target_system:
           type: string
           example: "CBS"
@@ -1313,7 +1403,7 @@ components:
       properties:
         total_legs_retried:
           type: integer
-          description: Total number of legs that were attempted
+          description: Total number of legs attempted across all postings
           example: 3
         success_count:
           type: integer
@@ -1348,6 +1438,7 @@ components:
           example: "SUCCESS"
         reason:
           type: string
+          nullable: true
           description: Error message if the retry also failed, null on success
           example: null
 
@@ -1434,6 +1525,7 @@ components:
         | 400 | `INVALID_REQUEST_BODY` | Unparseable JSON body |
         | 404 | `NOT_FOUND` | Entity not found by ID |
         | 422 | `DUPLICATE_E2E_REF` | Duplicate `end_to_end_reference_id` |
+        | 422 | `NO_CONFIG_FOUND` | No routing config for the given `request_type` |
         | 422 | `DUPLICATE_CONFIG_ORDER` | Duplicate `(request_type, order_seq)` in config |
         | 422 | `DATA_INTEGRITY_VIOLATION` | Other DB constraint violation |
         | 500 | `INTERNAL_ERROR` | Unhandled exception |
@@ -1464,7 +1556,7 @@ components:
       properties:
         field:
           type: string
-          description: The camelCase field name that failed validation
+          description: The field name that failed validation
           example: "source_reference_id"
         message:
           type: string
@@ -1474,19 +1566,3 @@ components:
           description: The value that was rejected (null if the field was absent)
           nullable: true
           example: null
-
-    StubStatusResponse:
-      type: object
-      description: Current state of the stub simulator
-      properties:
-        message:
-          type: string
-          description: Human-readable outcome (present on configure/clear only)
-          example: "Stub simulator configured"
-        failing_systems:
-          type: array
-          description: Target systems currently configured to return failure
-          items:
-            type: string
-            enum: [ CBS, GL, OBPM ]
-          example: [ "CBS" ]

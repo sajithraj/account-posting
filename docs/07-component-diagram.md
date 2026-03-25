@@ -60,9 +60,11 @@ graph TD
         subgraph strategy["Strategy Package"]
             StratIface["PostingStrategy\ninterface\ngetPostingFlow()\nprocess()"]
             StratFactory["PostingStrategyFactory\n@Component\nMap indexed by getPostingFlow()"]
-            CBSSvc["CBSPostingService\n@Service"]
-            GLSvc["GLPostingService\n@Service"]
-            OBPMSvc["OBPMPostingService\n@Service"]
+            CBSSvc["CBSPostingService\n@Service\nflow: CBS_POSTING"]
+            GLSvc["GLPostingService\n@Service\nflow: GL_POSTING"]
+            OBPMSvc["OBPMPostingService\n@Service\nflow: OBPM_POSTING"]
+            CBSAddHold["CBSAddHoldService\n@Service\nflow: CBS_ADD_HOLD"]
+            CBSRemoveHold["CBSRemoveHoldService\n@Service\nflow: CBS_REMOVE_HOLD"]
         end
 
         subgraph event["Event Package"]
@@ -129,17 +131,25 @@ graph TD
     StratFactory --> CBSSvc
     StratFactory --> GLSvc
     StratFactory --> OBPMSvc
+    StratFactory --> CBSAddHold
+    StratFactory --> CBSRemoveHold
     CBSSvc --> LegSvc
     GLSvc --> LegSvc
     OBPMSvc --> LegSvc
+    CBSAddHold --> LegSvc
+    CBSRemoveHold --> LegSvc
     CBSSvc --> CBS
     GLSvc --> GL
     OBPMSvc --> OBPM
+    CBSAddHold --> CBS
+    CBSRemoveHold --> CBS
 
     %% Strategy implements interface
     CBSSvc -. implements .-> StratIface
     GLSvc -. implements .-> StratIface
     OBPMSvc -. implements .-> StratIface
+    CBSAddHold -. implements .-> StratIface
+    CBSRemoveHold -. implements .-> StratIface
 
     %% Leg service wires
     LegSvcImpl --> LegRepo
@@ -218,7 +228,7 @@ flowchart TD
 | `AccountPostingController`    | Receives HTTP requests, delegates to `AccountPostingService`, returns `ApiResponse<T>` envelope                                                                                              |
 | `AccountPostingServiceImpl`   | Orchestrates the full create/retry flow. Injects `AccountPostingLegService` directly (no HTTP).                                                                                              |
 | `PostingRetryProcessor`       | Handles per-posting retry logic inside a `CompletableFuture`. Injected into `AccountPostingServiceImpl`.                                                                                     |
-| `PostingStrategyFactory`      | On startup, collects all `PostingStrategy` beans into a `Map<String, PostingStrategy>` keyed by `getPostingFlow()`. Zero switch statements.                                                  |
+| `PostingStrategyFactory`      | On startup, collects all `PostingStrategy` beans into a `Map<String, PostingStrategy>` keyed by `getPostingFlow()`. Zero switch statements. Keys: `CBS_POSTING`, `GL_POSTING`, `OBPM_POSTING`, `CBS_ADD_HOLD`, `CBS_REMOVE_HOLD`. |
 | `AccountPostingSpecification` | Builds `Specification<AccountPosting>` from an `AccountPostingSearchRequest`. Each field adds a predicate only if non-null.                                                                  |
 | `PostingEventPublisher`       | Only registered as a bean when `kafka.enabled=true` (`@ConditionalOnProperty`). `AccountPostingServiceImpl` holds it as `@Autowired(required=false)` and null-guards before calling.         |
 | `MdcLoggingFilter`            | `OncePerRequestFilter` that extracts `X-Correlation-Id` from the incoming header, generates one if absent, and puts `traceId`, `requestType`, etc. into MDC for the duration of the request. |
