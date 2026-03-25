@@ -9,9 +9,9 @@ import com.accountposting.entity.enums.LegStatus;
 import com.accountposting.entity.enums.PostingStatus;
 import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.mapper.AccountPostingLegMapperV2;
-import com.accountposting.mapper.MappingUtilsV2;
 import com.accountposting.repository.AccountPostingLegRepository;
 import com.accountposting.repository.AccountPostingRepository;
+import com.accountposting.utils.AppUtility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,80 +27,74 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
     private final AccountPostingLegRepository repository;
     private final AccountPostingRepository postingRepository;
     private final AccountPostingLegMapperV2 mapper;
-    private final MappingUtilsV2 mappingUtils;
+    private final AppUtility appUtility;
 
     @Override
     @Transactional
     public AccountPostingLegResponseV2 addLeg(Long postingId, AccountPostingLegRequestV2 request) {
-        log.info("ADD LEG REQUEST | postingId={} {}", postingId, mappingUtils.toJson(request));
+        log.info("Request received to add leg for posting id :: {}. Received request :: {} .", postingId, appUtility.toObjectToString(request));
         AccountPostingLegEntity leg = mapper.toEntity(request);
         leg.setPostingId(postingId);
-        log.info("Persisting leg | postingId={} targetSystem={} legOrder={} operation={} mode={} status={}",
+        log.info("Persisting leg data for postingId :: {} target system :: {} leg order :: {} operation :: {} mode :: {} status :: {}",
                 postingId, leg.getTargetSystem(), leg.getLegOrder(),
                 leg.getOperation(), leg.getMode(), leg.getStatus());
         AccountPostingLegEntity saved = repository.save(leg);
         AccountPostingLegResponseV2 addLegResponse = mapper.toResponse(saved);
-        log.info("ADD LEG RESPONSE | postingId={} {}", postingId, mappingUtils.toJson(addLegResponse));
+        log.info("Leg persisted successfully for posting id :: {}. Persisted leg :: {} .", postingId, appUtility.toObjectToString(addLegResponse));
         return addLegResponse;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AccountPostingLegResponseV2> listLegs(Long postingId) {
-        log.info("LIST LEGS REQUEST | postingId={}", postingId);
+        log.info("Request received to fetch legs for posting id :: {} .", postingId);
         List<AccountPostingLegResponseV2> legs = repository.findByPostingIdOrderByLegOrder(postingId)
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
-        log.info("LIST LEGS RESPONSE | postingId={} {}", postingId, mappingUtils.toJson(legs));
+        log.info("Fetch legs response for the posting id :: {} . Leg details :: {} .", postingId, appUtility.toObjectToString(legs));
         return legs;
     }
 
     @Override
     @Transactional(readOnly = true)
     public AccountPostingLegResponseV2 getLeg(Long postingId, Long postingLegId) {
-        log.info("GET LEG REQUEST | postingId={} postingLegId={}", postingId, postingLegId);
-        AccountPostingLegResponseV2 response = mapper.toResponse(getOrThrow(postingId, postingLegId));
-        log.info("GET LEG RESPONSE | postingId={} postingLegId={} {}", postingId, postingLegId, mappingUtils.toJson(response));
+        log.info("Request received to fetch leg for posting id :: {} and posting leg id :: {} .", postingId, postingLegId);
+        AccountPostingLegResponseV2 response = mapper.toResponse(getLegByPostingIdAndPostingLegIdOrThrow(postingId, postingLegId));
+        log.info("Fetch leg response for the posting id :: {} and posting leg id :: {} . Leg detail :: {} .", postingId, postingLegId, appUtility.toObjectToString(response));
         return response;
     }
 
     @Override
     @Transactional
-    public AccountPostingLegResponseV2 updateLeg(Long postingId, Long postingLegId,
-                                                 UpdateLegRequestV2 request) {
-        log.info("UPDATE LEG REQUEST | postingId={} postingLegId={} {}", postingId, postingLegId, mappingUtils.toJson(request));
-        AccountPostingLegEntity leg = getOrThrow(postingId, postingLegId);
+    public AccountPostingLegResponseV2 updateLeg(Long postingId, Long postingLegId, UpdateLegRequestV2 request) {
+        log.info("Request received to update leg for posting id :: {} and posting leg id :: {} . Received request :: {} .", postingId, postingLegId, appUtility.toObjectToString(request));
+        AccountPostingLegEntity leg = getLegByPostingIdAndPostingLegIdOrThrow(postingId, postingLegId);
         LegStatus previousStatus = leg.getStatus();
         // Only increment attempt count for retry path - MANUAL updates do not count as attempts
         if (request.getMode() == LegMode.RETRY) {
             leg.setAttemptNumber(leg.getAttemptNumber() + 1);
         }
         mapper.applyUpdate(request, leg);
-        log.info("Persisting leg update | postingLegId={} postingId={} status={} mode={} attempt={}",
-                postingLegId, postingId, leg.getStatus(), leg.getMode(), leg.getAttemptNumber());
+        log.info("Persisting leg update for posting leg id :: {} posting id :: {} status :: {} mode :: {} attempt :: {} .", postingLegId, postingId, leg.getStatus(), leg.getMode(), leg.getAttemptNumber());
         AccountPostingLegEntity updated = repository.save(leg);
         AccountPostingLegResponseV2 updateLegResponse = mapper.toResponse(updated);
-        log.info("UPDATE LEG RESPONSE | postingId={} postingLegId={} previousStatus={} {}",
-                postingId, postingLegId, previousStatus, mappingUtils.toJson(updateLegResponse));
+        log.info("Update leg status from for the posting id :: {} , posting leg id :: {} and previous status :: {} . Updated leg detail :: {} .", postingId, postingLegId, previousStatus, appUtility.toObjectToString(updateLegResponse));
         return updateLegResponse;
     }
 
     @Override
     @Transactional
-    public AccountPostingLegResponseV2 manualUpdateLeg(Long postingId, Long postingLegId,
-                                                       LegStatus newStatus, String reason) {
-        log.info("MANUAL UPDATE LEG REQUEST | postingId={} postingLegId={} newStatus={} reason={}",
-                postingId, postingLegId, newStatus, reason);
-        AccountPostingLegEntity leg = getOrThrow(postingId, postingLegId);
+    public AccountPostingLegResponseV2 manualUpdateLeg(Long postingId, Long postingLegId, LegStatus newStatus, String reason) {
+        log.info("Request received to update leg manually for posting id :: {} and posting leg id :: {} . Update details - new status :: {} and reason :: {} .", postingId, postingLegId, newStatus, reason);
+        AccountPostingLegEntity leg = getLegByPostingIdAndPostingLegIdOrThrow(postingId, postingLegId);
         LegStatus previousStatus = leg.getStatus();
         leg.setStatus(newStatus);
         leg.setMode(LegMode.MANUAL);
         if (reason != null && !reason.isBlank()) {
             leg.setReason(reason);
         }
-        log.info("Persisting manual leg update | postingLegId={} postingId={} status={} mode={}",
-                postingLegId, postingId, leg.getStatus(), leg.getMode());
+        log.info("Persisting manual leg update for posting leg id :: {} posting id :: {} . Status updated from :: {}  to status :: {} .", postingLegId, postingId, previousStatus, newStatus);
         AccountPostingLegEntity updated = repository.save(leg);
 
         // Promote posting to SUCCESS when every leg is now SUCCESS
@@ -117,8 +111,7 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
         }
 
         AccountPostingLegResponseV2 manualUpdateResponse = mapper.toResponse(updated);
-        log.info("MANUAL UPDATE LEG RESPONSE | postingId={} postingLegId={} previousStatus={} {}",
-                postingId, postingLegId, previousStatus, mappingUtils.toJson(manualUpdateResponse));
+        log.info("Manual leg updated completed successfully for posting leg id :: {} posting id :: {}. Updated leg details :: {} .", postingId, postingLegId, appUtility.toObjectToString(manualUpdateResponse));
         return manualUpdateResponse;
     }
 
@@ -131,7 +124,7 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
                 .toList();
     }
 
-    private AccountPostingLegEntity getOrThrow(Long postingId, Long postingLegId) {
+    private AccountPostingLegEntity getLegByPostingIdAndPostingLegIdOrThrow(Long postingId, Long postingLegId) {
         return repository.findByPostingLegIdAndPostingId(postingLegId, postingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "AccountPostingLegEntity", postingLegId + " under posting " + postingId));

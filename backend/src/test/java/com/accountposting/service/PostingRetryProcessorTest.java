@@ -3,7 +3,6 @@ package com.accountposting.service;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.accountposting.dto.accountpostingleg.LegResponseV2;
-import com.accountposting.dto.retry.RetryResponseV2;
 import com.accountposting.entity.AccountPostingEntity;
 import com.accountposting.entity.enums.CreditDebitIndicator;
 import com.accountposting.entity.enums.LegStatus;
@@ -53,26 +52,26 @@ class PostingRetryProcessorTest {
     // ── posting not found ──────────────────────────────────────────────────────
 
     @Test
-    void process_postingNotFound_returnsEmptyList() {
+    void process_postingNotFound_returnsFalse() {
         when(postingRepository.findById(99L)).thenReturn(java.util.Optional.empty());
 
-        List<RetryResponseV2.LegRetryResult> results = processor.process(99L);
+        boolean result = processor.process(99L);
 
-        assertThat(results).isEmpty();
+        assertThat(result).isFalse();
         verifyNoInteractions(legService, strategyFactory);
     }
 
     // ── no non-success legs ────────────────────────────────────────────────────
 
     @Test
-    void process_noNonSuccessLegs_returnsEmptyList() {
+    void process_noNonSuccessLegs_returnsFalse() {
         AccountPostingEntity posting = buildPosting(1L, "FT");
         when(postingRepository.findById(1L)).thenReturn(java.util.Optional.of(posting));
         when(legService.listNonSuccessLegs(1L)).thenReturn(List.of());
 
-        List<RetryResponseV2.LegRetryResult> results = processor.process(1L);
+        boolean result = processor.process(1L);
 
-        assertThat(results).isEmpty();
+        assertThat(result).isFalse();
         verifyNoInteractions(strategyFactory);
     }
 
@@ -93,13 +92,9 @@ class PostingRetryProcessorTest {
         when(legService.listLegs(1L)).thenReturn(List.of(buildLegResponseSuccess(10L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponseV2.LegRetryResult> results = processor.process(1L);
+        boolean result = processor.process(1L);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getPreviousStatus()).isEqualTo("FAILED");
-        assertThat(results.get(0).getNewStatus()).isEqualTo("SUCCESS");
-
-        // Posting status should be updated to SUCCESS
+        assertThat(result).isTrue();
         verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.ACSP));
     }
 
@@ -126,11 +121,9 @@ class PostingRetryProcessorTest {
                 List.of(buildLegResponseSuccess(11L), buildLegResponseSuccess(12L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponseV2.LegRetryResult> results = processor.process(2L);
+        boolean result = processor.process(2L);
 
-        assertThat(results).hasSize(2);
-        assertThat(results).extracting(RetryResponseV2.LegRetryResult::getNewStatus)
-                .containsExactly("SUCCESS", "SUCCESS");
+        assertThat(result).isTrue();
 
         // Verify execution order: CBS before GL
         var inOrder = inOrder(cbsStrategy, glStrategy);
@@ -157,10 +150,9 @@ class PostingRetryProcessorTest {
         when(legService.listLegs(3L)).thenReturn(List.of(buildLegResponseFailed(20L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponseV2.LegRetryResult> results = processor.process(3L);
+        boolean result = processor.process(3L);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getNewStatus()).isEqualTo("FAILED");
+        assertThat(result).isFalse();
         verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.PNDG));
     }
 
@@ -180,11 +172,9 @@ class PostingRetryProcessorTest {
         when(legService.listLegs(4L)).thenReturn(List.of(buildLegResponseFailed(30L)));
         when(postingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<RetryResponseV2.LegRetryResult> results = processor.process(4L);
+        boolean result = processor.process(4L);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getNewStatus()).isEqualTo("FAILED");
-        assertThat(results.get(0).getReason()).contains("CBS timeout");
+        assertThat(result).isFalse();
         verify(postingRepository).save(argThat(p -> p.getStatus() == PostingStatus.PNDG));
     }
 

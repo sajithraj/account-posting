@@ -1,9 +1,11 @@
 package com.accountposting.mapper;
 
+import com.accountposting.dto.ExternalCallResultV2;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegRequestV2;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
-import com.accountposting.dto.accountpostingleg.ExternalCallResultV2;
+import com.accountposting.dto.accountpostingleg.LegCreateResponseV2;
+import com.accountposting.dto.accountpostingleg.LegResponseV2;
 import com.accountposting.dto.accountpostingleg.UpdateLegRequestV2;
 import com.accountposting.entity.AccountPostingLegEntity;
 import com.accountposting.entity.AccountPostingLegHistoryEntity;
@@ -15,6 +17,9 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
+
+import java.time.Instant;
+import java.util.List;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AccountPostingLegMapperV2 {
@@ -30,23 +35,15 @@ public interface AccountPostingLegMapperV2 {
 
     AccountPostingLegResponseV2 toResponse(AccountPostingLegEntity leg);
 
-    /**
-     * Maps a history leg row to the same response DTO used for active legs.
-     */
+    LegCreateResponseV2 toLegCreateResponse(LegResponseV2 leg);
+
+    List<LegCreateResponseV2> toLegCreateResponses(List<LegResponseV2> legs);
+
     AccountPostingLegResponseV2 toResponseFromHistory(AccountPostingLegHistoryEntity leg);
 
-    /**
-     * Full-parameter factory - produces a ready-to-use {@link AccountPostingLegRequestV2}.
-     * All strategy-specific fields are passed as arguments so no setter calls are needed
-     * at the call site.
-     *
-     * @param request        original posting request (provides {@code debtorAccount → account})
-     * @param legOrder       sequential position of this leg
-     * @param targetSystem   e.g. CBS, GL, OBPM
-     * @param mode           NORM on initial create; RETRY on retry
-     * @param operation      e.g. POSTING, ADD_HOLD, CANCEL_HOLD
-     * @param requestPayload serialised external-system request JSON (may be null for pre-inserts)
-     */
+    @Mapping(target = "archivedAt", source = "archivedAt")
+    AccountPostingLegHistoryEntity toLegHistory(AccountPostingLegEntity src, Instant archivedAt);
+
     @Mapping(target = "account", source = "request.debtorAccount")
     @Mapping(target = "legOrder", source = "legOrder")
     @Mapping(target = "targetSystem", source = "targetSystem")
@@ -61,9 +58,6 @@ public interface AccountPostingLegMapperV2 {
             String operation,
             String requestPayload);
 
-    /**
-     * Converts an external call result to an {@link UpdateLegRequestV2}; sets {@code postedTime} to now.
-     */
     @Mapping(target = "postedTime", expression = "java(java.time.Instant.now())")
     UpdateLegRequestV2 toUpdateLegRequest(ExternalCallResultV2 result);
 

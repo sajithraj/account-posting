@@ -216,12 +216,12 @@ docker compose -f docker-compose.prod.yml down -v
 
 Run from the `deploy/` directory. Replace `<env>` with `dev`, `qa`, `uat`, or `prod`.
 
-| What changed           | Command                                                                 |
-|------------------------|-------------------------------------------------------------------------|
+| What changed           | Command                                                         |
+|------------------------|-----------------------------------------------------------------|
 | Java source            | `docker compose -f docker-compose.<env>.yml up --build backend` |
-| React / TypeScript     | `docker compose -f docker-compose.<env>.yml up --build ui`              |
-| New DB migration added | `docker compose -f docker-compose.<env>.yml up flyway`                  |
-| Everything             | `docker compose -f docker-compose.<env>.yml up --build`                 |
+| React / TypeScript     | `docker compose -f docker-compose.<env>.yml up --build ui`      |
+| New DB migration added | `docker compose -f docker-compose.<env>.yml up flyway`          |
+| Everything             | `docker compose -f docker-compose.<env>.yml up --build`         |
 
 ---
 

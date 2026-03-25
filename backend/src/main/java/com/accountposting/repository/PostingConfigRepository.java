@@ -8,4 +8,8 @@ import java.util.List;
 public interface PostingConfigRepository extends JpaRepository<PostingConfig, Long> {
 
     List<PostingConfig> findByRequestTypeOrderByOrderSeqAsc(String requestType);
+
+    boolean existsByRequestTypeAndOrderSeq(String requestType, Integer orderSeq);
+
+    boolean existsByRequestTypeAndOrderSeqAndConfigIdNot(String requestType, Integer orderSeq, Long configId);
 }

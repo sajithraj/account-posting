@@ -18,14 +18,12 @@ public interface AccountPostingLegRepository extends JpaRepository<AccountPostin
     Optional<AccountPostingLegEntity> findByPostingLegIdAndPostingId(Long postingLegId, Long postingId);
 
     /**
-     * Fetches all legs belonging to any of the given postingIds.
-     * Used by the archival job to bulk-load legs for a batch of postings.
+     * Fetches all legs for the given postingIds.
      */
     List<AccountPostingLegEntity> findByPostingIdIn(Collection<Long> postingIds);
 
     /**
      * Returns all non-SUCCESS legs for a posting ordered by legOrder.
-     * Used by the retry processor to determine which legs need to be re-executed.
      */
     @Query("""
             SELECT l FROM AccountPostingLegEntity l

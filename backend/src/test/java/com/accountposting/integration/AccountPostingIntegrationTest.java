@@ -1,8 +1,8 @@
 package com.accountposting.integration;
 
 import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingFullResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
-import com.accountposting.dto.accountposting.AccountPostingResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingSearchRequestV2;
 import com.accountposting.dto.accountpostingleg.LegCreateResponseV2;
 import com.accountposting.dto.accountpostingleg.LegResponseV2;
@@ -800,7 +800,7 @@ class AccountPostingIntegrationTest {
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             // Only the failed CBS leg was retried — GL was already SUCCESS
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(1);
+            assertThat(retryResp.getTotalPostings()).isEqualTo(1);
             assertThat(retryResp.getSuccessCount()).isEqualTo(1);
             assertThat(retryResp.getFailedCount()).isEqualTo(0);
 
@@ -832,8 +832,8 @@ class AccountPostingIntegrationTest {
 
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(2);
-            assertThat(retryResp.getSuccessCount()).isEqualTo(2);
+            assertThat(retryResp.getTotalPostings()).isEqualTo(1);
+            assertThat(retryResp.getSuccessCount()).isEqualTo(1);
 
             assertThat(getPosting(postingId).getStatus()).isEqualTo(PostingStatus.ACSP);
             assertThat(getLegs(postingId)).extracting(AccountPostingLegEntity::getStatus)
@@ -864,8 +864,7 @@ class AccountPostingIntegrationTest {
 
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
-            // Each posting had 1 failed CBS leg → 3 retried total
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(3);
+            assertThat(retryResp.getTotalPostings()).isEqualTo(3);
             assertThat(retryResp.getSuccessCount()).isEqualTo(3);
             assertThat(retryResp.getFailedCount()).isEqualTo(0);
 
@@ -895,7 +894,7 @@ class AccountPostingIntegrationTest {
             retryReq.setPostingIds(List.of(id1, id2));
             RetryResponseV2 retryResp = service.retry(retryReq);
 
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(2);
+            assertThat(retryResp.getTotalPostings()).isEqualTo(2);
 
             assertThat(getPosting(id1).getStatus()).isEqualTo(PostingStatus.ACSP);
             assertThat(getPosting(id2).getStatus()).isEqualTo(PostingStatus.ACSP);
@@ -933,7 +932,7 @@ class AccountPostingIntegrationTest {
             reset(strategyFactory);
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(1);  // only OBPM retried
+            assertThat(retryResp.getTotalPostings()).isEqualTo(1);
             assertThat(retryResp.getSuccessCount()).isEqualTo(1);
 
             assertThat(getPosting(postingId).getStatus()).isEqualTo(PostingStatus.ACSP);
@@ -954,8 +953,7 @@ class AccountPostingIntegrationTest {
 
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(0);
-            assertThat(retryResp.getResults()).isEmpty();
+            assertThat(retryResp.getTotalPostings()).isEqualTo(0);
         }
 
         @Test
@@ -975,7 +973,7 @@ class AccountPostingIntegrationTest {
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             // Posting was locked — skipped
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(0);
+            assertThat(retryResp.getTotalPostings()).isEqualTo(0);
             assertThat(getPosting(postingId).getStatus()).isEqualTo(PostingStatus.PNDG);
         }
 
@@ -1002,7 +1000,7 @@ class AccountPostingIntegrationTest {
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
             // Only pending1 and pending2 are unlocked PENDING → 2 retried
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(2);
+            assertThat(retryResp.getTotalPostings()).isEqualTo(2);
             assertThat(retryResp.getSuccessCount()).isEqualTo(2);
 
             Long id1 = findPostingIdByE2e(pending1.getEndToEndReferenceId());
@@ -1035,11 +1033,11 @@ class AccountPostingIntegrationTest {
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setStatus(PostingStatus.ACSP);
 
-            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponseV2::getPostingStatus)
+                    .extracting(AccountPostingFullResponseV2::getPostingStatus)
                     .containsOnly(PostingStatus.ACSP);
         }
 
@@ -1056,11 +1054,11 @@ class AccountPostingIntegrationTest {
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setStatus(PostingStatus.PNDG);
 
-            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponseV2::getPostingStatus)
+                    .extracting(AccountPostingFullResponseV2::getPostingStatus)
                     .containsOnly(PostingStatus.PNDG);
         }
 
@@ -1076,11 +1074,11 @@ class AccountPostingIntegrationTest {
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setSourceName("RMS");
 
-            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponseV2::getSourceName)
+                    .extracting(AccountPostingFullResponseV2::getSourceName)
                     .containsOnly("RMS");
         }
 
@@ -1096,11 +1094,11 @@ class AccountPostingIntegrationTest {
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setRequestType("IMX_CBS_GL");
 
-            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(3);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponseV2::getRequestType)
+                    .extracting(AccountPostingFullResponseV2::getRequestType)
                     .containsOnly("IMX_CBS_GL");
         }
 
@@ -1115,11 +1113,11 @@ class AccountPostingIntegrationTest {
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setTargetSystem("CBS");   // matches CBS_GL and CBS
 
-            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent())
-                    .extracting(AccountPostingResponseV2::getTargetSystems)
+                    .extracting(AccountPostingFullResponseV2::getTargetSystems)
                     .allMatch(ts -> ts != null && ts.contains("CBS"));
         }
 
@@ -1137,7 +1135,7 @@ class AccountPostingIntegrationTest {
             criteria.setSourceName("IMX");
             criteria.setStatus(PostingStatus.ACSP);
 
-            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent().get(0).getSourceName()).isEqualTo("IMX");
@@ -1156,8 +1154,8 @@ class AccountPostingIntegrationTest {
             Pageable page1 = PageRequest.of(0, 3, Sort.by("postingId").ascending());
             Pageable page2 = PageRequest.of(1, 3, Sort.by("postingId").ascending());
 
-            Page<AccountPostingResponseV2> resultPage1 = service.search(new AccountPostingSearchRequestV2(), page1);
-            Page<AccountPostingResponseV2> resultPage2 = service.search(new AccountPostingSearchRequestV2(), page2);
+            Page<AccountPostingFullResponseV2> resultPage1 = service.search(new AccountPostingSearchRequestV2(), page1);
+            Page<AccountPostingFullResponseV2> resultPage2 = service.search(new AccountPostingSearchRequestV2(), page2);
 
             assertThat(resultPage1.getTotalElements()).isEqualTo(5);
             assertThat(resultPage1.getContent()).hasSize(3);
@@ -1173,7 +1171,7 @@ class AccountPostingIntegrationTest {
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setSourceName("IMX");
 
-            Page<AccountPostingResponseV2> result = service.search(
+            Page<AccountPostingFullResponseV2> result = service.search(
                     criteria, PageRequest.of(0, 10, Sort.by("postingId")));
 
             assertThat(result.getTotalElements()).isEqualTo(2);
@@ -1196,7 +1194,7 @@ class AccountPostingIntegrationTest {
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setEndToEndReferenceId(req1.getEndToEndReferenceId());
 
-            Page<AccountPostingResponseV2> result = service.search(criteria, Pageable.unpaged());
+            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
 
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent().get(0).getEndToEndReferenceId())
@@ -1219,7 +1217,7 @@ class AccountPostingIntegrationTest {
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPostingResponseV2 resp = service.findById(postingId);
+            AccountPostingFullResponseV2 resp = service.findById(postingId);
 
             assertThat(resp.getPostingId()).isEqualTo(postingId);
             assertThat(resp.getSourceReferenceId()).isEqualTo(request.getSourceReferenceId());
@@ -1259,7 +1257,7 @@ class AccountPostingIntegrationTest {
             service.create(request);
 
             Long postingId = findPostingIdByE2e(request.getEndToEndReferenceId());
-            AccountPostingResponseV2 resp = service.findById(postingId);
+            AccountPostingFullResponseV2 resp = service.findById(postingId);
 
             assertThat(resp.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
             assertThat(resp.getResponses()).hasSize(2);
@@ -1415,7 +1413,7 @@ class AccountPostingIntegrationTest {
             // Bulk retry — all 5 PENDING recover
             RetryResponseV2 retryResp = service.retry(new RetryRequestV2());
 
-            assertThat(retryResp.getTotalLegsRetried()).isEqualTo(5);
+            assertThat(retryResp.getTotalPostings()).isEqualTo(5);
             assertThat(retryResp.getSuccessCount()).isEqualTo(5);
             assertThat(retryResp.getFailedCount()).isEqualTo(0);
 

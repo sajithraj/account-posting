@@ -1,8 +1,8 @@
 package com.accountposting.mapper;
 
 import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingFullResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
-import com.accountposting.dto.accountposting.AccountPostingResponseV2;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.accountposting.dto.accountpostingleg.LegResponseV2;
 import com.accountposting.entity.AccountPostingEntity;
@@ -11,6 +11,8 @@ import com.accountposting.entity.enums.PostingStatus;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
+
+import java.time.Instant;
 
 @Mapper(
         componentModel = "spring",
@@ -29,7 +31,7 @@ public interface AccountPostingMapperV2 {
     @Mapping(source = "status", target = "postingStatus")
     @Mapping(target = "processedAt", ignore = true)
     @Mapping(target = "responses", ignore = true)
-    AccountPostingResponseV2 toResponse(AccountPostingEntity posting);
+    AccountPostingFullResponseV2 toResponse(AccountPostingEntity posting);
 
     @Mapping(source = "postingLegId", target = "postingLegId")
     @Mapping(source = "targetSystem", target = "name")
@@ -44,11 +46,11 @@ public interface AccountPostingMapperV2 {
     @Mapping(target = "responses", ignore = true)
     AccountPostingCreateResponseV2 toCreateResponse(AccountPostingEntity posting);
 
-    /**
-     * Maps a history row to the same response DTO used for active postings.
-     */
     @Mapping(source = "status", target = "postingStatus")
     @Mapping(target = "processedAt", ignore = true)
     @Mapping(target = "responses", ignore = true)
-    AccountPostingResponseV2 toResponseFromHistory(AccountPostingHistoryEntity history);
+    AccountPostingFullResponseV2 toResponseFromHistory(AccountPostingHistoryEntity history);
+
+    @Mapping(target = "archivedAt", source = "archivedAt")
+    AccountPostingHistoryEntity toHistory(AccountPostingEntity src, Instant archivedAt);
 }

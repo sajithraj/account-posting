@@ -1,5 +1,6 @@
-package com.accountposting.dto.accountpostingleg;
+package com.accountposting.dto;
 
+import com.accountposting.dto.accountpostingleg.UpdateLegRequestV2;
 import com.accountposting.entity.enums.LegMode;
 import com.accountposting.entity.enums.LegStatus;
 

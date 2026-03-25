@@ -1,8 +1,8 @@
 package com.accountposting.controller;
 
 import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingFullResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
-import com.accountposting.dto.accountposting.AccountPostingResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingSearchRequestV2;
 import com.accountposting.dto.retry.RetryRequestV2;
 import com.accountposting.dto.retry.RetryResponseV2;
@@ -36,14 +36,14 @@ public class AccountPostingControllerV2 {
     }
 
     @GetMapping
-    public ResponseEntity<Page<AccountPostingResponseV2>> search(
+    public ResponseEntity<Page<AccountPostingFullResponseV2>> search(
             @ModelAttribute AccountPostingSearchRequestV2 criteria,
             @PageableDefault(size = 20, sort = "postingId") Pageable pageable) {
         return ResponseEntity.ok(service.search(criteria, pageable));
     }
 
     @GetMapping("/{postingId}")
-    public ResponseEntity<AccountPostingResponseV2> findById(@PathVariable Long postingId) {
+    public ResponseEntity<AccountPostingFullResponseV2> findById(@PathVariable Long postingId) {
         return ResponseEntity.ok(service.findById(postingId));
     }
 
@@ -53,16 +53,8 @@ public class AccountPostingControllerV2 {
         return ResponseEntity.ok(service.retry(retryRequest));
     }
 
-    /**
-     * Searches the history table (records archived after the configured retention period).
-     * Accepts the same filter parameters as {@code GET /v2/payment/account-posting}.
-     *
-     * <p><b>Enterprise pattern:</b> {@code GET /{id}} is transparent - it checks the active table
-     * first and falls back to history automatically. Use this endpoint only when you want to
-     * explicitly query historical data in bulk.
-     */
     @GetMapping("/history")
-    public ResponseEntity<Page<AccountPostingResponseV2>> searchHistory(
+    public ResponseEntity<Page<AccountPostingFullResponseV2>> searchHistory(
             @ModelAttribute AccountPostingSearchRequestV2 criteria,
             @PageableDefault(size = 20, sort = "postingId") Pageable pageable) {
         return ResponseEntity.ok(service.searchHistory(criteria, pageable));

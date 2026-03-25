@@ -15,7 +15,6 @@ import com.accountposting.event.PostingEventPublisher;
 import com.accountposting.exception.BusinessException;
 import com.accountposting.mapper.AccountPostingLegMapperV2;
 import com.accountposting.mapper.AccountPostingMapperV2;
-import com.accountposting.mapper.MappingUtilsV2;
 import com.accountposting.repository.AccountPostingHistoryRepository;
 import com.accountposting.repository.AccountPostingLegHistoryRepository;
 import com.accountposting.repository.AccountPostingRepository;
@@ -25,6 +24,7 @@ import com.accountposting.service.accountposting.strategy.PostingStrategy;
 import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
 import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
 import com.accountposting.service.retry.PostingRetryProcessorV2;
+import com.accountposting.utils.AppUtility;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,9 +69,8 @@ class AccountPostingServiceImplTest {
     @Mock
     PostingEventPublisher eventPublisher;
 
-    // Real ObjectMapper + MappingUtilsV2 — used for JSON serialization of request/response payloads
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
-    private final MappingUtilsV2 mappingUtils = new MappingUtilsV2(objectMapper);
+    private final AppUtility appUtility = new AppUtility(objectMapper);
 
     private AccountPostingServiceImplV2 service;
 
@@ -93,7 +92,7 @@ class AccountPostingServiceImplTest {
         service = new AccountPostingServiceImplV2(
                 repository, historyRepository, legHistoryRepository,
                 mapper, legMapper, legService, postingConfigRepository,
-                strategyFactory, retryProcessor, requestValidator, mappingUtils,
+                strategyFactory, retryProcessor, requestValidator, appUtility,
                 Runnable::run
         );
     }
@@ -280,16 +279,14 @@ class AccountPostingServiceImplTest {
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(2);
 
-        when(retryProcessor.process(10L)).thenReturn(List.of(
-                legRetryResult(1L, 10L, "FAILED", "SUCCESS")));
-        when(retryProcessor.process(11L)).thenReturn(List.of(
-                legRetryResult(2L, 11L, "FAILED", "SUCCESS")));
+        when(retryProcessor.process(10L)).thenReturn(true);
+        when(retryProcessor.process(11L)).thenReturn(true);
 
         RetryRequestV2 retryRequest = new RetryRequestV2(); // null postingIds -> bulk
 
         RetryResponseV2 response = service.retry(retryRequest);
 
-        assertThat(response.getTotalLegsRetried()).isEqualTo(2);
+        assertThat(response.getTotalPostings()).isEqualTo(2);
         assertThat(response.getSuccessCount()).isEqualTo(2);
         assertThat(response.getFailedCount()).isEqualTo(0);
         verify(retryProcessor).process(10L);
@@ -303,15 +300,14 @@ class AccountPostingServiceImplTest {
         when(repository.lockEligibleByIds(eq(List.of(20L)), eq(PostingStatus.PNDG),
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(1);
-        when(retryProcessor.process(20L)).thenReturn(List.of(
-                legRetryResult(5L, 20L, "FAILED", "FAILED")));
+        when(retryProcessor.process(20L)).thenReturn(false);
 
         RetryRequestV2 retryRequest = new RetryRequestV2();
         retryRequest.setPostingIds(List.of(20L));
 
         RetryResponseV2 response = service.retry(retryRequest);
 
-        assertThat(response.getTotalLegsRetried()).isEqualTo(1);
+        assertThat(response.getTotalPostings()).isEqualTo(1);
         assertThat(response.getSuccessCount()).isEqualTo(0);
         assertThat(response.getFailedCount()).isEqualTo(1);
         verify(repository, never()).findEligibleIdsForRetry(any(), any());
@@ -327,7 +323,7 @@ class AccountPostingServiceImplTest {
 
         RetryResponseV2 response = service.retry(new RetryRequestV2());
 
-        assertThat(response.getTotalLegsRetried()).isEqualTo(0);
+        assertThat(response.getTotalPostings()).isEqualTo(0);
         verifyNoInteractions(retryProcessor);
     }
 
@@ -339,7 +335,7 @@ class AccountPostingServiceImplTest {
 
         RetryResponseV2 response = service.retry(new RetryRequestV2());
 
-        assertThat(response.getTotalLegsRetried()).isEqualTo(0);
+        assertThat(response.getTotalPostings()).isEqualTo(0);
         verifyNoInteractions(retryProcessor);
     }
 
@@ -384,13 +380,4 @@ class AccountPostingServiceImplTest {
         return r;
     }
 
-    private RetryResponseV2.LegRetryResult legRetryResult(Long legId, Long postingId,
-                                                          String prev, String next) {
-        return RetryResponseV2.LegRetryResult.builder()
-                .postingLegId(legId)
-                .postingId(postingId)
-                .previousStatus(prev)
-                .newStatus(next)
-                .build();
-    }
 }

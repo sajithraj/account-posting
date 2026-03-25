@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponseV2> handleNotFound(ResourceNotFoundException ex) {
-        log.warn("Resource not found: {}", ex.getMessage());
+        log.error("Resource not found :: {} .", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
                 || "DUPLICATE_E2E_REF".equals(ex.getCode())
                 || "DUPLICATE_CONFIG_ORDER".equals(ex.getCode());
         HttpStatus status = isBadInput ? HttpStatus.BAD_REQUEST : HttpStatus.UNPROCESSABLE_ENTITY;
-        log.warn("Business rule violation [{}] {}: {}", ex.getCode(), status.value(), ex.getMessage());
+        log.error("Business rule violation [{}] {}: {} .", ex.getCode(), status.value(), ex.getMessage());
         return ResponseEntity.status(status)
                 .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseV2> handleNotReadable(HttpMessageNotReadableException ex) {
         String detail = ex.getMostSpecificCause().getMessage();
-        log.warn("Malformed request body: {}", detail);
+        log.error("Malformed request body :: {} .Error message :: {} .", detail, ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())
@@ -60,7 +60,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseV2> handleDataIntegrity(DataIntegrityViolationException ex) {
         String cause = ex.getMostSpecificCause().getMessage();
-        log.warn("Data integrity violation: {}", cause);
+        log.error("Data integrity violation :: {}. Error message :: {} .", cause, ex.getMessage());
 
         String errorCode;
         String message;
@@ -104,7 +104,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseV2> handleGeneral(Exception ex) {
-        log.error("Unhandled exception", ex);
+        log.error("Unhandled exception. Error message :: {} .", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponseV2.builder()
                         .id(UUID.randomUUID().toString())

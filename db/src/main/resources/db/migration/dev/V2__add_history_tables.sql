@@ -33,12 +33,12 @@ CREATE TABLE account_posting_history
     archived_at              TIMESTAMPTZ    NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_aph_status       ON account_posting_history (status);
-CREATE INDEX idx_aph_e2e_ref      ON account_posting_history (end_to_end_reference_id);
-CREATE INDEX idx_aph_src_ref      ON account_posting_history (source_reference_id);
+CREATE INDEX idx_aph_status ON account_posting_history (status);
+CREATE INDEX idx_aph_e2e_ref ON account_posting_history (end_to_end_reference_id);
+CREATE INDEX idx_aph_src_ref ON account_posting_history (source_reference_id);
 CREATE INDEX idx_aph_request_type ON account_posting_history (request_type);
-CREATE INDEX idx_aph_created_at   ON account_posting_history (created_at);
-CREATE INDEX idx_aph_archived_at  ON account_posting_history (archived_at);
+CREATE INDEX idx_aph_created_at ON account_posting_history (created_at);
+CREATE INDEX idx_aph_archived_at ON account_posting_history (archived_at);
 
 -- ── account_posting_leg_history ───────────────────────────────────────────────
 CREATE TABLE account_posting_leg_history
@@ -62,6 +62,6 @@ CREATE TABLE account_posting_leg_history
     archived_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_aplh_posting_id  ON account_posting_leg_history (posting_id);
-CREATE INDEX idx_aplh_status      ON account_posting_leg_history (status);
+CREATE INDEX idx_aplh_posting_id ON account_posting_leg_history (posting_id);
+CREATE INDEX idx_aplh_status ON account_posting_leg_history (status);
 CREATE INDEX idx_aplh_archived_at ON account_posting_leg_history (archived_at);

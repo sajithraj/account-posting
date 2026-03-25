@@ -9,10 +9,6 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Mirrors {@link AccountPostingSpecification} but targets {@link AccountPostingHistoryEntity}.
- * All predicates are optional - omitting a field means no restriction on that column.
- */
 public final class AccountPostingHistorySpecification {
 
     private AccountPostingHistorySpecification() {

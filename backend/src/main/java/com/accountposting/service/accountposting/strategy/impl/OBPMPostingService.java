@@ -1,17 +1,17 @@
 package com.accountposting.service.accountposting.strategy.impl;
 
+import com.accountposting.dto.ExternalCallResultV2;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
-import com.accountposting.dto.accountpostingleg.ExternalCallResultV2;
 import com.accountposting.dto.accountpostingleg.LegResponseV2;
 import com.accountposting.entity.enums.LegMode;
 import com.accountposting.entity.enums.LegStatus;
 import com.accountposting.mapper.AccountPostingLegMapperV2;
 import com.accountposting.mapper.AccountPostingMapperV2;
-import com.accountposting.mapper.MappingUtilsV2;
 import com.accountposting.service.accountposting.strategy.ExternalApiHelper;
 import com.accountposting.service.accountposting.strategy.PostingStrategy;
 import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
+import com.accountposting.utils.AppUtility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,7 @@ public class OBPMPostingService implements PostingStrategy {
     private final AccountPostingLegServiceV2 legService;
     private final AccountPostingLegMapperV2 legMapper;
     private final AccountPostingMapperV2 postingMapper;
-    private final MappingUtilsV2 mappingUtils;
+    private final AppUtility appUtility;
     private final ExternalApiHelper externalApiHelper;
 
     private static final String TARGET_SYSTEM = "OBPM";
@@ -44,7 +44,7 @@ public class OBPMPostingService implements PostingStrategy {
 
         // ── Build OBPM request ─────────────────────────────────────────────
         Map<String, Object> obpmRequest = externalApiHelper.buildObpmRequest(request);
-        String requestPayloadJson = mappingUtils.toJson(obpmRequest);
+        String requestPayloadJson = appUtility.toObjectToString(obpmRequest);
         log.info("OBPM REQUEST | postingId={} leg={} {}", postingId, legOrder, requestPayloadJson);
 
         if (existingLegId == null) {
@@ -55,7 +55,7 @@ public class OBPMPostingService implements PostingStrategy {
 
         // ── Invoke OBPM ────────────────────────────────────────────────────
         Map<String, Object> obpmResponse = externalApiHelper.callObpm(obpmRequest);
-        String responsePayloadJson = mappingUtils.toJson(obpmResponse);
+        String responsePayloadJson = appUtility.toObjectToString(obpmResponse);
         log.info("OBPM RESPONSE | postingId={} leg={} {}", postingId, legOrder, responsePayloadJson);
 
         String obpmStatus = String.valueOf(obpmResponse.get("status"));

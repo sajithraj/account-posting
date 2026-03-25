@@ -3,6 +3,11 @@ app:
     enabled: false
     topic:
       posting-success: account-posting-success
+  archival:
+    enabled: false
+    cron: "0 0 2 * * ?"
+    threshold-days: 90
+    batch-size: 500
 
 spring:
   application:

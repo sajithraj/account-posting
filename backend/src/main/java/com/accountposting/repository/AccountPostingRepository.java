@@ -22,7 +22,6 @@ public interface AccountPostingRepository
 
     /**
      * Returns IDs of all PNDG postings whose lock has expired (or was never set).
-     * Call {@link #lockEligibleByIds} immediately after to acquire the lock.
      */
     @Query("""
             SELECT p.postingId FROM AccountPostingEntity p
@@ -34,9 +33,7 @@ public interface AccountPostingRepository
             @Param("now") Instant now);
 
     /**
-     * Locks the supplied posting IDs by setting {@code retryLockedUntil = lockUntil}.
-     * Only rows that are still PNDG with no active lock are updated — already-locked or
-     * non-PNDG rows are silently skipped.
+     * Locks the given posting IDs by setting
      */
     @Modifying
     @Transactional
@@ -54,8 +51,7 @@ public interface AccountPostingRepository
             @Param("lockUntil") Instant lockUntil);
 
     /**
-     * Returns the oldest postings whose {@code createdAt} is before {@code threshold},
-     * ordered by {@code createdAt} ascending so that the earliest records are archived first.
+     * Returns the oldest postings which are all ready for archival
      */
     @Query("""
             SELECT p FROM AccountPostingEntity p

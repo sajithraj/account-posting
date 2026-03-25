@@ -9,11 +9,11 @@ tracks every response leg, and provides a UI with retry.
 
 ## Three Project Directories
 
-| Directory          | What it is                              | Port |
-|--------------------|-----------------------------------------|------|
+| Directory  | What it is                              | Port |
+|------------|-----------------------------------------|------|
 | `backend/` | Spring Boot 3.2, Java 17, Maven         | 8080 |
-| `db/`              | Flyway migration scripts + Maven plugin | —    |
-| `ui/`              | React 18, TypeScript, Vite              | 3000 |
+| `db/`      | Flyway migration scripts + Maven plugin | —    |
+| `ui/`      | React 18, TypeScript, Vite              | 3000 |
 
 ---
 

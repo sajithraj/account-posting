@@ -1,8 +1,8 @@
 package com.accountposting.controller;
 
 import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingFullResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
-import com.accountposting.dto.accountposting.AccountPostingResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingSearchRequestV2;
 import com.accountposting.dto.accountpostingleg.LegResponseV2;
 import com.accountposting.dto.retry.RetryRequestV2;
@@ -77,8 +77,8 @@ class AccountPostingControllerTest {
                 .build();
     }
 
-    private AccountPostingResponseV2 sampleResponse(Long id) {
-        return AccountPostingResponseV2.builder()
+    private AccountPostingFullResponseV2 sampleResponse(Long id) {
+        return AccountPostingFullResponseV2.builder()
                 .postingId(id)
                 .sourceReferenceId("SRC-001")
                 .endToEndReferenceId("E2E-001")
@@ -261,7 +261,7 @@ class AccountPostingControllerTest {
 
         @Test
         void returns200_withPagedResults() throws Exception {
-            Page<AccountPostingResponseV2> page = new PageImpl<>(
+            Page<AccountPostingFullResponseV2> page = new PageImpl<>(
                     List.of(sampleResponse(1L), sampleResponse(2L)));
             when(service.search(any(AccountPostingSearchRequestV2.class), any(Pageable.class)))
                     .thenReturn(page);
@@ -316,7 +316,7 @@ class AccountPostingControllerTest {
             leg.setType("POSTING");
             leg.setLegOrder(1);
 
-            AccountPostingResponseV2 resp = AccountPostingResponseV2.builder()
+            AccountPostingFullResponseV2 resp = AccountPostingFullResponseV2.builder()
                     .postingId(42L)
                     .postingStatus(PostingStatus.ACSP)
                     .responses(List.of(leg))
@@ -363,7 +363,7 @@ class AccountPostingControllerTest {
             req.setPostingIds(List.of(1L, 2L));
 
             RetryResponseV2 resp = RetryResponseV2.builder()
-                    .totalLegsRetried(2)
+                    .totalPostings(2)
                     .successCount(2)
                     .failedCount(0)
                     .build();
@@ -373,7 +373,7 @@ class AccountPostingControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.total_legs_retried").value(2))
+                    .andExpect(jsonPath("$.total_postings").value(2))
                     .andExpect(jsonPath("$.success_count").value(2))
                     .andExpect(jsonPath("$.failed_count").value(0));
         }
@@ -381,7 +381,7 @@ class AccountPostingControllerTest {
         @Test
         void returns200_withEmptyBodyRetriesAll() throws Exception {
             RetryResponseV2 resp = RetryResponseV2.builder()
-                    .totalLegsRetried(3)
+                    .totalPostings(3)
                     .successCount(2)
                     .failedCount(1)
                     .build();
@@ -390,7 +390,7 @@ class AccountPostingControllerTest {
             mockMvc.perform(post("/v2/payment/account-posting/retry")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.total_legs_retried").value(3));
+                    .andExpect(jsonPath("$.total_postings").value(3));
         }
 
         @Test

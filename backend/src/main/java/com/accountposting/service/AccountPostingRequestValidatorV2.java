@@ -22,11 +22,6 @@ public class AccountPostingRequestValidatorV2 {
     private static final List<String> VALID_REQUEST_TYPES =
             Arrays.stream(RequestType.values()).map(Enum::name).toList();
 
-    /**
-     * Validates all required fields, size constraints, and enum membership in one pass.
-     *
-     * @throws BusinessException on the first category that produces errors.
-     */
     public void validate(AccountPostingRequestV2 request) {
         List<String> errors = new ArrayList<>();
 
@@ -79,12 +74,9 @@ public class AccountPostingRequestValidatorV2 {
 
         if (!errors.isEmpty()) {
             String message = String.join("; ", errors);
-            log.warn("VALIDATION_FAILED | {}", message);
+            log.error("VALIDATION_FAILED | {}", message);
             throw new BusinessException("VALIDATION_FAILED", message);
         }
-
-        // ── Enum membership checks ─────────────────────────────────────────
-        errors = new ArrayList<>();
 
         if (!isBlank(request.getSourceName()) && !VALID_SOURCE_NAMES.contains(request.getSourceName()))
             errors.add("sourceName '" + request.getSourceName() + "' is not valid. Accepted values: " + VALID_SOURCE_NAMES);
@@ -94,7 +86,7 @@ public class AccountPostingRequestValidatorV2 {
 
         if (!errors.isEmpty()) {
             String message = String.join("; ", errors);
-            log.warn("INVALID_ENUM_VALUE | {}", message);
+            log.error("INVALID_ENUM_VALUE | {}", message);
             throw new BusinessException("INVALID_ENUM_VALUE", message);
         }
     }

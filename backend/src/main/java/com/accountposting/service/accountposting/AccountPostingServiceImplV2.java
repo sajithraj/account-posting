@@ -1,8 +1,8 @@
 package com.accountposting.service.accountposting;
 
 import com.accountposting.dto.accountposting.AccountPostingCreateResponseV2;
+import com.accountposting.dto.accountposting.AccountPostingFullResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
-import com.accountposting.dto.accountposting.AccountPostingResponseV2;
 import com.accountposting.dto.accountposting.AccountPostingSearchRequestV2;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegRequestV2;
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
@@ -21,7 +21,6 @@ import com.accountposting.exception.BusinessException;
 import com.accountposting.exception.ResourceNotFoundException;
 import com.accountposting.mapper.AccountPostingLegMapperV2;
 import com.accountposting.mapper.AccountPostingMapperV2;
-import com.accountposting.mapper.MappingUtilsV2;
 import com.accountposting.repository.AccountPostingHistoryRepository;
 import com.accountposting.repository.AccountPostingHistorySpecification;
 import com.accountposting.repository.AccountPostingLegHistoryRepository;
@@ -33,6 +32,7 @@ import com.accountposting.service.accountposting.strategy.PostingStrategy;
 import com.accountposting.service.accountposting.strategy.PostingStrategyFactory;
 import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
 import com.accountposting.service.retry.PostingRetryProcessorV2;
+import com.accountposting.utils.AppUtility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -57,6 +57,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
 
+    private static final int LOCK_TTL_SECONDS = 120;
     private final AccountPostingRepository repository;
     private final AccountPostingHistoryRepository historyRepository;
     private final AccountPostingLegHistoryRepository legHistoryRepository;
@@ -67,13 +68,9 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     private final PostingStrategyFactory strategyFactory;
     private final PostingRetryProcessorV2 retryProcessor;
     private final AccountPostingRequestValidatorV2 requestValidator;
-    private final MappingUtilsV2 mappingUtils;
+    private final AppUtility appUtility;
     @Qualifier("retryExecutor")
     private final Executor retryExecutor;
-
-    /**
-     * Null when app.kafka.enabled=false - publishing is skipped silently.
-     */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private PostingEventPublisher eventPublisher;
 
@@ -89,33 +86,34 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
             MDC.remove("e2eRef");
             MDC.remove("requestType");
             MDC.remove("postingId");
+            MDC.remove("PostingLegId");
         }
     }
 
     private AccountPostingCreateResponseV2 doCreate(AccountPostingRequestV2 request) {
-        log.info("CREATE REQUEST | {}", mappingUtils.toJson(request));
+        log.info("Request received for create posting :: {} . ", appUtility.toObjectToString(request));
 
         if (repository.existsByEndToEndReferenceId(request.getEndToEndReferenceId())) {
-            log.warn("Duplicate posting rejected | e2eRef={}", request.getEndToEndReferenceId());
+            log.error("Duplicate posting received so rejected for end to end reference id :: {}", request.getEndToEndReferenceId());
             throw new BusinessException("DUPLICATE_E2E_REF",
                     "Posting already exists for endToEndReferenceId: " + request.getEndToEndReferenceId());
         }
 
         // Save an initial PENDING record first so validation failures are always auditable in the DB.
         AccountPostingEntity posting = mapper.toEntity(request);
-        posting.setRequestPayload(mappingUtils.toJson(request));
+        posting.setRequestPayload(appUtility.toObjectToString(request));
         posting = repository.save(posting);
         MDC.put("postingId", String.valueOf(posting.getPostingId()));
-        log.info("Initial posting persisted | postingId={} status={}", posting.getPostingId(), posting.getStatus());
+        log.info("Initial posting requested persisted. PostingId :: {} initial posting status :: {} .", posting.getPostingId(), posting.getStatus());
 
         try {
             requestValidator.validate(request);
         } catch (BusinessException ex) {
             posting.setStatus(PostingStatus.RJCT);
             posting.setReason(ex.getMessage());
-            posting.setResponsePayload(mappingUtils.toJson(Map.of("error", ex.getMessage())));
+            posting.setResponsePayload(appUtility.toObjectToString(Map.of("error", ex.getMessage())));
             repository.save(posting);
-            log.warn("Posting marked RJCT due to validation | postingId={} reason={}", posting.getPostingId(), ex.getMessage());
+            log.error("Posting marked RJCT due to validation. Posting id :: {} reason :: {} .", posting.getPostingId(), ex.getMessage());
             throw ex;
         }
 
@@ -125,17 +123,15 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .stream()
                 .sorted(Comparator.comparingInt(PostingConfig::getOrderSeq))
                 .toList();
-        log.info("Routing config loaded | postingId={} requestType={} configs={}",
-                posting.getPostingId(), request.getRequestType(), mappingUtils.toJson(configs));
+        log.info("Fetched config details for request type :: {}. Config fetched :: {} .", request.getRequestType(), appUtility.toObjectToString(configs));
 
         if (configs.isEmpty()) {
             String reason = "No posting config found for requestType: " + request.getRequestType();
             posting.setStatus(PostingStatus.RJCT);
             posting.setReason(reason);
-            posting.setResponsePayload(mappingUtils.toJson(Map.of("error", reason)));
+            posting.setResponsePayload(appUtility.toObjectToString(Map.of("error", reason)));
             repository.save(posting);
-            log.warn("Posting marked RJCT - no config found | postingId={} requestType={}",
-                    posting.getPostingId(), request.getRequestType());
+            log.error("Posting marked RJCT - no config found for request type :: {} . ", request.getRequestType());
             throw new BusinessException("NO_CONFIG_FOUND", reason);
         }
 
@@ -144,42 +140,36 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .collect(Collectors.joining("_"));
         posting.setTargetSystems(targetSystems);
         repository.save(posting);
-        log.info("Target systems recorded | postingId={} targetSystems={}", posting.getPostingId(), targetSystems);
+        log.info("Target systems updated for posting id :: {} as target systems :: {} .", posting.getPostingId(), targetSystems);
 
-        // Pre-insert all legs as PENDING before calling any external system.
-        // This guarantees every leg is visible and retryable even if an earlier call fails.
+        // Pre-insert all legs as PENDING before calling any external system. This guarantees every leg is visible and retryable even if an earlier call fails.
         List<AccountPostingLegResponseV2> preInsertedLegs = new ArrayList<>();
         for (PostingConfig config : configs) {
-            AccountPostingLegRequestV2 legReq = legMapper.toCreateLegRequest(
-                    request, config.getOrderSeq(), config.getTargetSystem(),
-                    LegMode.NORM, config.getOperation(), null);
+            AccountPostingLegRequestV2 legReq = legMapper.toCreateLegRequest(request, config.getOrderSeq(), config.getTargetSystem(), LegMode.NORM, config.getOperation(), null);
             AccountPostingLegResponseV2 pre = legService.addLeg(posting.getPostingId(), legReq);
             preInsertedLegs.add(pre);
-            log.info("Leg pre-inserted | postingId={} postingLegId={} targetSystem={} legOrder={}",
-                    posting.getPostingId(), pre.getPostingLegId(), pre.getTargetSystem(), pre.getLegOrder());
+            log.info("Legs has been persisted before processing for target system :: {} operation :: {} order to execute :: {}. Generated posting leg id  :: {} .", pre.getTargetSystem(), pre.getOperation(), pre.getLegOrder(), pre.getPostingLegId());
         }
 
         List<LegResponseV2> legResponses = new ArrayList<>();
         boolean allSuccess = true;
 
         for (AccountPostingLegResponseV2 pre : preInsertedLegs) {
+            MDC.put("PostingLegId", String.valueOf(pre.getPostingLegId()));
             try {
-                log.info("Invoking strategy | postingId={} postingLegId={} targetSystem={} operation={}",
-                        posting.getPostingId(), pre.getPostingLegId(), pre.getTargetSystem(), pre.getOperation());
+                log.info("Fetching leg details to process for target system :: {} operation :: {} .", pre.getTargetSystem(), pre.getOperation());
                 PostingStrategy strategy = strategyFactory.resolve(pre.getTargetSystem() + "_" + pre.getOperation());
-                LegResponseV2 legResponse = strategy.process(
-                        posting.getPostingId(), pre.getLegOrder(), request, false, pre.getPostingLegId());
+                LegResponseV2 legResponse = strategy.process(posting.getPostingId(), pre.getLegOrder(), request, false, pre.getPostingLegId());
                 legResponses.add(legResponse);
-                log.info("Strategy completed | postingLegId={} targetSystem={} status={} referenceId={}",
-                        legResponse.getPostingLegId(), legResponse.getName(), legResponse.getStatus(), legResponse.getReferenceId());
+                log.info("Leg processing completed for target system :: {} operation :: {} amd leg status {} .", pre.getTargetSystem(), pre.getOperation(), legResponse.getStatus());
                 if (!"SUCCESS".equalsIgnoreCase(legResponse.getStatus())) {
                     allSuccess = false;
                 }
             } catch (Exception ex) {
-                log.error("Strategy execution failed | postingId={} targetSystem={}",
-                        posting.getPostingId(), pre.getTargetSystem(), ex);
+                log.error("Failed while processing leg execution for target system :: {} operation :: {}. Error message :: {} .", pre.getTargetSystem(), pre.getOperation(), ex.getMessage());
                 allSuccess = false;
             }
+            MDC.remove("PostingLegId");
         }
 
         PostingStatus finalStatus = allSuccess ? PostingStatus.ACSP : PostingStatus.PNDG;
@@ -193,125 +183,90 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .orElse("One or more legs failed");
         posting.setStatus(finalStatus);
         posting.setReason(finalReason);
-        posting.setResponsePayload(mappingUtils.toJson(Map.of("status", finalStatus.name(), "legs", legResponses)));
-        repository.save(posting);
-        log.info("Posting finalized | postingId={} status={} legs={}", posting.getPostingId(), finalStatus, legResponses.size());
 
         if (finalStatus == PostingStatus.ACSP && eventPublisher != null) {
-            eventPublisher.publishSuccess(new PostingSuccessEvent(
-                    posting.getPostingId(),
-                    posting.getEndToEndReferenceId(),
-                    posting.getRequestType(),
-                    posting.getTargetSystems(),
-                    Instant.now()
-            ));
+            eventPublisher.publishSuccess(new PostingSuccessEvent(posting.getPostingId(), posting.getEndToEndReferenceId(), posting.getRequestType(), posting.getTargetSystems(), Instant.now()));
         }
 
-        List<LegCreateResponseV2> legCreateResponses = legResponses.stream()
-                .map(leg -> {
-                    LegCreateResponseV2 r = new LegCreateResponseV2();
-                    r.setName(leg.getName());
-                    r.setType(leg.getType());
-                    r.setAccount(leg.getAccount());
-                    r.setReferenceId(leg.getReferenceId());
-                    r.setPostedTime(leg.getPostedTime());
-                    r.setStatus(leg.getStatus());
-                    r.setReason(leg.getReason());
-                    return r;
-                })
-                .toList();
+        List<LegCreateResponseV2> legCreateResponses = legMapper.toLegCreateResponses(legResponses);
 
         AccountPostingCreateResponseV2 response = mapper.toCreateResponse(posting);
         response.setProcessedAt(Instant.now());
         response.setResponses(legCreateResponses);
 
-        log.info("CREATE RESPONSE | {}", mappingUtils.toJson(response));
+        posting.setResponsePayload(appUtility.toObjectToString(response));
+        repository.save(posting);
+        log.info("Create posting completed and posting status :: {}. Response to send to target system {} .", finalStatus, appUtility.toObjectToString(response));
         return response;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AccountPostingResponseV2> search(AccountPostingSearchRequestV2 criteria, Pageable pageable) {
-        log.info("SEARCH REQUEST | {}", mappingUtils.toJson(criteria));
-        Page<AccountPostingResponseV2> result = repository
+    public Page<AccountPostingFullResponseV2> search(AccountPostingSearchRequestV2 criteria, Pageable pageable) {
+        log.info("Request received for posting search based on the criteria. Request received :: {} .", appUtility.toObjectToString(criteria));
+        Page<AccountPostingFullResponseV2> result = repository
                 .findAll(AccountPostingSpecification.from(criteria), pageable)
                 .map(posting -> {
-                    AccountPostingResponseV2 resp = mapper.toResponse(posting);
+                    AccountPostingFullResponseV2 resp = mapper.toResponse(posting);
                     resp.setResponses(fetchLegs(posting.getPostingId()));
                     return resp;
                 });
-        log.info("SEARCH RESPONSE | totalElements={} totalPages={}", result.getTotalElements(), result.getTotalPages());
+        log.info("Response to send based on search criteria received. Total elements :: {} totalPages :: {} .", result.getTotalElements(), result.getTotalPages());
         return result;
     }
 
-    /**
-     * Checks the active table first. If not found, transparently falls back to the history
-     * table so that callers never need to know which table holds the data.
-     */
     @Override
     @Transactional(readOnly = true)
-    public AccountPostingResponseV2 findById(Long postingId) {
-        log.info("FIND BY ID REQUEST | postingId={}", postingId);
-
-        // 1. Check active table
+    public AccountPostingFullResponseV2 findById(Long postingId) {
+        log.info("Request received to find the posting by posting id :: {} .", postingId);
+        // Check posting table if not check in hist table
         AccountPostingEntity posting = repository.findById(postingId).orElse(null);
         if (posting != null) {
-            AccountPostingResponseV2 response = mapper.toResponse(posting);
+            AccountPostingFullResponseV2 response = mapper.toResponse(posting);
             response.setResponses(fetchLegs(postingId));
-            log.info("FIND BY ID RESPONSE (active) | {}", mappingUtils.toJson(response));
+            log.info("Response to send for find the posting by posting id :: {} response {} .", posting, appUtility.toObjectToString(response));
             return response;
         }
-
         // 2. Transparent fallback - posting has been archived
-        log.info("FIND BY ID | postingId={} not in active table - checking history", postingId);
+        log.info("Posting id not found in the posting table so going to check in posting history table {} .", postingId);
         AccountPostingHistoryEntity history = historyRepository.findById(postingId)
                 .orElseThrow(() -> new ResourceNotFoundException("AccountPosting", postingId));
-        AccountPostingResponseV2 response = mapper.toResponseFromHistory(history);
+        AccountPostingFullResponseV2 response = mapper.toResponseFromHistory(history);
         response.setResponses(fetchHistoryLegs(postingId));
-        log.info("FIND BY ID RESPONSE (history) | {}", mappingUtils.toJson(response));
+        log.info("Response to send for find the posting by posting id :: {} response {} .", posting, appUtility.toObjectToString(response));
         return response;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AccountPostingResponseV2> searchHistory(AccountPostingSearchRequestV2 criteria, Pageable pageable) {
-        log.info("SEARCH HISTORY REQUEST | {}", mappingUtils.toJson(criteria));
-        Page<AccountPostingResponseV2> result = historyRepository
+    public Page<AccountPostingFullResponseV2> searchHistory(AccountPostingSearchRequestV2 criteria, Pageable pageable) {
+        log.info("Request received for posting search from history table based on the criteria. Request received :: {} .", appUtility.toObjectToString(criteria));
+        log.info("SEARCH HISTORY REQUEST | {}", appUtility.toObjectToString(criteria));
+        Page<AccountPostingFullResponseV2> result = historyRepository
                 .findAll(AccountPostingHistorySpecification.from(criteria), pageable)
                 .map(h -> {
-                    AccountPostingResponseV2 resp = mapper.toResponseFromHistory(h);
+                    AccountPostingFullResponseV2 resp = mapper.toResponseFromHistory(h);
                     resp.setResponses(fetchHistoryLegs(h.getPostingId()));
                     return resp;
                 });
-        log.info("SEARCH HISTORY RESPONSE | totalElements={} totalPages={}",
-                result.getTotalElements(), result.getTotalPages());
+        log.info("Response to send based on search criteria received for history table. Total elements :: {} totalPages :: {} .", result.getTotalElements(), result.getTotalPages());
         return result;
     }
 
-    /**
-     * Lock TTL: prevents concurrent retries of the same posting.
-     * Cleared by the retry processor once processing finishes.
-     */
-    private static final int LOCK_TTL_SECONDS = 120;
-
-    /**
-     * Retries PENDING postings (or a specific subset) in parallel.
-     * <p>
-     * Flow (NOT @Transactional - each native query owns its own transaction):
-     * 1. Lock eligible postings atomically in a single UPDATE ... RETURNING - IDs returned directly
-     * 2. Dispatch one CompletableFuture per posting - each owns its own transaction
-     * 3. Aggregate results
-     */
     @Override
     public RetryResponseV2 retry(RetryRequestV2 request) {
-        log.info("RETRY REQUEST | {}", mappingUtils.toJson(request));
+        log.info("Request received for retry posting :: {} . ", appUtility.toObjectToString(request));
         MDC.put("operation", "RETRY");
         try {
             RetryResponseV2 response = doRetry(request);
-            log.info("RETRY RESPONSE | {}", mappingUtils.toJson(response));
+            log.info("Response to send to target system {} .", appUtility.toObjectToString(response));
             return response;
         } finally {
             MDC.remove("operation");
+            MDC.remove("e2eRef");
+            MDC.remove("requestType");
+            MDC.remove("postingId");
+            MDC.remove("PostingLegId");
         }
     }
 
@@ -324,24 +279,20 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
         List<Long> lockedIds = specificIds
                 ? request.getPostingIds()
                 : repository.findEligibleIdsForRetry(PostingStatus.PNDG, now);
-
-        if (!lockedIds.isEmpty()) {
-            int locked = repository.lockEligibleByIds(lockedIds, PostingStatus.PNDG, now, lockUntil);
-            log.info("RETRY | candidates={} locked={} ids={}", lockedIds.size(), locked, lockedIds);
-        }
-
         if (lockedIds.isEmpty()) {
-            log.warn("RETRY | No postings locked - all already in progress or not PENDING");
-            return RetryResponseV2.builder().totalLegsRetried(0).successCount(0).failedCount(0)
-                    .results(List.of()).build();
+            log.warn("No postings locked - all already in progress or not PENDING");
+            return RetryResponseV2.builder().totalPostings(0).successCount(0).failedCount(0).build();
         }
+
+        int locked = repository.lockEligibleByIds(lockedIds, PostingStatus.PNDG, now, lockUntil);
+        log.info("Eligible posting id's for the retry :: {} and {} posting id's has been locked({}) for retry .", lockedIds, lockedIds.size(), locked);
 
         // 2. Capture MDC so each async thread inherits the same traceId
         final Map<String, String> parentMdc = java.util.Optional
                 .ofNullable(MDC.getCopyOfContextMap()).orElse(Map.of());
 
         // 3. Dispatch one future per posting - each owns its own TX
-        List<CompletableFuture<List<RetryResponseV2.LegRetryResult>>> futures = lockedIds.stream()
+        List<CompletableFuture<Boolean>> futures = lockedIds.stream()
                 .map(id -> CompletableFuture.supplyAsync(() -> {
                     MDC.setContextMap(parentMdc);
                     MDC.put("postingId", String.valueOf(id));
@@ -354,36 +305,30 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        log.info("RETRY | All futures completed - aggregating");
+        log.info("All futures completed - aggregating");
 
-        // 4. Aggregate
-        List<RetryResponseV2.LegRetryResult> allResults = new ArrayList<>();
+        // 4. Aggregate at posting level
         int successCount = 0;
         int failedCount = 0;
 
         for (int i = 0; i < futures.size(); i++) {
             Long postingId = lockedIds.get(i);
             try {
-                List<RetryResponseV2.LegRetryResult> legResults = futures.get(i).get();
-                log.info("RETRY | postingId={} legResults={} outcomes={}",
-                        postingId, legResults.size(),
-                        legResults.stream().map(r -> r.getPreviousStatus() + "->" + r.getNewStatus()).toList());
-                allResults.addAll(legResults);
-                for (RetryResponseV2.LegRetryResult r : legResults) {
-                    if ("SUCCESS".equals(r.getNewStatus())) successCount++;
-                    else failedCount++;
-                }
+                boolean succeeded = futures.get(i).get();
+                log.info("Retry result | postingId={} succeeded={}", postingId, succeeded);
+                if (succeeded) successCount++;
+                else failedCount++;
             } catch (Exception ex) {
-                log.error("RETRY | future failed | postingId={}", postingId, ex);
+                log.error("Retry future failed | postingId={}", postingId, ex);
+                failedCount++;
             }
         }
 
-        log.info("RETRY DONE | totalLegs={} success={} failed={}", allResults.size(), successCount, failedCount);
+        log.info("Retry completed | totalPostings={} success={} failed={}", lockedIds.size(), successCount, failedCount);
         return RetryResponseV2.builder()
-                .totalLegsRetried(allResults.size())
+                .totalPostings(lockedIds.size())
                 .successCount(successCount)
                 .failedCount(failedCount)
-                .results(allResults)
                 .build();
     }
 
@@ -402,5 +347,4 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .toList();
     }
 
-    // (bridge methods removed - strategies now accept V2 types directly)
 }

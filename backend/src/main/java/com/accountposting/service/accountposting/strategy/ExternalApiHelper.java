@@ -11,14 +11,12 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Builds outbound request payloads for each external system and holds stub call implementations.
- * Each call* method must be replaced with the real HTTP client integration before go-live.
+ * Mock responses for diff target system & operation
  */
 @Component
 public class ExternalApiHelper {
 
     // -- CBS ------------------------------------------------------------------
-
     public Map<String, Object> buildCbsRequest(AccountPostingRequestV2 request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
@@ -33,7 +31,6 @@ public class ExternalApiHelper {
         return req;
     }
 
-    // TODO: replace with real CBS HTTP client
     public Map<String, Object> callCbs(Map<String, Object> cbsRequest, String transactionIndex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
@@ -42,7 +39,6 @@ public class ExternalApiHelper {
     }
 
     // -- CBS ADD_HOLD ---------------------------------------------------------
-
     public Map<String, Object> buildCbsAddHoldRequest(AccountPostingRequestV2 request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
@@ -54,7 +50,6 @@ public class ExternalApiHelper {
         return req;
     }
 
-    // TODO: replace with real CBS ADD_HOLD HTTP client
     public Map<String, Object> callCbsAddHold(Map<String, Object> cbsRequest, String transactionIndex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
@@ -63,7 +58,6 @@ public class ExternalApiHelper {
     }
 
     // -- CBS REMOVE_HOLD ------------------------------------------------------
-
     public Map<String, Object> buildCbsRemoveHoldRequest(AccountPostingRequestV2 request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
@@ -75,7 +69,6 @@ public class ExternalApiHelper {
         return req;
     }
 
-    // TODO: replace with real CBS REMOVE_HOLD HTTP client
     public Map<String, Object> callCbsRemoveHold(Map<String, Object> cbsRequest, String transactionIndex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
@@ -84,7 +77,6 @@ public class ExternalApiHelper {
     }
 
     // -- GL -------------------------------------------------------------------
-
     public Map<String, Object> buildGlRequest(AccountPostingRequestV2 request) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
@@ -97,7 +89,6 @@ public class ExternalApiHelper {
         return req;
     }
 
-    // TODO: replace with real GL HTTP client
     public Map<String, Object> callGl(Map<String, Object> glRequest) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("responder_ref_id", UUID.randomUUID().toString());
@@ -106,7 +97,6 @@ public class ExternalApiHelper {
     }
 
     // -- OBPM -----------------------------------------------------------------
-
     public Map<String, Object> buildObpmRequest(AccountPostingRequestV2 request) {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("end_to_end_id", request.getEndToEndReferenceId());
@@ -120,7 +110,6 @@ public class ExternalApiHelper {
         return req;
     }
 
-    // TODO: replace with real OBPM HTTP client
     public Map<String, Object> callObpm(Map<String, Object> obpmRequest) {
         String transactionId = "TRAN" + DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")
                 .format(LocalDateTime.now());

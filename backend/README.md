@@ -118,10 +118,13 @@ com.accountposting
 
 ### POST /account-posting/retry
 
-1. Resolve candidate IDs — if none supplied, `findEligibleIdsForRetry(PNDG, now)` returns IDs where `status=PNDG` and the lock has expired or is null
+1. Resolve candidate IDs — if none supplied, `findEligibleIdsForRetry(PNDG, now)` returns IDs where `status=PNDG` and
+   the lock has expired or is null
 2. Lock atomically: `lockEligibleByIds` (`@Modifying` JPQL UPDATE) sets `retry_locked_until = NOW() + 2 min`
 3. Dispatch one `CompletableFuture` per locked ID to the `retryExecutor` thread pool
-4. Each `PostingRetryProcessorV2.process()` runs in its own `@Transactional`: retries non-SUCCESS legs via the matching strategy (key = `{targetSystem}_{operation}`), updates posting to `ACSP` or `PNDG`, and **clears `retry_locked_until`** so the posting is immediately retryable again
+4. Each `PostingRetryProcessorV2.process()` runs in its own `@Transactional`: retries non-SUCCESS legs via the matching
+   strategy (key = `{targetSystem}_{operation}`), updates posting to `ACSP` or `PNDG`, and **clears `retry_locked_until`
+   ** so the posting is immediately retryable again
 
 ### GET /account-posting (search)
 
@@ -135,11 +138,11 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
 
 ### Account Posting
 
-| Method | Path                           | Status | Description                     |
-|--------|--------------------------------|--------|---------------------------------|
-| `POST` | `/account-posting`             | 201    | Submit a new posting            |
-| `GET`  | `/account-posting`             | 200    | Search with filters (paginated) |
-| `GET`  | `/account-posting/{postingId}` | 200    | Get posting with all legs       |
+| Method | Path                           | Status | Description                             |
+|--------|--------------------------------|--------|-----------------------------------------|
+| `POST` | `/account-posting`             | 201    | Submit a new posting                    |
+| `GET`  | `/account-posting`             | 200    | Search with filters (paginated)         |
+| `GET`  | `/account-posting/{postingId}` | 200    | Get posting with all legs               |
 | `POST` | `/account-posting/retry`       | 200    | Retry non-SUCCESS legs on PNDG postings |
 
 **POST /account-posting — request body:**
@@ -162,18 +165,18 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
 
 **GET /account-posting — query parameters:**
 
-| Param                     | Type                       | Description                |
-|---------------------------|----------------------------|----------------------------|
-| `status`                  | `PNDG\|ACSP\|RJCT`        | Filter by posting status   |
-| `source_reference_id`     | string                     | Exact match                |
-| `end_to_end_reference_id` | string                     | Exact match                |
-| `source_name`             | string                     | Exact match                |
-| `request_type`            | string                     | Exact match                |
-| `target_system`           | string                     | Partial match (LIKE)       |
-| `from_date`               | `yyyy-MM-dd`               | Execution date range start |
-| `to_date`                 | `yyyy-MM-dd`               | Execution date range end   |
-| `page`                    | int                        | 0-based (default 0)        |
-| `size`                    | int                        | Page size (default 20)     |
+| Param                     | Type               | Description                |
+|---------------------------|--------------------|----------------------------|
+| `status`                  | `PNDG\|ACSP\|RJCT` | Filter by posting status   |
+| `source_reference_id`     | string             | Exact match                |
+| `end_to_end_reference_id` | string             | Exact match                |
+| `source_name`             | string             | Exact match                |
+| `request_type`            | string             | Exact match                |
+| `target_system`           | string             | Partial match (LIKE)       |
+| `from_date`               | `yyyy-MM-dd`       | Execution date range start |
+| `to_date`                 | `yyyy-MM-dd`       | Execution date range end   |
+| `page`                    | int                | 0-based (default 0)        |
+| `size`                    | int                | Page size (default 20)     |
 
 ### Legs
 
@@ -231,7 +234,9 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
   never imports from `posting`.
 - **Pre-insert legs** — All legs are saved as `PENDING` before any external call. If a call fails mid-flight, every leg
   already exists for retry.
-- **Two-step retry lock** — `findEligibleIdsForRetry` (JPQL SELECT) + `lockEligibleByIds` (`@Modifying` JPQL UPDATE) sets `retry_locked_until = NOW() + 2 min`. The processor clears the lock after processing so the posting is immediately retryable. H2 and PostgreSQL compatible (no `UPDATE ... RETURNING`).
+- **Two-step retry lock** — `findEligibleIdsForRetry` (JPQL SELECT) + `lockEligibleByIds` (`@Modifying` JPQL UPDATE)
+  sets `retry_locked_until = NOW() + 2 min`. The processor clears the lock after processing so the posting is
+  immediately retryable. H2 and PostgreSQL compatible (no `UPDATE ... RETURNING`).
 - **ExternalApiHelper** — All build/stub methods for CBS, GL, and OBPM live in one `@Component`. Replace stub `call*()`
   methods with real HTTP clients before go-live.
 - **Kafka conditional** — `PostingEventPublisher` is only wired when `app.kafka.enabled=true`. The service null-checks

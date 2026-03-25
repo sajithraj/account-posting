@@ -16,11 +16,6 @@ import lombok.Setter;
 
 import java.time.Instant;
 
-/**
- * Read/write mirror of {@link AccountPostingLegEntity} stored in {@code account_posting_leg_history}.
- * Rows are inserted by {@link com.accountposting.service.archival.ArchivalService} and are
- * never modified after that. Does NOT extend BaseEntity - audit timestamps are copied verbatim.
- */
 @Entity
 @Table(name = "account_posting_leg_history")
 @Getter
@@ -30,9 +25,6 @@ import java.time.Instant;
 @Builder
 public class AccountPostingLegHistoryEntity {
 
-    /**
-     * Same value as the original {@code posting_leg_id}. No auto-generation.
-     */
     @Id
     @Column(name = "posting_leg_id")
     private Long postingLegId;
@@ -78,21 +70,12 @@ public class AccountPostingLegHistoryEntity {
     @Column(name = "operation", nullable = false, length = 20)
     private String operation;
 
-    /**
-     * Copied from the original row - not JPA-audited.
-     */
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    /**
-     * Copied from the original row - not JPA-audited.
-     */
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    /**
-     * Timestamp set by the archival job when this row was moved to history.
-     */
     @Column(name = "archived_at", nullable = false, updatable = false)
     private Instant archivedAt;
 }

@@ -18,12 +18,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * Read/write mirror of {@link AccountPostingEntity} stored in {@code account_posting_history}.
- * Rows are inserted by {@link com.accountposting.service.archival.ArchivalService} and are
- * never modified after that. Does NOT extend BaseEntity - audit timestamps are copied verbatim
- * from the original row; JPA auditing must not overwrite them.
- */
 @Entity
 @Table(name = "account_posting_history")
 @Getter
@@ -33,9 +27,6 @@ import java.time.LocalDate;
 @Builder
 public class AccountPostingHistoryEntity {
 
-    /**
-     * Same value as the original {@code posting_id}. No auto-generation.
-     */
     @Id
     @Column(name = "posting_id")
     private Long postingId;
@@ -93,21 +84,12 @@ public class AccountPostingHistoryEntity {
     @Column(name = "reason", length = 1000)
     private String reason;
 
-    /**
-     * Copied from the original row - not JPA-audited.
-     */
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    /**
-     * Copied from the original row - not JPA-audited.
-     */
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    /**
-     * Timestamp set by the archival job when this row was moved to history.
-     */
     @Column(name = "archived_at", nullable = false, updatable = false)
     private Instant archivedAt;
 }

@@ -206,12 +206,12 @@ docker compose -f docker-compose.qa.yml up --build -d
 
 ## Step-by-step: what happens on `up --build`
 
-| Step | Service           | What it does                                                         |
-|------|-------------------|----------------------------------------------------------------------|
-| 1    | `postgres`        | Starts PostgreSQL, waits until `pg_isready` passes                   |
-| 2    | `flyway`          | Mounts env-specific migration folder, applies V1 baseline, exits     |
-| 3    | `backend` | Builds JAR (Maven inside Docker), starts API, waits for health check |
-| 4    | `ui`              | Builds React app (Vite inside Docker), serves via nginx              |
+| Step | Service    | What it does                                                         |
+|------|------------|----------------------------------------------------------------------|
+| 1    | `postgres` | Starts PostgreSQL, waits until `pg_isready` passes                   |
+| 2    | `flyway`   | Mounts env-specific migration folder, applies V1 baseline, exits     |
+| 3    | `backend`  | Builds JAR (Maven inside Docker), starts API, waits for health check |
+| 4    | `ui`       | Builds React app (Vite inside Docker), serves via nginx              |
 
 ---
 
@@ -253,12 +253,12 @@ docker compose -f docker-compose.dev.yml up --build ui
 
 ## Rebuilding after code changes
 
-| What changed           | Docker command                                                          | Local (batch)                  |
-|------------------------|-------------------------------------------------------------------------|--------------------------------|
+| What changed           | Docker command                                                  | Local (batch)                  |
+|------------------------|-----------------------------------------------------------------|--------------------------------|
 | Java source            | `docker compose -f docker-compose.<env>.yml up --build backend` | Restart `start-backend.bat`    |
-| React / TypeScript     | `docker compose -f docker-compose.<env>.yml up --build ui`              | Vite hot-reloads automatically |
-| New DB migration added | `docker compose -f docker-compose.<env>.yml up flyway`                  | Re-run `start-db.bat`          |
-| Everything             | `docker compose -f docker-compose.<env>.yml up --build`                 | Restart all batch scripts      |
+| React / TypeScript     | `docker compose -f docker-compose.<env>.yml up --build ui`      | Vite hot-reloads automatically |
+| New DB migration added | `docker compose -f docker-compose.<env>.yml up flyway`          | Re-run `start-db.bat`          |
+| Everything             | `docker compose -f docker-compose.<env>.yml up --build`         | Restart all batch scripts      |
 
 ---
 

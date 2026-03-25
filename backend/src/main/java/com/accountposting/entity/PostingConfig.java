@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,7 +14,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "posting_config")
+@Table(name = "posting_config", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_posting_config_request_type_order", columnNames = {"request_type", "order_seq"})
+})
 @Getter
 @Setter
 @NoArgsConstructor

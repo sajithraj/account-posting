@@ -20,8 +20,6 @@ export default function PostingListPage() {
     queryFn: () => postingApi.search(params),
   });
 
-  const [retryingId, setRetryingId] = useState<number | null>(null);
-
   const retryAllMutation = useMutation({
     mutationFn: () => postingApi.retry(),
     onSuccess: () => {
@@ -38,18 +36,6 @@ export default function PostingListPage() {
       queryClient.invalidateQueries({ queryKey: ['postings'] });
     },
     onError: (err: unknown) => alert(`Retry failed: ${getErrorMessage(err)}`),
-  });
-
-  const retryOneMutation = useMutation({
-    mutationFn: (postingId: number) => postingApi.retry([postingId]),
-    onSuccess: () => {
-      setRetryingId(null);
-      queryClient.invalidateQueries({ queryKey: ['postings'] });
-    },
-    onError: (err: unknown) => {
-      setRetryingId(null);
-      alert(`Retry failed: ${getErrorMessage(err)}`);
-    },
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -259,7 +245,7 @@ export default function PostingListPage() {
                 <th style={s.th}>Currency</th>
                 <th style={s.th}>Payment Status</th>
                 <th style={s.th}>Reason</th>
-                <th style={{ ...s.th, width: 90 }}></th>
+                <th style={{ ...s.th, width: 48 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -290,23 +276,8 @@ export default function PostingListPage() {
                       <td style={s.td}>{p.currency}</td>
                       <td style={s.td}><StatusBadge status={p.postingStatus} /></td>
                       <td style={{ ...s.td, ...s.reasonCell }} title={p.reason ?? ''}>{p.reason ?? '—'}</td>
-                      <td style={{ ...s.td, width: 90 }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'flex-end' }}>
-                          {p.postingStatus === 'PNDG' && (
-                            <button
-                              style={{
-                                ...s.retryRowBtn,
-                                ...(retryingId === p.postingId ? s.disabledBtn : {}),
-                              }}
-                              disabled={retryingId === p.postingId}
-                              onClick={() => {
-                                setRetryingId(p.postingId);
-                                retryOneMutation.mutate(p.postingId);
-                              }}
-                            >
-                              {retryingId === p.postingId ? '...' : '⟳'}
-                            </button>
-                          )}
+                      <td style={{ ...s.td, width: 48 }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                           <button
                             style={{
                               ...s.expandBtn,
@@ -524,16 +495,6 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 16,
     lineHeight: 1,
-  },
-  retryRowBtn: {
-    padding: '3px 10px',
-    border: '1px solid #003b5c',
-    borderRadius: 4,
-    background: 'white',
-    color: '#003b5c',
-    cursor: 'pointer',
-    fontSize: 13,
-    fontWeight: 600,
   },
   expandBtn: {
     padding: '3px 8px',
