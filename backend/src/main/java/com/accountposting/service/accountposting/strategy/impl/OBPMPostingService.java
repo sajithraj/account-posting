@@ -49,7 +49,7 @@ public class OBPMPostingService implements PostingStrategy {
 
         if (existingLegId == null) {
             throw new IllegalArgumentException(
-                    "OBPM | postingId=" + postingId + " leg=" + legOrder + " — existingLegId must be pre-inserted before strategy execution");
+                    "OBPM | postingId=" + postingId + " leg=" + legOrder + " - existingLegId must be pre-inserted before strategy execution");
         }
         Long legId = existingLegId;
 

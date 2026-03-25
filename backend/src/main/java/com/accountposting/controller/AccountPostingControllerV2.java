@@ -57,7 +57,7 @@ public class AccountPostingControllerV2 {
      * Searches the history table (records archived after the configured retention period).
      * Accepts the same filter parameters as {@code GET /v2/payment/account-posting}.
      *
-     * <p><b>Enterprise pattern:</b> {@code GET /{id}} is transparent — it checks the active table
+     * <p><b>Enterprise pattern:</b> {@code GET /{id}} is transparent - it checks the active table
      * first and falls back to history automatically. Use this endpoint only when you want to
      * explicitly query historical data in bulk.
      */

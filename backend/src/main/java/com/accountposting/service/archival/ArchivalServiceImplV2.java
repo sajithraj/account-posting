@@ -32,7 +32,7 @@ import java.util.List;
  *   <li>Insert both sets into the history tables.</li>
  *   <li>Delete legs first (FK constraint), then postings.</li>
  *   <li>Each batch runs in its own committed transaction via {@link TransactionTemplate}
- *       — consistent with the retry pattern already used in this project.</li>
+ *       - consistent with the retry pattern already used in this project.</li>
  * </ol>
  *
  * <h3>Why 90 days / configurable threshold?</h3>
@@ -76,7 +76,7 @@ public class ArchivalServiceImplV2 implements ArchivalServiceV2 {
     @Scheduled(cron = "${app.archival.cron:0 0 2 * * ?}")
     public void archiveOldPostings() {
         if (!enabled) {
-            log.debug("ARCHIVAL | disabled — skipping");
+            log.debug("ARCHIVAL | disabled - skipping");
             return;
         }
 
@@ -138,7 +138,7 @@ public class ArchivalServiceImplV2 implements ArchivalServiceV2 {
                 .map(l -> toLegHistory(l, archivedAt))
                 .toList());
 
-        // Delete originals — legs first to satisfy FK constraint
+        // Delete originals - legs first to satisfy FK constraint
         legRepository.deleteAllInBatch(legs);
         postingRepository.deleteAllInBatch(batch);
 

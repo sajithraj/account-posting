@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * Mirrors {@link AccountPostingSpecification} but targets {@link AccountPostingHistoryEntity}.
- * All predicates are optional — omitting a field means no restriction on that column.
+ * All predicates are optional - omitting a field means no restriction on that column.
  */
 public final class AccountPostingHistorySpecification {
 

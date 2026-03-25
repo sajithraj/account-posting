@@ -37,7 +37,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     defer-datasource-initialization: true
-    show-sql: true
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
@@ -64,4 +64,4 @@ logging:
   level:
     root: INFO
     com.accountposting: DEBUG
-    org.hibernate.SQL: DEBUG
+    org.hibernate.SQL: INFO

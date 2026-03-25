@@ -40,9 +40,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
@@ -72,10 +70,9 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     private final MappingUtilsV2 mappingUtils;
     @Qualifier("retryExecutor")
     private final Executor retryExecutor;
-    private final PlatformTransactionManager transactionManager;
 
     /**
-     * Null when app.kafka.enabled=false — publishing is skipped silently.
+     * Null when app.kafka.enabled=false - publishing is skipped silently.
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private PostingEventPublisher eventPublisher;
@@ -137,7 +134,7 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
             posting.setReason(reason);
             posting.setResponsePayload(mappingUtils.toJson(Map.of("error", reason)));
             repository.save(posting);
-            log.warn("Posting marked RJCT — no config found | postingId={} requestType={}",
+            log.warn("Posting marked RJCT - no config found | postingId={} requestType={}",
                     posting.getPostingId(), request.getRequestType());
             throw new BusinessException("NO_CONFIG_FOUND", reason);
         }
@@ -265,8 +262,8 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
             return response;
         }
 
-        // 2. Transparent fallback — posting has been archived
-        log.info("FIND BY ID | postingId={} not in active table — checking history", postingId);
+        // 2. Transparent fallback - posting has been archived
+        log.info("FIND BY ID | postingId={} not in active table - checking history", postingId);
         AccountPostingHistoryEntity history = historyRepository.findById(postingId)
                 .orElseThrow(() -> new ResourceNotFoundException("AccountPosting", postingId));
         AccountPostingResponseV2 response = mapper.toResponseFromHistory(history);
@@ -292,21 +289,18 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     }
 
     /**
-     * Lock TTL: 2 minutes — prevents concurrent retries of the same posting.
+     * Lock TTL: prevents concurrent retries of the same posting.
+     * Cleared by the retry processor once processing finishes.
      */
     private static final int LOCK_TTL_SECONDS = 120;
 
     /**
      * Retries PENDING postings (or a specific subset) in parallel.
      * <p>
-     * NOT @Transactional — the lock is committed in its own short transaction via TransactionTemplate
-     * before futures are dispatched. This prevents a deadlock where the outer transaction holds a row
-     * lock on the posting while waiting for futures that need to UPDATE that same row.
-     * <p>
-     * 1. Determine candidate postingIds
-     * 2. Lock them atomically in a committed transaction
-     * 3. Dispatch one CompletableFuture per locked posting (each has its own transaction)
-     * 4. Aggregate results
+     * Flow (NOT @Transactional - each native query owns its own transaction):
+     * 1. Lock eligible postings atomically in a single UPDATE ... RETURNING - IDs returned directly
+     * 2. Dispatch one CompletableFuture per posting - each owns its own transaction
+     * 3. Aggregate results
      */
     @Override
     public RetryResponseV2 retry(RetryRequestV2 request) {
@@ -324,45 +318,29 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     private RetryResponseV2 doRetry(RetryRequestV2 request) {
         Instant now = Instant.now();
         Instant lockUntil = now.plusSeconds(LOCK_TTL_SECONDS);
+        boolean specificIds = !CollectionUtils.isEmpty(request.getPostingIds());
 
-        // 1. Determine candidate IDs
-        List<Long> candidateIds = CollectionUtils.isEmpty(request.getPostingIds())
-                ? repository.findEligibleForRetry(PostingStatus.PNDG, now)
-                .stream().map(AccountPostingEntity::getPostingId).toList()
-                : request.getPostingIds();
+        // 1. Resolve candidate IDs, then lock them atomically
+        List<Long> lockedIds = specificIds
+                ? request.getPostingIds()
+                : repository.findEligibleIdsForRetry(PostingStatus.PNDG, now);
 
-        log.info("RETRY START | candidates={} ids={}", candidateIds.size(), candidateIds);
+        if (!lockedIds.isEmpty()) {
+            int locked = repository.lockEligibleByIds(lockedIds, PostingStatus.PNDG, now, lockUntil);
+            log.info("RETRY | candidates={} locked={} ids={}", lockedIds.size(), locked, lockedIds);
+        }
 
-        if (candidateIds.isEmpty()) {
-            log.info("RETRY | No eligible postings — nothing to retry");
+        if (lockedIds.isEmpty()) {
+            log.warn("RETRY | No postings locked - all already in progress or not PENDING");
             return RetryResponseV2.builder().totalLegsRetried(0).successCount(0).failedCount(0)
                     .results(List.of()).build();
         }
 
-        // 2. Lock + fetch in one short transaction that commits immediately.
-        TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
-        List<AccountPostingEntity> lockedPostings = txTemplate.execute(tx -> {
-            int lockedCount = repository.lockForRetry(candidateIds, PostingStatus.PNDG, now, lockUntil);
-            log.info("RETRY | lockForRetry locked={} lockUntil={}", lockedCount, lockUntil);
-            return repository.findByIdsAndLockUntil(candidateIds, lockUntil);
-        });
-
-        if (lockedPostings == null || lockedPostings.isEmpty()) {
-            log.warn("RETRY | No postings locked — all already in progress or not PENDING");
-            return RetryResponseV2.builder().totalLegsRetried(0).successCount(0).failedCount(0)
-                    .results(List.of()).build();
-        }
-
-        log.info("RETRY | Locked postings={} ids={}",
-                lockedPostings.size(),
-                lockedPostings.stream().map(AccountPostingEntity::getPostingId).toList());
-
-        // 3. Capture MDC so each async thread inherits the same traceId + operation
+        // 2. Capture MDC so each async thread inherits the same traceId
         final Map<String, String> parentMdc = java.util.Optional
                 .ofNullable(MDC.getCopyOfContextMap()).orElse(Map.of());
 
-        // 4. Dispatch one future per posting — no outer TX held, each future owns its own TX
-        List<Long> lockedIds = lockedPostings.stream().map(AccountPostingEntity::getPostingId).toList();
+        // 3. Dispatch one future per posting - each owns its own TX
         List<CompletableFuture<List<RetryResponseV2.LegRetryResult>>> futures = lockedIds.stream()
                 .map(id -> CompletableFuture.supplyAsync(() -> {
                     MDC.setContextMap(parentMdc);
@@ -376,9 +354,9 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        log.info("RETRY | All futures completed — aggregating");
+        log.info("RETRY | All futures completed - aggregating");
 
-        // 5. Aggregate
+        // 4. Aggregate
         List<RetryResponseV2.LegRetryResult> allResults = new ArrayList<>();
         int successCount = 0;
         int failedCount = 0;
@@ -389,7 +367,7 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 List<RetryResponseV2.LegRetryResult> legResults = futures.get(i).get();
                 log.info("RETRY | postingId={} legResults={} outcomes={}",
                         postingId, legResults.size(),
-                        legResults.stream().map(r -> r.getPreviousStatus() + "→" + r.getNewStatus()).toList());
+                        legResults.stream().map(r -> r.getPreviousStatus() + "->" + r.getNewStatus()).toList());
                 allResults.addAll(legResults);
                 for (RetryResponseV2.LegRetryResult r : legResults) {
                     if ("SUCCESS".equals(r.getNewStatus())) successCount++;
@@ -424,5 +402,5 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .toList();
     }
 
-    // (bridge methods removed — strategies now accept V2 types directly)
+    // (bridge methods removed - strategies now accept V2 types directly)
 }

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Account Posting Validator",
-    "description": "Complete test suite. Run in order using the Collection Runner \u00e2\u20ac\u201d the first CREATE request sets collection variables (postingId, legId, configId) used by all subsequent requests.",
+    "description": "Complete test suite. Run in order using the Collection Runner  -  the first CREATE request sets collection variables (postingId, legId, configId) used by all subsequent requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1143,7 +1143,7 @@
                 "exec": [
                   "const status = pm.response.code;",
                   "if (status === 201) {",
-                  "  pm.test('First call succeeded \u00e2\u20ac\u201d re-run this request to get 422', () => pm.expect(status).to.eql(201));",
+                  "  pm.test('First call succeeded  -  re-run this request to get 422', () => pm.expect(status).to.eql(201));",
                   "} else {",
                   "  pm.test('Status 422', () => pm.response.to.have.status(422));",
                   "  pm.test('Error is DUPLICATE_E2E_REF', () => pm.expect(pm.response.json().name).to.eql('DUPLICATE_E2E_REF'));",
@@ -2441,7 +2441,7 @@
     },
     {
       "name": "08 - Failure Simulation (Leg-level)",
-      "description": "Uses StubSimulatorController (POST /v2/payment/test/stub/configure) to force specific systems to return FAILED. All results persist to DB \u00e2\u20ac\u201d posting ends up PENDING (retryable), failed legs end up FAILED.",
+      "description": "Uses StubSimulatorController (POST /v2/payment/test/stub/configure) to force specific systems to return FAILED. All results persist to DB  -  posting ends up PENDING (retryable), failed legs end up FAILED.",
       "item": [
         {
           "name": "[Setup] Clear simulator",
@@ -2506,7 +2506,7 @@
           }
         },
         {
-          "name": "Leg 1 fails (CBS_POSTING) \u00e2\u20ac\u201d DMS CBS_GL",
+          "name": "Leg 1 fails (CBS_POSTING)  -  DMS CBS_GL",
           "description": "CBS leg (leg 1) fails, GL leg (leg 2) succeeds. Posting saved as PENDING. Both legs persisted to DB.",
           "event": [
             {
@@ -2555,7 +2555,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d CBS leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  CBS leg failure\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2571,7 +2571,7 @@
           }
         },
         {
-          "name": "Verify Leg 1 fail \u00e2\u20ac\u201d posting in DB as PENDING",
+          "name": "Verify Leg 1 fail  -  posting in DB as PENDING",
           "event": [
             {
               "listen": "prerequest",
@@ -2624,7 +2624,7 @@
           }
         },
         {
-          "name": "Leg 2 fails (GL_POSTING) \u00e2\u20ac\u201d DMS CBS_GL",
+          "name": "Leg 2 fails (GL_POSTING)  -  DMS CBS_GL",
           "description": "CBS leg (leg 1) succeeds, GL leg (leg 2) fails. Posting saved as PENDING.",
           "event": [
             {
@@ -2670,7 +2670,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d GL leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  GL leg failure\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2686,7 +2686,7 @@
           }
         },
         {
-          "name": "All legs fail (CBS + GL) \u00e2\u20ac\u201d DMS CBS_GL",
+          "name": "All legs fail (CBS + GL)  -  DMS CBS_GL",
           "description": "Both CBS and GL legs fail. Posting saved as PENDING. All legs FAILED in DB.",
           "event": [
             {
@@ -2732,7 +2732,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d all legs fail\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  all legs fail\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2748,7 +2748,7 @@
           }
         },
         {
-          "name": "Single-leg failure \u00e2\u20ac\u201d OBPM (DMS OBPM)",
+          "name": "Single-leg failure  -  OBPM (DMS OBPM)",
           "description": "OBPM is the only leg and it fails. Posting saved as PENDING.",
           "event": [
             {
@@ -2793,7 +2793,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test \u00e2\u20ac\u201d OBPM single leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  OBPM single leg failure\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2809,7 +2809,7 @@
           }
         },
         {
-          "name": "Retry after leg failure \u00e2\u20ac\u201d restores SUCCESS",
+          "name": "Retry after leg failure  -  restores SUCCESS",
           "description": "Clear the simulator so stubs succeed again, then retry the PENDING posting from the CBS failure test. Legs should go SUCCESS and posting promoted to SUCCESS.",
           "event": [
             {
@@ -2817,7 +2817,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Clear simulator \u00e2\u20ac\u201d stubs will return SUCCESS on retry",
+                  "// Clear simulator  -  stubs will return SUCCESS on retry",
                   "const baseUrl = pm.collectionVariables.get('baseUrl');",
                   "pm.sendRequest({ url: baseUrl + '/v2/payment/test/stub/clear', method: 'POST' }, () => {});"
                 ]
@@ -2864,7 +2864,7 @@
           }
         },
         {
-          "name": "Validation error \u00e2\u20ac\u201d invalid source_name (persists FAILED to DB)",
+          "name": "Validation error  -  invalid source_name (persists FAILED to DB)",
           "description": "Posting is saved as PENDING first, then fails validation and is updated to FAILED in DB. The FAILED record is retrievable via GET.",
           "event": [
             {
@@ -2957,7 +2957,7 @@
           }
         },
         {
-          "name": "No config found \u00e2\u20ac\u201d persists FAILED to DB",
+          "name": "No config found  -  persists FAILED to DB",
           "description": "source_name and request_type are valid enums but no posting_config row exists for this combination. Posting saved as FAILED.",
           "event": [
             {

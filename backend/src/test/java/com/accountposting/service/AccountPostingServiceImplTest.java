@@ -32,7 +32,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.PlatformTransactionManager;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -69,8 +68,6 @@ class AccountPostingServiceImplTest {
     AccountPostingRequestValidatorV2 requestValidator;
     @Mock
     PostingEventPublisher eventPublisher;
-    @Mock
-    PlatformTransactionManager transactionManager;
 
     // Real ObjectMapper + MappingUtilsV2 — used for JSON serialization of request/response payloads
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
@@ -97,7 +94,7 @@ class AccountPostingServiceImplTest {
                 repository, historyRepository, legHistoryRepository,
                 mapper, legMapper, legService, postingConfigRepository,
                 strategyFactory, retryProcessor, requestValidator, mappingUtils,
-                Runnable::run, transactionManager
+                Runnable::run
         );
     }
 
@@ -277,23 +274,18 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_bulkAllPending_locksAndProcessesEachPosting() {
-        AccountPostingEntity p1 = buildPosting(10L, PostingStatus.PNDG);
-        AccountPostingEntity p2 = buildPosting(11L, PostingStatus.PNDG);
-
-        when(repository.findEligibleForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
-                .thenReturn(List.of(p1, p2));
-        when(repository.lockForRetry(eq(List.of(10L, 11L)), eq(PostingStatus.PNDG),
+        when(repository.findEligibleIdsForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
+                .thenReturn(List.of(10L, 11L));
+        when(repository.lockEligibleByIds(eq(List.of(10L, 11L)), eq(PostingStatus.PNDG),
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(2);
-        when(repository.findByIdsAndLockUntil(eq(List.of(10L, 11L)), any(Instant.class)))
-                .thenReturn(List.of(p1, p2));
 
         when(retryProcessor.process(10L)).thenReturn(List.of(
                 legRetryResult(1L, 10L, "FAILED", "SUCCESS")));
         when(retryProcessor.process(11L)).thenReturn(List.of(
                 legRetryResult(2L, 11L, "FAILED", "SUCCESS")));
 
-        RetryRequestV2 retryRequest = new RetryRequestV2(); // null postingIds → bulk
+        RetryRequestV2 retryRequest = new RetryRequestV2(); // null postingIds -> bulk
 
         RetryResponseV2 response = service.retry(retryRequest);
 
@@ -308,13 +300,9 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_specificPostingIds_onlyLocksAndProcessesThoseIds() {
-        AccountPostingEntity p1 = buildPosting(20L, PostingStatus.PNDG);
-
-        when(repository.lockForRetry(eq(List.of(20L)), eq(PostingStatus.PNDG),
+        when(repository.lockEligibleByIds(eq(List.of(20L)), eq(PostingStatus.PNDG),
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(1);
-        when(repository.findByIdsAndLockUntil(eq(List.of(20L)), any(Instant.class)))
-                .thenReturn(List.of(p1));
         when(retryProcessor.process(20L)).thenReturn(List.of(
                 legRetryResult(5L, 20L, "FAILED", "FAILED")));
 
@@ -326,7 +314,7 @@ class AccountPostingServiceImplTest {
         assertThat(response.getTotalLegsRetried()).isEqualTo(1);
         assertThat(response.getSuccessCount()).isEqualTo(0);
         assertThat(response.getFailedCount()).isEqualTo(1);
-        verify(repository, never()).findEligibleForRetry(any(), any());
+        verify(repository, never()).findEligibleIdsForRetry(any(), any());
         verify(retryProcessor).process(20L);
     }
 
@@ -334,7 +322,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_noEligiblePostings_returnsEmptyResponse() {
-        when(repository.findEligibleForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
+        when(repository.findEligibleIdsForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
                 .thenReturn(List.of());
 
         RetryResponseV2 response = service.retry(new RetryRequestV2());
@@ -347,12 +335,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_allPostingsAlreadyLocked_returnsEmptyResponse() {
-        AccountPostingEntity p1 = buildPosting(30L, PostingStatus.PNDG);
-
-        when(repository.findEligibleForRetry(eq(PostingStatus.PNDG), any(Instant.class)))
-                .thenReturn(List.of(p1));
-        when(repository.lockForRetry(anyList(), any(), any(), any())).thenReturn(0);
-        when(repository.findByIdsAndLockUntil(anyList(), any())).thenReturn(List.of());
+        when(repository.findEligibleIdsForRetry(any(), any())).thenReturn(List.of());
 
         RetryResponseV2 response = service.retry(new RetryRequestV2());
 

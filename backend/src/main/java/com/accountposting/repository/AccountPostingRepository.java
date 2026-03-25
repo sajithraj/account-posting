@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,22 +21,25 @@ public interface AccountPostingRepository
     boolean existsByEndToEndReferenceId(String endToEndReferenceId);
 
     /**
-     * All PENDING postings not currently locked — used when no specific IDs are requested.
+     * Returns IDs of all PNDG postings whose lock has expired (or was never set).
+     * Call {@link #lockEligibleByIds} immediately after to acquire the lock.
      */
     @Query("""
-            SELECT p FROM AccountPostingEntity p
+            SELECT p.postingId FROM AccountPostingEntity p
             WHERE p.status = :status
               AND (p.retryLockedUntil IS NULL OR p.retryLockedUntil < :now)
             """)
-    List<AccountPostingEntity> findEligibleForRetry(
+    List<Long> findEligibleIdsForRetry(
             @Param("status") PostingStatus status,
             @Param("now") Instant now);
 
     /**
-     * Atomically locks the given postings for retry by setting retryLockedUntil.
-     * Only locks postings that are PENDING and not currently locked.
+     * Locks the supplied posting IDs by setting {@code retryLockedUntil = lockUntil}.
+     * Only rows that are still PNDG with no active lock are updated — already-locked or
+     * non-PNDG rows are silently skipped.
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying
+    @Transactional
     @Query("""
             UPDATE AccountPostingEntity p
             SET p.retryLockedUntil = :lockUntil
@@ -43,28 +47,15 @@ public interface AccountPostingRepository
               AND p.status = :status
               AND (p.retryLockedUntil IS NULL OR p.retryLockedUntil < :now)
             """)
-    int lockForRetry(
+    int lockEligibleByIds(
             @Param("ids") List<Long> ids,
             @Param("status") PostingStatus status,
             @Param("now") Instant now,
             @Param("lockUntil") Instant lockUntil);
 
     /**
-     * Fetch postings that were just locked — matched by the exact lockUntil timestamp.
-     */
-    @Query("""
-            SELECT p FROM AccountPostingEntity p
-            WHERE p.postingId IN :ids
-              AND p.retryLockedUntil = :lockUntil
-            """)
-    List<AccountPostingEntity> findByIdsAndLockUntil(
-            @Param("ids") List<Long> ids,
-            @Param("lockUntil") Instant lockUntil);
-
-    /**
      * Returns the oldest postings whose {@code createdAt} is before {@code threshold},
      * ordered by {@code createdAt} ascending so that the earliest records are archived first.
-     * Uses {@link Pageable} to process in fixed-size batches.
      */
     @Query("""
             SELECT p FROM AccountPostingEntity p

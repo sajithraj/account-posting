@@ -13,8 +13,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,7 +21,7 @@ import java.time.LocalDate;
 /**
  * Read/write mirror of {@link AccountPostingEntity} stored in {@code account_posting_history}.
  * Rows are inserted by {@link com.accountposting.service.archival.ArchivalService} and are
- * never modified after that. Does NOT extend BaseEntity — audit timestamps are copied verbatim
+ * never modified after that. Does NOT extend BaseEntity - audit timestamps are copied verbatim
  * from the original row; JPA auditing must not overwrite them.
  */
 @Entity
@@ -80,11 +78,9 @@ public class AccountPostingHistoryEntity {
     @Column(name = "status", nullable = false, length = 10)
     private PostingStatus status;
 
-    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "request_payload", columnDefinition = "jsonb")
     private String requestPayload;
 
-    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "response_payload", columnDefinition = "jsonb")
     private String responsePayload;
 
@@ -98,13 +94,13 @@ public class AccountPostingHistoryEntity {
     private String reason;
 
     /**
-     * Copied from the original row — not JPA-audited.
+     * Copied from the original row - not JPA-audited.
      */
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     /**
-     * Copied from the original row — not JPA-audited.
+     * Copied from the original row - not JPA-audited.
      */
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;

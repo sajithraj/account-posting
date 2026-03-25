@@ -72,7 +72,7 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
         log.info("UPDATE LEG REQUEST | postingId={} postingLegId={} {}", postingId, postingLegId, mappingUtils.toJson(request));
         AccountPostingLegEntity leg = getOrThrow(postingId, postingLegId);
         LegStatus previousStatus = leg.getStatus();
-        // Only increment attempt count for retry path — MANUAL updates do not count as attempts
+        // Only increment attempt count for retry path - MANUAL updates do not count as attempts
         if (request.getMode() == LegMode.RETRY) {
             leg.setAttemptNumber(leg.getAttemptNumber() + 1);
         }
@@ -111,7 +111,7 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
                     posting.setStatus(PostingStatus.ACSP);
                     posting.setReason("Request processed successfully");
                     postingRepository.save(posting);
-                    log.info("All legs SUCCESS — promoted postingId={} to ACSP", postingId);
+                    log.info("All legs SUCCESS - promoted postingId={} to ACSP", postingId);
                 });
             }
         }

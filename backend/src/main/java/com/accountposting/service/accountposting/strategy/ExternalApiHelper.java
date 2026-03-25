@@ -1,8 +1,6 @@
 package com.accountposting.service.accountposting.strategy;
 
-import com.accountposting.config.StubSimulatorConfig;
 import com.accountposting.dto.accountposting.AccountPostingRequestV2;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -15,17 +13,11 @@ import java.util.UUID;
 /**
  * Builds outbound request payloads for each external system and holds stub call implementations.
  * Each call* method must be replaced with the real HTTP client integration before go-live.
- * <p>
- * In non-prod environments, StubSimulatorConfig can force specific systems to return FAILED
- * so failure paths can be tested end-to-end and persisted to the database.
  */
 @Component
-@RequiredArgsConstructor
 public class ExternalApiHelper {
 
-    private final StubSimulatorConfig stubSimulatorConfig;
-
-    // ── CBS ───────────────────────────────────────────────────────────────────
+    // -- CBS ------------------------------------------------------------------
 
     public Map<String, Object> buildCbsRequest(AccountPostingRequestV2 request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
@@ -45,16 +37,53 @@ public class ExternalApiHelper {
     public Map<String, Object> callCbs(Map<String, Object> cbsRequest, String transactionIndex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
-        if (stubSimulatorConfig.shouldFail("CBS_POSTING")) {
-            response.put("status", "FAILED");
-            response.put("reason", "Simulated CBS failure — configured via /test/stub/configure");
-            return response;
-        }
         response.put("status", "SUCCESS");
         return response;
     }
 
-    // ── GL ────────────────────────────────────────────────────────────────────
+    // -- CBS ADD_HOLD ---------------------------------------------------------
+
+    public Map<String, Object> buildCbsAddHoldRequest(AccountPostingRequestV2 request, String transactionIndex) {
+        Map<String, Object> req = new LinkedHashMap<>();
+        req.put("end_to_end_id", request.getEndToEndReferenceId());
+        req.put("transaction_index", transactionIndex);
+        req.put("target_system", "CBS");
+        req.put("operation", "ADD_HOLD");
+        req.put("amount", request.getAmount());
+        req.put("account", request.getDebtorAccount());
+        return req;
+    }
+
+    // TODO: replace with real CBS ADD_HOLD HTTP client
+    public Map<String, Object> callCbsAddHold(Map<String, Object> cbsRequest, String transactionIndex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("transaction_index", transactionIndex);
+        response.put("status", "SUCCESS");
+        return response;
+    }
+
+    // -- CBS REMOVE_HOLD ------------------------------------------------------
+
+    public Map<String, Object> buildCbsRemoveHoldRequest(AccountPostingRequestV2 request, String transactionIndex) {
+        Map<String, Object> req = new LinkedHashMap<>();
+        req.put("end_to_end_id", request.getEndToEndReferenceId());
+        req.put("transaction_index", transactionIndex);
+        req.put("target_system", "CBS");
+        req.put("operation", "REMOVE_HOLD");
+        req.put("amount", request.getAmount());
+        req.put("account", request.getDebtorAccount());
+        return req;
+    }
+
+    // TODO: replace with real CBS REMOVE_HOLD HTTP client
+    public Map<String, Object> callCbsRemoveHold(Map<String, Object> cbsRequest, String transactionIndex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("transaction_index", transactionIndex);
+        response.put("status", "SUCCESS");
+        return response;
+    }
+
+    // -- GL -------------------------------------------------------------------
 
     public Map<String, Object> buildGlRequest(AccountPostingRequestV2 request) {
         Map<String, Object> req = new LinkedHashMap<>();
@@ -72,16 +101,11 @@ public class ExternalApiHelper {
     public Map<String, Object> callGl(Map<String, Object> glRequest) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("responder_ref_id", UUID.randomUUID().toString());
-        if (stubSimulatorConfig.shouldFail("GL_POSTING")) {
-            response.put("status", "FAILED");
-            response.put("reason", "Simulated GL failure — configured via /test/stub/configure");
-            return response;
-        }
         response.put("status", "SUCCESS");
         return response;
     }
 
-    // ── OBPM ──────────────────────────────────────────────────────────────────
+    // -- OBPM -----------------------------------------------------------------
 
     public Map<String, Object> buildObpmRequest(AccountPostingRequestV2 request) {
         Map<String, Object> req = new LinkedHashMap<>();
@@ -102,11 +126,6 @@ public class ExternalApiHelper {
                 .format(LocalDateTime.now());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_id", transactionId);
-        if (stubSimulatorConfig.shouldFail("OBPM_POSTING")) {
-            response.put("status", "FAILED");
-            response.put("reason", "Simulated OBPM failure — configured via /test/stub/configure");
-            return response;
-        }
         response.put("status", "SUCCESS");
         return response;
     }

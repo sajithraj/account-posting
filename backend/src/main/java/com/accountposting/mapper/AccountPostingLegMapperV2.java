@@ -36,7 +36,7 @@ public interface AccountPostingLegMapperV2 {
     AccountPostingLegResponseV2 toResponseFromHistory(AccountPostingLegHistoryEntity leg);
 
     /**
-     * Full-parameter factory — produces a ready-to-use {@link AccountPostingLegRequestV2}.
+     * Full-parameter factory - produces a ready-to-use {@link AccountPostingLegRequestV2}.
      * All strategy-specific fields are passed as arguments so no setter calls are needed
      * at the call site.
      *

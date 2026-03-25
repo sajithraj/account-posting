@@ -57,7 +57,7 @@ public class AccountPostingLegControllerV2 {
     }
 
     /**
-     * Manual UI status update — sets mode=MANUAL, does not increment attempt count.
+     * Manual UI status update - sets mode=MANUAL, does not increment attempt count.
      * Accepts an optional reason so the UI can persist the failure/override explanation.
      */
     @PatchMapping("/{postingLegId}")

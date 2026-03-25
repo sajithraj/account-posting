@@ -49,7 +49,7 @@ public class GLPostingService implements PostingStrategy {
 
         if (existingLegId == null) {
             throw new IllegalArgumentException(
-                    "GL | postingId=" + postingId + " leg=" + legOrder + " — existingLegId must be pre-inserted before strategy execution");
+                    "GL | postingId=" + postingId + " leg=" + legOrder + " - existingLegId must be pre-inserted before strategy execution");
         }
         Long legId = existingLegId;
 

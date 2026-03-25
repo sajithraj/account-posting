@@ -118,6 +118,7 @@ public class PostingRetryProcessorV2 {
 
         posting.setStatus(newStatus);
         posting.setReason(reason);
+        posting.setRetryLockedUntil(null); // release lock so the posting is immediately retryable again
         postingRepository.save(posting);
         log.info("Retry finished | postingId={} legsProcessed={} postingStatus={}",
                 postingId, results.size(), newStatus);
@@ -138,7 +139,11 @@ public class PostingRetryProcessorV2 {
     private AccountPostingRequestV2 deserializeRequest(String requestPayload) {
         if (requestPayload == null) return null;
         try {
-            return objectMapper.readValue(requestPayload, AccountPostingRequestV2.class);
+            com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(requestPayload);
+            // H2 JSONB columns wrap the stored string in outer JSON quotes (double-encoding).
+            // When that happens the root token is a STRING whose text value is the real JSON.
+            String json = node.isTextual() ? node.textValue() : requestPayload;
+            return objectMapper.readValue(json, AccountPostingRequestV2.class);
         } catch (Exception ex) {
             log.warn("Failed to deserialize requestPayload", ex);
             return null;
