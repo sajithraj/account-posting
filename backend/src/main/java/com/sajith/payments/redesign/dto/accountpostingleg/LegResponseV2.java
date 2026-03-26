@@ -1,5 +1,6 @@
 package com.sajith.payments.redesign.dto.accountpostingleg;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -31,6 +32,7 @@ public class LegResponseV2 {
     private String referenceId;
 
     @JsonProperty("posted_time")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @JsonSerialize(using = InstantSerializer.class)
     @JsonDeserialize(using = InstantDeserializer.class)
     private Instant postedTime;

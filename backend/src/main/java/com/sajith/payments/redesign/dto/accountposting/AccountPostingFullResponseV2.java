@@ -71,16 +71,19 @@ public class AccountPostingFullResponseV2 {
     private String reason;
 
     @JsonProperty("processed_at")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @JsonSerialize(using = InstantSerializer.class)
     @JsonDeserialize(using = InstantDeserializer.class)
     private Instant processedAt;
 
     @JsonProperty("created_at")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @JsonSerialize(using = InstantSerializer.class)
     @JsonDeserialize(using = InstantDeserializer.class)
     private Instant createdAt;
 
     @JsonProperty("updated_at")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @JsonSerialize(using = InstantSerializer.class)
     @JsonDeserialize(using = InstantDeserializer.class)
     private Instant updatedAt;
