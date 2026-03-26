@@ -25,7 +25,6 @@ public class AccountPostingRequestValidatorV2 {
     public void validate(AccountPostingRequestV2 request) {
         List<String> errors = new ArrayList<>();
 
-        // ── Field / structural checks ──────────────────────────────────────
         if (isBlank(request.getSourceReferenceId()))
             errors.add("sourceReferenceId is required");
         else if (request.getSourceReferenceId().length() > 100)

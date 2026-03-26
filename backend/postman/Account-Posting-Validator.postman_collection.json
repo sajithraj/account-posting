@@ -41,7 +41,7 @@
       "name": "01 - Create Posting (Happy Paths)",
       "item": [
         {
-          "name": "DMS - CBS_GL (sets postingId)",
+          "name": "IMX - IMX_CBS_GL (sets postingId)",
           "event": [
             {
               "listen": "prerequest",
@@ -49,8 +49,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const ts = Date.now();",
-                  "pm.collectionVariables.set('e2eRef', 'E2E-DMS-CBS-' + ts);",
-                  "pm.collectionVariables.set('srcRef', 'SRC-DMS-' + ts);"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-IMX-CBS-' + ts);",
+                  "pm.collectionVariables.set('srcRef', 'SRC-IMX-' + ts);"
                 ]
               }
             },
@@ -80,7 +80,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Salary payment DMS CBS_GL\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Salary payment IMX IMX_CBS_GL\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -135,15 +135,15 @@
           }
         },
         {
-          "name": "DMS - OBPM",
+          "name": "IMX - IMX_OBPM",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-DMS-OBPM-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-DMS-OBPM-' + Date.now());"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-IMX-OBPM-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-IMX-OBPM-' + Date.now());"
                 ]
               }
             },
@@ -156,7 +156,7 @@
                   "const b = pm.response.json();",
                   "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
                   "pm.test('Has 1 leg (OBPM)', () => pm.expect(b.responses).to.have.lengthOf(1));",
-                  "pm.test('Leg is OBPM_POSTING', () => pm.expect(b.responses[0].name).to.eql('OBPM_POSTING'));",
+                  "pm.test('Leg is OBPM', () => pm.expect(b.responses[0].name).to.eql('OBPM'));",
                   "pm.test('Leg is SUCCESS', () => pm.expect(b.responses[0].status).to.eql('SUCCESS'));"
                 ]
               }
@@ -172,7 +172,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 2000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"DMS OBPM payment\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_OBPM\",\n  \"amount\": 2000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"IMX IMX_OBPM payment\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -188,15 +188,15 @@
           }
         },
         {
-          "name": "RMS - EFD_RETURN",
+          "name": "RMS - FED_RETURN",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-RMS-EFD-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-RMS-EFD-' + Date.now());"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-RMS-FED-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-RMS-FED-' + Date.now());"
                 ]
               }
             },
@@ -209,8 +209,8 @@
                   "const b = pm.response.json();",
                   "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
                   "pm.test('Has 2 legs (CBS + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
-                  "pm.test('First leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));",
-                  "pm.test('Second leg is GL_POSTING', () => pm.expect(b.responses[1].name).to.eql('GL_POSTING'));",
+                  "pm.test('First leg is CBS', () => pm.expect(b.responses[0].name).to.eql('CBS'));",
+                  "pm.test('Second leg is GL', () => pm.expect(b.responses[1].name).to.eql('GL'));",
                   "pm.test('All legs SUCCESS', () => b.responses.forEach(l => pm.expect(l.status).to.eql('SUCCESS')));"
                 ]
               }
@@ -226,7 +226,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"EFD_RETURN\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"FED_RETURN\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -242,15 +242,15 @@
           }
         },
         {
-          "name": "RMS - USDNT_GL_RETURN",
+          "name": "RMS - MCA_RETURN",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-RMS-USDNT-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-RMS-USDNT-' + Date.now());"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-RMS-MCA-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-RMS-MCA-' + Date.now());"
                 ]
               }
             },
@@ -262,8 +262,8 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const b = pm.response.json();",
                   "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
-                  "pm.test('Has 1 leg (GL only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
-                  "pm.test('Leg is GL_POSTING', () => pm.expect(b.responses[0].name).to.eql('GL_POSTING'));"
+                  "pm.test('Has 1 leg (OBPM only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
+                  "pm.test('Leg is OBPM', () => pm.expect(b.responses[0].target_system).to.eql('OBPM'));"
                 ]
               }
             }
@@ -278,7 +278,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"USDNT_GL_RETURN\",\n  \"amount\": 750.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"MCA_RETURN\",\n  \"amount\": 750.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -294,15 +294,15 @@
           }
         },
         {
-          "name": "USDNT - GL_RETURN",
+          "name": "RMS - GL_RETURN",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-USDNT-GL-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-USDNT-GL-' + Date.now());"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-RMS-GL-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-RMS-GL-' + Date.now());"
                 ]
               }
             },
@@ -314,7 +314,7 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const b = pm.response.json();",
                   "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
-                  "pm.test('Has 1 leg (GL only)', () => pm.expect(b.responses).to.have.lengthOf(1));"
+                  "pm.test('Has 2 legs (GL + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));"
                 ]
               }
             }
@@ -329,7 +329,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"USDNT\",\n  \"request_type\": \"GL_RETURN\",\n  \"amount\": 300.00,\n  \"currency\": \"EUR\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"GL_RETURN\",\n  \"amount\": 300.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -345,15 +345,15 @@
           }
         },
         {
-          "name": "LCD - USDNT_GL",
+          "name": "STABLECOIN - BUY_CUSTOMER_POSTNG",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-LCD-USDNT-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-LCD-' + Date.now());"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-POSTNG-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-POSTNG-' + Date.now());"
                 ]
               }
             },
@@ -365,9 +365,8 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const b = pm.response.json();",
                   "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
-                  "pm.test('Has 2 legs (OBPM + CBS)', () => pm.expect(b.responses).to.have.lengthOf(2));",
-                  "pm.test('First leg is OBPM_POSTING', () => pm.expect(b.responses[0].name).to.eql('OBPM_POSTING'));",
-                  "pm.test('Second leg is CBS_POSTING', () => pm.expect(b.responses[1].name).to.eql('CBS_POSTING'));"
+                  "pm.test('Has 2 legs (CBS + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('All legs SUCCESS', () => b.responses.forEach(l => pm.expect(l.status).to.eql('SUCCESS')));"
                 ]
               }
             }
@@ -382,7 +381,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"LCD\",\n  \"request_type\": \"USDNT_GL\",\n  \"amount\": 10000.00,\n  \"currency\": \"GBP\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTNG\",\n  \"amount\": 10000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -398,15 +397,15 @@
           }
         },
         {
-          "name": "NPSS - NPSS_PAYMENT",
+          "name": "STABLECOIN - CUSTOMER_POSTING",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-NPSS-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-NPSS-' + Date.now());"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-CUSTPOST-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-CUSTPOST-' + Date.now());"
                 ]
               }
             },
@@ -418,9 +417,8 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const b = pm.response.json();",
                   "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
-                  "pm.test('Has 2 legs (CBS + OBPM)', () => pm.expect(b.responses).to.have.lengthOf(2));",
-                  "pm.test('First leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));",
-                  "pm.test('Second leg is OBPM_POSTING', () => pm.expect(b.responses[1].name).to.eql('OBPM_POSTING'));"
+                  "pm.test('Has 2 legs (CBS + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('All legs SUCCESS', () => b.responses.forEach(l => pm.expect(l.status).to.eql('SUCCESS')));"
                 ]
               }
             }
@@ -435,7 +433,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"NPSS\",\n  \"request_type\": \"NPSS_PAYMENT\",\n  \"amount\": 5000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"CUSTOMER_POSTING\",\n  \"amount\": 5000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -451,120 +449,15 @@
           }
         },
         {
-          "name": "DBA - DBA_ACCOUNT_HOLD",
+          "name": "STABLECOIN - ADD_ACCOUNT_HOLD",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-DBA-HOLD-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-DBA-' + Date.now());"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "const b = pm.response.json();",
-                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
-                  "pm.test('Has 1 leg (CBS only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
-                  "pm.test('Leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DBA\",\n  \"request_type\": \"DBA_ACCOUNT_HOLD\",\n  \"amount\": 999.99,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v2",
-                "payment",
-                "account-posting"
-              ]
-            }
-          }
-        },
-        {
-          "name": "STABLECOIN - BNK_CUSTOMER",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-BNK-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-BNK-' + Date.now());"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "const b = pm.response.json();",
-                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
-                  "pm.test('Has 2 legs (OBPM + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
-                  "pm.test('First leg is OBPM_POSTING', () => pm.expect(b.responses[0].name).to.eql('OBPM_POSTING'));",
-                  "pm.test('Second leg is GL_POSTING', () => pm.expect(b.responses[1].name).to.eql('GL_POSTING'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BNK_CUSTOMER\",\n  \"amount\": 25000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v2",
-                "payment",
-                "account-posting"
-              ]
-            }
-          }
-        },
-        {
-          "name": "STABLECOIN - BNK_CANCEL_HOLD",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-CANCEL-' + Date.now());",
-                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-CANCEL-' + Date.now());"
+                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-ADHOLD-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-ADHOLD-' + Date.now());"
                 ]
               }
             },
@@ -577,7 +470,7 @@
                   "const b = pm.response.json();",
                   "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
                   "pm.test('Has 1 leg (CBS only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
-                  "pm.test('Leg is CBS_POSTING', () => pm.expect(b.responses[0].name).to.eql('CBS_POSTING'));"
+                  "pm.test('Leg is CBS', () => pm.expect(b.responses[0].target_system).to.eql('CBS'));"
                 ]
               }
             }
@@ -592,7 +485,111 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BNK_CANCEL_HOLD\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"ADD_ACCOUNT_HOLD\",\n  \"amount\": 999.99,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "payment",
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "STABLECOIN - BUY_CUSTOMER_POSTNG (order 2+3)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-BUYPOSTNG-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-BUYPOSTNG-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 2 legs (CBS + GL)', () => pm.expect(b.responses).to.have.lengthOf(2));",
+                  "pm.test('All legs SUCCESS', () => b.responses.forEach(l => pm.expect(l.status).to.eql('SUCCESS')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTNG\",\n  \"amount\": 25000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/payment/account-posting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "payment",
+                "account-posting"
+              ]
+            }
+          }
+        },
+        {
+          "name": "STABLECOIN - BUY_CUSTOMER_POSTING (REMOVE_HOLD)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('e2eRef', 'E2E-STABLE-BUYPOSTING-' + Date.now());",
+                  "pm.collectionVariables.set('srcRef', 'SRC-STABLE-BUYPOSTING-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('posting_status is SUCCESS', () => pm.expect(b.posting_status).to.eql('SUCCESS'));",
+                  "pm.test('Has 1 leg (CBS only)', () => pm.expect(b.responses).to.have.lengthOf(1));",
+                  "pm.test('Leg is CBS', () => pm.expect(b.responses[0].target_system).to.eql('CBS'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -638,7 +635,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -678,7 +675,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -717,7 +714,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-002\",\n  \"end_to_end_reference_id\": \"E2E-ERR-002\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-002\",\n  \"end_to_end_reference_id\": \"E2E-ERR-002\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -756,7 +753,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-003\",\n  \"end_to_end_reference_id\": \"E2E-ERR-003\",\n  \"source_name\": \"DMS\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-003\",\n  \"end_to_end_reference_id\": \"E2E-ERR-003\",\n  \"source_name\": \"IMX\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -795,7 +792,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-004\",\n  \"end_to_end_reference_id\": \"E2E-ERR-004\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 0,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-004\",\n  \"end_to_end_reference_id\": \"E2E-ERR-004\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 0,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -834,7 +831,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-005\",\n  \"end_to_end_reference_id\": \"E2E-ERR-005\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": -500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-005\",\n  \"end_to_end_reference_id\": \"E2E-ERR-005\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": -500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -873,7 +870,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-006\",\n  \"end_to_end_reference_id\": \"E2E-ERR-006\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USDT\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-006\",\n  \"end_to_end_reference_id\": \"E2E-ERR-006\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USDT\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -912,7 +909,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-007\",\n  \"end_to_end_reference_id\": \"E2E-ERR-007\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CRDT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-007\",\n  \"end_to_end_reference_id\": \"E2E-ERR-007\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CRDT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -952,7 +949,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-008\",\n  \"end_to_end_reference_id\": \"E2E-ERR-008\",\n  \"source_name\": \"UNKNOWN_SRC\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-008\",\n  \"end_to_end_reference_id\": \"E2E-ERR-008\",\n  \"source_name\": \"UNKNOWN_SRC\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -992,7 +989,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-009\",\n  \"end_to_end_reference_id\": \"E2E-ERR-009\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-009\",\n  \"end_to_end_reference_id\": \"E2E-ERR-009\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -1031,7 +1028,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-010\",\n  \"end_to_end_reference_id\": \"E2E-ERR-010\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-010\",\n  \"end_to_end_reference_id\": \"E2E-ERR-010\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -1070,7 +1067,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-011\",\n  \"end_to_end_reference_id\": \"E2E-ERR-011\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-011\",\n  \"end_to_end_reference_id\": \"E2E-ERR-011\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -1162,7 +1159,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-DUP-001\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-DUP-001\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -1325,7 +1322,7 @@
           }
         },
         {
-          "name": "Filter by source_name=DMS",
+          "name": "Filter by source_name=IMX",
           "event": [
             {
               "listen": "test",
@@ -1334,7 +1331,7 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('All results have source_name DMS', () => b.content.forEach(p => pm.expect(p.source_name).to.eql('DMS')));"
+                  "pm.test('All results have source_name IMX', () => b.content.forEach(p => pm.expect(p.source_name).to.eql('IMX')));"
                 ]
               }
             }
@@ -1342,7 +1339,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceName=DMS",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceName=IMX",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1354,14 +1351,14 @@
               "query": [
                 {
                   "key": "sourceName",
-                  "value": "DMS"
+                  "value": "IMX"
                 }
               ]
             }
           }
         },
         {
-          "name": "Filter by request_type=CBS_GL",
+          "name": "Filter by request_type=IMX_CBS_GL",
           "event": [
             {
               "listen": "test",
@@ -1370,7 +1367,7 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('All results have request_type CBS_GL', () => b.content.forEach(p => pm.expect(p.request_type).to.eql('CBS_GL')));"
+                  "pm.test('All results have request_type IMX_CBS_GL', () => b.content.forEach(p => pm.expect(p.request_type).to.eql('IMX_CBS_GL')));"
                 ]
               }
             }
@@ -1378,7 +1375,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting?requestType=CBS_GL",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?requestType=IMX_CBS_GL",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1390,7 +1387,7 @@
               "query": [
                 {
                   "key": "requestType",
-                  "value": "CBS_GL"
+                  "value": "IMX_CBS_GL"
                 }
               ]
             }
@@ -1415,7 +1412,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting?endToEndReferenceId=E2E-DMS-CBS-{{postingId}}",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?endToEndReferenceId={{e2eRef}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1434,7 +1431,7 @@
           }
         },
         {
-          "name": "Filter by target_system=CBS_POSTING",
+          "name": "Filter by target_system=CBS",
           "event": [
             {
               "listen": "test",
@@ -1452,7 +1449,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting?targetSystem=CBS_POSTING",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?targetSystem=CBS",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1464,7 +1461,7 @@
               "query": [
                 {
                   "key": "targetSystem",
-                  "value": "CBS_POSTING"
+                  "value": "CBS"
                 }
               ]
             }
@@ -1553,7 +1550,7 @@
           }
         },
         {
-          "name": "Multiple filters - status=SUCCESS source_name=DMS",
+          "name": "Multiple filters - status=SUCCESS source_name=IMX",
           "event": [
             {
               "listen": "test",
@@ -1562,9 +1559,9 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('All results SUCCESS and DMS', () => b.content.forEach(p => {",
+                  "pm.test('All results SUCCESS and IMX', () => b.content.forEach(p => {",
                   "  pm.expect(p.posting_status).to.eql('SUCCESS');",
-                  "  pm.expect(p.source_name).to.eql('DMS');",
+                  "  pm.expect(p.source_name).to.eql('IMX');",
                   "}));"
                 ]
               }
@@ -1573,7 +1570,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting?status=SUCCESS&sourceName=DMS",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?status=SUCCESS&sourceName=IMX",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1589,7 +1586,7 @@
                 },
                 {
                   "key": "sourceName",
-                  "value": "DMS"
+                  "value": "IMX"
                 }
               ]
             }
@@ -1890,7 +1887,7 @@
                   "const b = pm.response.json();",
                   "pm.test('Has posting_leg_id', () => pm.expect(b.posting_leg_id).to.be.a('number'));",
                   "pm.test('posting_id matches', () => pm.expect(b.posting_id).to.eql(parseInt(pm.collectionVariables.get('postingId'))));",
-                  "pm.test('target_system is CBS_POSTING', () => pm.expect(b.target_system).to.eql('CBS_POSTING'));",
+                  "pm.test('target_system is CBS', () => pm.expect(b.target_system).to.eql('CBS'));",
                   "pm.test('status is PENDING', () => pm.expect(b.status).to.eql('PENDING'));"
                 ]
               }
@@ -1906,7 +1903,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"leg_order\": 99,\n  \"target_system\": \"CBS_POSTING\",\n  \"account\": \"9876543210\",\n  \"status\": \"PENDING\",\n  \"mode\": \"NORM\",\n  \"operation\": \"POSTING\"\n}"
+              "raw": "{\n  \"leg_order\": 99,\n  \"target_system\": \"CBS\",\n  \"account\": \"9876543210\",\n  \"status\": \"PENDING\",\n  \"mode\": \"NORM\",\n  \"operation\": \"POSTING\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg",
@@ -2116,7 +2113,7 @@
           }
         },
         {
-          "name": "Get config by request type - CBS_GL",
+          "name": "Get config by request type - IMX_CBS_GL",
           "event": [
             {
               "listen": "test",
@@ -2126,8 +2123,8 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
                   "pm.test('Response is an array', () => pm.expect(b).to.be.an('array'));",
-                  "pm.test('Has 2 entries for CBS_GL', () => pm.expect(b.length).to.eql(2));",
-                  "pm.test('All entries have request_type CBS_GL', () => b.forEach(c => pm.expect(c.request_type).to.eql('CBS_GL')));",
+                  "pm.test('Has 2 entries for IMX_CBS_GL', () => pm.expect(b.length).to.eql(2));",
+                  "pm.test('All entries have request_type IMX_CBS_GL', () => b.forEach(c => pm.expect(c.request_type).to.eql('IMX_CBS_GL')));",
                   "pm.test('Ordered by order_seq', () => { pm.expect(b[0].order_seq).to.eql(1); pm.expect(b[1].order_seq).to.eql(2); });"
                 ]
               }
@@ -2136,7 +2133,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/config/CBS_GL",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/IMX_CBS_GL",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2145,13 +2142,13 @@
                 "payment",
                 "account-posting",
                 "config",
-                "CBS_GL"
+                "IMX_CBS_GL"
               ]
             }
           }
         },
         {
-          "name": "Get config by request type - NPSS_PAYMENT",
+          "name": "Get config by request type - FED_RETURN",
           "event": [
             {
               "listen": "test",
@@ -2160,9 +2157,9 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('Has 2 entries for NPSS_PAYMENT', () => pm.expect(b.length).to.eql(2));",
-                  "pm.test('First is CBS (order 1)', () => { pm.expect(b[0].target_system).to.eql('CBS_POSTING'); pm.expect(b[0].order_seq).to.eql(1); });",
-                  "pm.test('Second is OBPM (order 2)', () => { pm.expect(b[1].target_system).to.eql('OBPM_POSTING'); pm.expect(b[1].order_seq).to.eql(2); });"
+                  "pm.test('Has 2 entries for FED_RETURN', () => pm.expect(b.length).to.eql(2));",
+                  "pm.test('First is CBS (order 1)', () => { pm.expect(b[0].target_system).to.eql('CBS'); pm.expect(b[0].order_seq).to.eql(1); });",
+                  "pm.test('Second is GL (order 2)', () => { pm.expect(b[1].target_system).to.eql('GL'); pm.expect(b[1].order_seq).to.eql(2); });"
                 ]
               }
             }
@@ -2170,7 +2167,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/config/NPSS_PAYMENT",
+              "raw": "{{baseUrl}}/v2/payment/account-posting/config/FED_RETURN",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2179,7 +2176,7 @@
                 "payment",
                 "account-posting",
                 "config",
-                "NPSS_PAYMENT"
+                "FED_RETURN"
               ]
             }
           }
@@ -2228,7 +2225,7 @@
                   "const b = pm.response.json();",
                   "pm.test('Has config_id', () => pm.expect(b.config_id).to.be.a('number'));",
                   "pm.collectionVariables.set('configId', b.config_id);",
-                  "pm.test('source_name matches', () => pm.expect(b.source_name).to.eql('DMS'));",
+                  "pm.test('source_name matches', () => pm.expect(b.source_name).to.eql('IMX'));",
                   "pm.test('request_type matches', () => pm.expect(b.request_type).to.eql('TEST_TYPE'));",
                   "pm.test('order_seq matches', () => pm.expect(b.order_seq).to.eql(1));"
                 ]
@@ -2245,7 +2242,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"CBS_POSTING\",\n  \"operation\": \"CBS_PROCESS\",\n  \"order_seq\": 1\n}"
+              "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/config",
@@ -2272,8 +2269,8 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
                   "pm.test('config_id matches', () => pm.expect(b.config_id).to.eql(parseInt(pm.collectionVariables.get('configId'))));",
-                  "pm.test('target_system updated', () => pm.expect(b.target_system).to.eql('GL_POSTING'));",
-                  "pm.test('operation updated', () => pm.expect(b.operation).to.eql('GL_PROCESS'));"
+                  "pm.test('target_system updated', () => pm.expect(b.target_system).to.eql('GL'));",
+                  "pm.test('operation updated', () => pm.expect(b.operation).to.eql('POSTING'));"
                 ]
               }
             }
@@ -2288,7 +2285,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"GL_POSTING\",\n  \"operation\": \"GL_PROCESS\",\n  \"order_seq\": 1\n}"
+              "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"TEST_TYPE\",\n  \"target_system\": \"GL\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/config/{{configId}}",
@@ -2329,7 +2326,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"target_system\": \"CBS_POSTING\",\n  \"operation\": \"CBS_PROCESS\",\n  \"order_seq\": 1\n}"
+              "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/config",
@@ -2506,7 +2503,7 @@
           }
         },
         {
-          "name": "Leg 1 fails (CBS_POSTING)  -  DMS CBS_GL",
+          "name": "Leg 1 fails (CBS)  -  IMX IMX_CBS_GL",
           "description": "CBS leg (leg 1) fails, GL leg (leg 2) succeeds. Posting saved as PENDING. Both legs persisted to DB.",
           "event": [
             {
@@ -2555,7 +2552,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  CBS leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  CBS leg failure\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2624,7 +2621,7 @@
           }
         },
         {
-          "name": "Leg 2 fails (GL_POSTING)  -  DMS CBS_GL",
+          "name": "Leg 2 fails (GL)  -  IMX IMX_CBS_GL",
           "description": "CBS leg (leg 1) succeeds, GL leg (leg 2) fails. Posting saved as PENDING.",
           "event": [
             {
@@ -2670,7 +2667,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  GL leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  GL leg failure\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2686,7 +2683,7 @@
           }
         },
         {
-          "name": "All legs fail (CBS + GL)  -  DMS CBS_GL",
+          "name": "All legs fail (CBS + GL)  -  IMX IMX_CBS_GL",
           "description": "Both CBS and GL legs fail. Posting saved as PENDING. All legs FAILED in DB.",
           "event": [
             {
@@ -2732,7 +2729,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  all legs fail\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 1500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  all legs fail\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2748,7 +2745,7 @@
           }
         },
         {
-          "name": "Single-leg failure  -  OBPM (DMS OBPM)",
+          "name": "Single-leg failure  -  OBPM (IMX IMX_OBPM)",
           "description": "OBPM is the only leg and it fails. Posting saved as PENDING.",
           "event": [
             {
@@ -2793,7 +2790,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"OBPM\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  OBPM single leg failure\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_OBPM\",\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\",\n  \"remittance_information\": \"Test  -  OBPM single leg failure\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2902,7 +2899,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-VAL-FAIL\",\n  \"end_to_end_reference_id\": \"{{validationFailE2e}}\",\n  \"source_name\": \"BAD_SOURCE\",\n  \"request_type\": \"CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-VAL-FAIL\",\n  \"end_to_end_reference_id\": \"{{validationFailE2e}}\",\n  \"source_name\": \"BAD_SOURCE\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -2990,7 +2987,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-NO-CFG\",\n  \"end_to_end_reference_id\": \"{{noConfigE2e}}\",\n  \"source_name\": \"DMS\",\n  \"request_type\": \"USDNT_GL_RETURN\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-NO-CFG\",\n  \"end_to_end_reference_id\": \"{{noConfigE2e}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"USDNT_GL_RETURN\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
