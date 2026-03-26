@@ -1,26 +1,28 @@
 package com.sajith.payments.redesign.config;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.h2.H2ConsoleProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
- * Unlocks the H2 console only when spring.h2.console.enabled=true (local profile).
+ * Completely bypasses Spring Security for H2 console — active only when
+ * spring.h2.console.enabled=true (local profile only).
  *
- * Why this is needed even though the main SecurityConfig already has permitAll():
- *   - Spring Security adds X-Frame-Options: DENY by default on every response
- *   - H2 console renders inside an iframe — browser refuses to load it
- *   - This chain disables that header ONLY for /h2-console/** requests
+ * Why WebSecurityCustomizer.ignoring() instead of a SecurityFilterChain:
+ *   A SecurityFilterChain still runs the security filter pipeline, which adds
+ *   response headers (X-Frame-Options: DENY by default). H2 console uses HTML
+ *   framesets — any X-Frame-Options header causes the browser to block the
+ *   inner frames showing "localhost refused to connect".
  *
- * @Order(1) ensures this chain intercepts /h2-console/** before the main chain.
- * securityMatcher scopes it strictly to /h2-console/** — all other URLs
- * continue to be handled by the existing SecurityConfig unchanged.
+ *   ignoring() removes the path from Spring Security entirely:
+ *     - No filter chain runs
+ *     - No security headers added (so X-Frame-Options is never set)
+ *     - No CSRF, no auth, no session management
  *
- * When moving to office code: copy this file only, update the package name.
+ * Copy to office code: yes, update package name only.
  * Do NOT copy SecurityConfig.java — office code already has one.
  */
 @Configuration
@@ -28,17 +30,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class H2ConsoleSecurityConfig {
 
     @Bean
-    @Order(1)
-    public SecurityFilterChain h2ConsoleSecurityFilterChain(HttpSecurity http,
-                                                             H2ConsoleProperties h2ConsoleProperties) throws Exception {
-        String consolePath = h2ConsoleProperties.getPath() + "/**";
-
-        http
-            .securityMatcher(consolePath)
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-            .csrf(csrf -> csrf.disable())
-            .headers(headers -> headers.frameOptions(frame -> frame.disable()));
-
-        return http.build();
+    public WebSecurityCustomizer h2ConsoleWebSecurityCustomizer() {
+        return (WebSecurity web) -> web.ignoring()
+                .requestMatchers(new AntPathRequestMatcher("/h2-console/**"));
     }
 }
