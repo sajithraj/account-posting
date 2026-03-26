@@ -345,7 +345,7 @@
           }
         },
         {
-          "name": "STABLECOIN - BUY_CUSTOMER_POSTNG",
+          "name": "STABLECOIN - BUY_CUSTOMER_POSTING",
           "event": [
             {
               "listen": "prerequest",
@@ -381,7 +381,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTNG\",\n  \"amount\": 10000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": 10000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -501,7 +501,7 @@
           }
         },
         {
-          "name": "STABLECOIN - BUY_CUSTOMER_POSTNG (order 2+3)",
+          "name": "STABLECOIN - BUY_CUSTOMER_POSTING (order 2+3)",
           "event": [
             {
               "listen": "prerequest",
@@ -537,7 +537,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTNG\",\n  \"amount\": 25000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": 25000.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-22\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",

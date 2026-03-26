@@ -31,11 +31,9 @@ info:
     | `RMS` | `GL_RETURN` | GL POSTING (order 1) → GL POSTING (order 2) |
     | `RMS` | `MCA_RETURN` | OBPM POSTING (order 1) |
     | `STABLECOIN` | `CUSTOMER_POSTING` | CBS POSTING (order 1) → GL POSTING (order 2) |
-    | `STABLECOIN` | `BUY_CUSTOMER_POSTNG` | CBS POSTING (order 2) → GL POSTING (order 3) |
+    | `STABLECOIN` | `BUY_CUSTOMER_POSTING` | CBS POSTING (order 2) → GL POSTING (order 3) |
     | `STABLECOIN` | `BUY_CUSTOMER_POSTING` | CBS REMOVE_HOLD (order 1) |
     | `STABLECOIN` | `ADD_ACCOUNT_HOLD` | CBS ADD_HOLD (order 1) |
-
-    > **Note:** `BUY_CUSTOMER_POSTNG` (missing trailing 'I') is the actual value in the database — preserve as-is.
 
     ## Target Systems & Operations
     | target_system | operations |

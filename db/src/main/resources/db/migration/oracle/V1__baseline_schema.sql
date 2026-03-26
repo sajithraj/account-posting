@@ -115,10 +115,9 @@ ALL
     -- RMS: MCA_RETURN → OBPM only
     INTO posting_config (source_name, request_type, target_system, operation, order_seq) VALUES ('RMS',        'MCA_RETURN',          'OBPM', 'POSTING',     1)
 
-    -- STABLECOIN: BUY_CUSTOMER_POSTNG → CBS (order 2) then GL (order 3)
-    -- Note: 'BUY_CUSTOMER_POSTNG' is the canonical value (missing trailing 'I') — do not correct
-    INTO posting_config (source_name, request_type, target_system, operation, order_seq) VALUES ('STABLECOIN', 'BUY_CUSTOMER_POSTNG', 'CBS',  'POSTING',     2)
-    INTO posting_config (source_name, request_type, target_system, operation, order_seq) VALUES ('STABLECOIN', 'BUY_CUSTOMER_POSTNG', 'GL',   'POSTING',     3)
+    -- STABLECOIN: BUY_CUSTOMER_POSTING → CBS (order 2) then GL (order 3)
+    INTO posting_config (source_name, request_type, target_system, operation, order_seq) VALUES ('STABLECOIN', 'BUY_CUSTOMER_POSTING', 'CBS',  'POSTING',     2)
+    INTO posting_config (source_name, request_type, target_system, operation, order_seq) VALUES ('STABLECOIN', 'BUY_CUSTOMER_POSTING', 'GL',   'POSTING',     3)
 
     -- STABLECOIN: ADD_ACCOUNT_HOLD → CBS (ADD_HOLD operation)
     INTO posting_config (source_name, request_type, target_system, operation, order_seq) VALUES ('STABLECOIN', 'ADD_ACCOUNT_HOLD',    'CBS',  'ADD_HOLD',    1)

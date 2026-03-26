@@ -2,7 +2,7 @@
   "info": {
     "name": "Account Posting Orchestrator",
     "_postman_id": "apo-collection-v4",
-    "description": "Full API collection for the Account Posting Orchestrator service.\n\nBase URL: http://localhost:8080/api\n\n--- Naming convention ---\nPOST / PUT request bodies  â†’ snake_case keys (Jackson SNAKE_CASE strategy)\nGET query parameters       â†’ camelCase (Spring @ModelAttribute binding)\n\n--- Enums ---\ncredit_debit_indicator: CREDIT | DEBIT\nstatus / leg status:    PENDING | SUCCESS | FAILED\n\n--- Source names & request types (canonical from dev DB) ---\nIMX         â†’ IMX_CBS_GL | IMX_OBPM\nRMS         â†’ FED_RETURN | GL_RETURN | MCA_RETURN\nSTABLECOIN  â†’ BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\n\n--- Target systems ---\nCBS | GL | OBPM\n\n--- Operations ---\nPOSTING | ADD_HOLD | REMOVE_HOLD",
+    "description": "Full API collection for the Account Posting Orchestrator service.\n\nBase URL: http://localhost:8080/api\n\n--- Naming convention ---\nPOST / PUT request bodies  â†’ snake_case keys (Jackson SNAKE_CASE strategy)\nGET query parameters       â†’ camelCase (Spring @ModelAttribute binding)\n\n--- Enums ---\ncredit_debit_indicator: CREDIT | DEBIT\nstatus / leg status:    PENDING | SUCCESS | FAILED\n\n--- Source names & request types (canonical from dev DB) ---\nIMX         â†’ IMX_CBS_GL | IMX_OBPM\nRMS         â†’ FED_RETURN | GL_RETURN | MCA_RETURN\nSTABLECOIN  â†’ BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\n\n--- Target systems ---\nCBS | GL | OBPM\n\n--- Operations ---\nPOSTING | ADD_HOLD | REMOVE_HOLD",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -68,7 +68,7 @@
                 "IMX_CBS_GL"
               ]
             },
-            "description": "Returns the ordered legs for IMX_CBS_GL: CBS (order 1) â†’ GL (order 2).\n\nOther valid request types: IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
+            "description": "Returns the ordered legs for IMX_CBS_GL: CBS (order 1) â†’ GL (order 2).\n\nOther valid request types: IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
           }
         },
         {
@@ -97,7 +97,7 @@
               "mode": "raw",
               "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1\n}"
             },
-            "description": "Add a new config routing entry.\n\nsource_name:   IMX | RMS | STABLECOIN\nrequest_type:  IMX_CBS_GL | IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\ntarget_system: CBS | GL | OBPM\noperation:     POSTING | ADD_HOLD | REMOVE_HOLD\norder_seq:     1-based integer"
+            "description": "Add a new config routing entry.\n\nsource_name:   IMX | RMS | STABLECOIN\nrequest_type:  IMX_CBS_GL | IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\ntarget_system: CBS | GL | OBPM\noperation:     POSTING | ADD_HOLD | REMOVE_HOLD\norder_seq:     1-based integer"
           }
         },
         {
@@ -460,7 +460,7 @@
           }
         },
         {
-          "name": "POST Create Posting  -  STABLECOIN BUY_CUSTOMER_POSTNG (2 legs: CBS â†’ GL)",
+          "name": "POST Create Posting  -  STABLECOIN BUY_CUSTOMER_POSTING (2 legs: CBS â†’ GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -501,9 +501,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTNG\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Note: 'BUY_CUSTOMER_POSTNG' (missing trailing 'I') is the actual value in the DB  -  preserve as-is.\nTriggers legs: CBS (order 2) â†’ GL (order 3)."
+            "description": "Triggers legs: CBS (order 2) â†’ GL (order 3)."
           }
         },
         {
@@ -597,7 +597,7 @@
               "mode": "raw",
               "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Note: 'BUY_CUSTOMER_POSTING' (correct spelling, different from BUY_CUSTOMER_POSTNG).\nTriggers 1 leg: CBS with REMOVE_HOLD operation (order 1)."
+            "description": "Triggers 1 leg: CBS with REMOVE_HOLD operation (order 1)."
           }
         },
         {
@@ -794,7 +794,7 @@
                 {
                   "key": "requestType",
                   "value": "IMX_CBS_GL",
-                  "description": "IMX_CBS_GL | IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTNG | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
+                  "description": "IMX_CBS_GL | IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
                 },
                 {
                   "key": "page",

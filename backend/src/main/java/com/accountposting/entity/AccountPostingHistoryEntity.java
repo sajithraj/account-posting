@@ -8,6 +8,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -69,10 +71,12 @@ public class AccountPostingHistoryEntity {
     @Column(name = "status", nullable = false, length = 10)
     private PostingStatus status;
 
-    @Column(name = "request_payload", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "request_payload")
     private String requestPayload;
 
-    @Column(name = "response_payload", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "response_payload")
     private String responsePayload;
 
     @Column(name = "retry_locked_until")

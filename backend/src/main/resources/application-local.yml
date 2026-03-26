@@ -42,7 +42,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     defer-datasource-initialization: true
-    show-sql: false
+    show-sql: true
     open-in-view: false
     properties:
       hibernate:

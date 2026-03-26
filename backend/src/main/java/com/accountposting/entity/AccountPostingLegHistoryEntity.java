@@ -8,6 +8,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -57,10 +59,12 @@ public class AccountPostingLegHistoryEntity {
     @Column(name = "posted_time")
     private Instant postedTime;
 
-    @Column(name = "request_payload", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "request_payload")
     private String requestPayload;
 
-    @Column(name = "response_payload", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "response_payload")
     private String responsePayload;
 
     @Enumerated(EnumType.STRING)

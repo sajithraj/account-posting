@@ -194,7 +194,7 @@ export default function PostingListPage() {
           <option value="FED_RETURN">FED_RETURN</option>
           <option value="GL_RETURN">GL_RETURN</option>
           <option value="MCA_RETURN">MCA_RETURN</option>
-          <option value="BUY_CUSTOMER_POSTNG">BUY_CUSTOMER_POSTNG</option>
+          <option value="BUY_CUSTOMER_POSTING">BUY_CUSTOMER_POSTING</option>
           <option value="ADD_ACCOUNT_HOLD">ADD_ACCOUNT_HOLD</option>
           <option value="CUSTOMER_POSTING">CUSTOMER_POSTING</option>
         </select>

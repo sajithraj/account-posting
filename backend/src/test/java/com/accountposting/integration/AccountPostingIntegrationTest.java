@@ -154,9 +154,9 @@ class AccountPostingIntegrationTest {
                 cfg("IMX", "GL_RETURN", "GL", 1),
                 // MCA_RETURN  → CBS (1)
                 cfg("RMS", "MCA_RETURN", "CBS", 1),
-                // BUY_CUSTOMER_POSTNG → OBPM (1) → GL (2)
-                cfg("STABLECOIN", "BUY_CUSTOMER_POSTNG", "OBPM", 1),
-                cfg("STABLECOIN", "BUY_CUSTOMER_POSTNG", "GL", 2),
+                // BUY_CUSTOMER_POSTING → OBPM (1) → GL (2)
+                cfg("STABLECOIN", "BUY_CUSTOMER_POSTING", "OBPM", 1),
+                cfg("STABLECOIN", "BUY_CUSTOMER_POSTING", "GL", 2),
                 // ADD_ACCOUNT_HOLD → CBS (1)
                 cfg("IMX", "ADD_ACCOUNT_HOLD", "CBS", 1),
                 // CUSTOMER_POSTING → CBS (1) → OBPM (2) → GL (3)
@@ -432,9 +432,9 @@ class AccountPostingIntegrationTest {
         }
 
         @Test
-        @DisplayName("STABLECOIN + BUY_CUSTOMER_POSTNG → OBPM(1) + GL(2), both SUCCESS")
+        @DisplayName("STABLECOIN + BUY_CUSTOMER_POSTING → OBPM(1) + GL(2), both SUCCESS")
         void stablecoin_buyCustomerPostng_twoLegs_bothSuccess() {
-            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
+            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTING");
             AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.ACSP);
@@ -582,11 +582,11 @@ class AccountPostingIntegrationTest {
         }
 
         @Test
-        @DisplayName("BUY_CUSTOMER_POSTNG: OBPM(leg 1) FAILS, GL(leg 2) SUCCESS → posting PENDING")
+        @DisplayName("BUY_CUSTOMER_POSTING: OBPM(leg 1) FAILS, GL(leg 2) SUCCESS → posting PENDING")
         void stablecoin_obpmFails_glSucceeds_postingPending() {
             doReturn(failStrategy("OBPM service down")).when(strategyFactory).resolve("OBPM_POSTING");
 
-            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
+            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTING");
             AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
@@ -600,11 +600,11 @@ class AccountPostingIntegrationTest {
         }
 
         @Test
-        @DisplayName("BUY_CUSTOMER_POSTNG: OBPM(leg 1) SUCCESS, GL(leg 2) FAILS → posting PENDING")
+        @DisplayName("BUY_CUSTOMER_POSTING: OBPM(leg 1) SUCCESS, GL(leg 2) FAILS → posting PENDING")
         void stablecoin_obpmSucceeds_glFails_postingPending() {
             doReturn(failStrategy("GL quota exceeded")).when(strategyFactory).resolve("GL_POSTING");
 
-            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTNG");
+            AccountPostingRequestV2 request = req("STABLECOIN", "BUY_CUSTOMER_POSTING");
             AccountPostingCreateResponseV2 response = service.create(request);
 
             assertThat(response.getPostingStatus()).isEqualTo(PostingStatus.PNDG);
@@ -945,7 +945,7 @@ class AccountPostingIntegrationTest {
         void retry_noEligiblePostings_returnsEmptyResponse() {
             service.create(req("IMX", "IMX_CBS_GL"));
             service.create(req("IMX", "IMX_OBPM"));
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG"));
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING"));
 
             assertThat(postingRepo.findAll())
                     .extracting(AccountPostingEntity::getStatus)
@@ -1069,7 +1069,7 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_OBPM"));
             service.create(req("RMS", "FED_RETURN"));
             service.create(req("RMS", "MCA_RETURN"));
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG"));
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING"));
 
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setSourceName("RMS");
@@ -1108,7 +1108,7 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_CBS_GL"));          // CBS_GL
             service.create(req("IMX", "IMX_OBPM"));            // OBPM
             service.create(req("RMS", "MCA_RETURN"));          // CBS
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG")); // OBPM_GL
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING")); // OBPM_GL
 
             AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
             criteria.setTargetSystem("CBS");   // matches CBS_GL and CBS
@@ -1148,7 +1148,7 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_CBS_GL"));
             service.create(req("IMX", "IMX_OBPM"));
             service.create(req("RMS", "FED_RETURN"));
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG"));
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING"));
             service.create(req("IMX", "CUSTOMER_POSTING"));
 
             Pageable page1 = PageRequest.of(0, 3, Sort.by("postingId").ascending());
@@ -1300,8 +1300,8 @@ class AccountPostingIntegrationTest {
             service.create(req("RMS", "FED_RETURN"));          // 2 legs
             service.create(req("IMX", "GL_RETURN"));           // 1 leg
             service.create(req("RMS", "MCA_RETURN"));          // 1 leg
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG")); // 2 legs
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG")); // 2 legs
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING")); // 2 legs
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING")); // 2 legs
             service.create(req("IMX", "ADD_ACCOUNT_HOLD"));    // 1 leg
             service.create(req("IMX", "CUSTOMER_POSTING"));    // 3 legs
 
@@ -1324,7 +1324,7 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_CBS_GL"));           // CBS+GL success
             service.create(req("IMX", "IMX_OBPM"));             // OBPM success
             service.create(req("RMS", "FED_RETURN"));           // CBS+GL success
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG"));  // OBPM+GL success
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING"));  // OBPM+GL success
             service.create(req("IMX", "CUSTOMER_POSTING"));     // CBS+OBPM+GL success
             service.create(req("IMX", "GL_RETURN"));            // GL success
             service.create(req("RMS", "MCA_RETURN"));           // CBS success
@@ -1342,13 +1342,13 @@ class AccountPostingIntegrationTest {
             doReturn(failStrategy("GL timeout")).when(strategyFactory).resolve("GL_POSTING");
             service.create(req("IMX", "IMX_CBS_GL"));         // CBS success, GL fail
             service.create(req("RMS", "FED_RETURN"));         // CBS success, GL fail
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG")); // OBPM success, GL fail
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING")); // OBPM success, GL fail
             reset(strategyFactory);
 
             // ── PENDING: OBPM fails ────────────────────────────────────────────
             doReturn(failStrategy("OBPM timeout")).when(strategyFactory).resolve("OBPM_POSTING");
             service.create(req("IMX", "IMX_OBPM"));            // OBPM only → PENDING
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG")); // OBPM fail, GL success
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING")); // OBPM fail, GL success
             service.create(req("IMX", "CUSTOMER_POSTING"));    // CBS success, OBPM fail, GL success
             reset(strategyFactory);
 
@@ -1405,7 +1405,7 @@ class AccountPostingIntegrationTest {
             // Create 3 SUCCESS postings
             service.create(req("IMX", "IMX_OBPM"));
             service.create(req("RMS", "FED_RETURN"));
-            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTNG"));
+            service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING"));
 
             assertThat(postingRepo.findAll().stream()
                     .filter(p -> p.getStatus() == PostingStatus.PNDG).count()).isEqualTo(5);
