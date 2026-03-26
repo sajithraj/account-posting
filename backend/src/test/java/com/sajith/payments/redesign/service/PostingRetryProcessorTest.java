@@ -7,7 +7,6 @@ import com.sajith.payments.redesign.entity.AccountPostingEntity;
 import com.sajith.payments.redesign.entity.enums.CreditDebitIndicator;
 import com.sajith.payments.redesign.entity.enums.LegStatus;
 import com.sajith.payments.redesign.entity.enums.PostingStatus;
-import com.sajith.payments.redesign.event.PostingEventPublisher;
 import com.sajith.payments.redesign.repository.AccountPostingRepository;
 import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrategy;
 import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrategyFactory;
@@ -37,9 +36,6 @@ class PostingRetryProcessorTest {
     AccountPostingLegServiceV2 legService;
     @Mock
     PostingStrategyFactory strategyFactory;
-    @Mock
-    PostingEventPublisher eventPublisher;
-
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     private PostingRetryProcessorV2 processor;

@@ -15,8 +15,6 @@ import com.sajith.payments.redesign.entity.AccountPostingHistoryEntity;
 import com.sajith.payments.redesign.entity.PostingConfig;
 import com.sajith.payments.redesign.entity.enums.LegMode;
 import com.sajith.payments.redesign.entity.enums.PostingStatus;
-import com.sajith.payments.redesign.event.PostingEventPublisher;
-import com.sajith.payments.redesign.event.PostingSuccessEvent;
 import com.sajith.payments.redesign.exception.BusinessException;
 import com.sajith.payments.redesign.exception.ResourceNotFoundException;
 import com.sajith.payments.redesign.mapper.AccountPostingLegMapperV2;
@@ -71,9 +69,6 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     private final AppUtility appUtility;
     @Qualifier("retryExecutor")
     private final Executor retryExecutor;
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private PostingEventPublisher eventPublisher;
-
     // noRollbackFor: pre-leg failures (e.g. no config) persist the FAILED status before throwing
     @Override
     @Transactional(noRollbackFor = BusinessException.class)
@@ -183,10 +178,6 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 .orElse("One or more legs failed");
         posting.setStatus(finalStatus);
         posting.setReason(finalReason);
-
-        if (finalStatus == PostingStatus.ACSP && eventPublisher != null) {
-            eventPublisher.publishSuccess(new PostingSuccessEvent(posting.getPostingId(), posting.getEndToEndReferenceId(), posting.getRequestType(), posting.getTargetSystems(), Instant.now()));
-        }
 
         List<LegCreateResponseV2> legCreateResponses = legMapper.toLegCreateResponses(legResponses);
 

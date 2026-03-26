@@ -6,8 +6,6 @@ import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
 import com.sajith.payments.redesign.entity.AccountPostingEntity;
 import com.sajith.payments.redesign.entity.enums.LegStatus;
 import com.sajith.payments.redesign.entity.enums.PostingStatus;
-import com.sajith.payments.redesign.event.PostingEventPublisher;
-import com.sajith.payments.redesign.event.PostingSuccessEvent;
 import com.sajith.payments.redesign.repository.AccountPostingRepository;
 import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrategy;
 import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrategyFactory;
@@ -34,9 +32,6 @@ public class PostingRetryProcessorV2 {
     private final AccountPostingLegServiceV2 legService;
     private final PostingStrategyFactory strategyFactory;
     private final ObjectMapper objectMapper;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private PostingEventPublisher eventPublisher;
 
     @Transactional
     public boolean process(Long postingId) {
@@ -97,16 +92,6 @@ public class PostingRetryProcessorV2 {
         posting.setRetryLockedUntil(null);
         postingRepository.save(posting);
         log.info("Retry finished for posting id :: {} posting status :: {} .", postingId, newStatus);
-
-        if (fullySucceeded && eventPublisher != null) {
-            eventPublisher.publishSuccess(new PostingSuccessEvent(
-                    posting.getPostingId(),
-                    posting.getEndToEndReferenceId(),
-                    posting.getRequestType(),
-                    posting.getTargetSystems(),
-                    Instant.now()
-            ));
-        }
 
         return fullySucceeded;
     }
