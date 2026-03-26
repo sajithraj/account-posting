@@ -3,6 +3,10 @@ package com.sajith.payments.redesign.dto.accountpostingleg;
 import com.sajith.payments.redesign.entity.enums.LegMode;
 import com.sajith.payments.redesign.entity.enums.LegStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -22,6 +26,8 @@ public class UpdateLegRequestV2 {
     private String reason;
 
     @JsonProperty("posted_time")
+    @JsonSerialize(using = InstantSerializer.class)
+    @JsonDeserialize(using = InstantDeserializer.class)
     private Instant postedTime;
 
     @JsonProperty("request_payload")
