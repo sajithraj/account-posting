@@ -2,7 +2,6 @@ package com.accountposting.controller;
 
 import com.accountposting.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.accountposting.dto.accountpostingleg.ManualUpdateRequestV2;
-import com.accountposting.dto.accountpostingleg.UpdateLegRequestV2;
 import com.accountposting.service.accountpostingleg.AccountPostingLegServiceV2;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,14 +32,6 @@ public class AccountPostingLegControllerV2 {
             @PathVariable Long postingId,
             @PathVariable Long postingLegId) {
         return ResponseEntity.ok(service.getLeg(postingId, postingLegId));
-    }
-
-    @PutMapping("/{postingLegId}")
-    public ResponseEntity<AccountPostingLegResponseV2> updateLeg(
-            @PathVariable Long postingId,
-            @PathVariable Long postingLegId,
-            @Valid @RequestBody UpdateLegRequestV2 request) {
-        return ResponseEntity.ok(service.updateLeg(postingId, postingLegId, request));
     }
 
     @PatchMapping("/{postingLegId}")

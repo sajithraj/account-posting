@@ -508,33 +508,6 @@ paths:
   # ── Posting Legs ────────────────────────────────────────────────────────────
 
   /v2/payment/account-posting/{posting_id}/leg:
-    post:
-      tags: [ Posting Legs ]
-      summary: Add a leg to a posting
-      description: Creates a new leg record under an existing posting.
-      operationId: addLeg
-      parameters:
-        - $ref: '#/components/parameters/PostingId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AccountPostingLegRequest'
-      responses:
-        '201':
-          description: Leg created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccountPostingLegResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
     get:
       tags: [ Posting Legs ]
       summary: List legs for a posting
@@ -571,36 +544,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountPostingLegResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-    put:
-      tags: [ Posting Legs ]
-      summary: Update a leg (system / retry path)
-      description: |
-        Full update of a leg after an external system call. Sets `mode = RETRY` on retry path.
-        Used internally by `PostingRetryProcessorV2`; also callable via API for manual corrections.
-      operationId: updateLeg
-      parameters:
-        - $ref: '#/components/parameters/PostingId'
-        - $ref: '#/components/parameters/PostingLegId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateLegRequest'
-      responses:
-        '200':
-          description: Leg updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccountPostingLegResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -1009,92 +952,6 @@ components:
             format: int64
           description: Specific posting IDs to retry. If absent or empty, all eligible PNDG postings are targeted.
           example: [ 1, 2, 3 ]
-
-    AccountPostingLegRequest:
-      type: object
-      description: Payload for adding a new leg to an existing posting
-      required:
-        - leg_order
-        - target_system
-        - account
-      properties:
-        leg_order:
-          type: integer
-          minimum: 1
-          description: Execution order of this leg (1-based)
-          example: 1
-        target_system:
-          type: string
-          maxLength: 100
-          description: "External system this leg targets. Valid values: CBS | GL | OBPM"
-          example: "CBS"
-        account:
-          type: string
-          maxLength: 50
-          description: Account associated with this leg
-          example: "1324658900"
-        status:
-          $ref: '#/components/schemas/LegStatus'
-        reference_id:
-          type: string
-          maxLength: 100
-          description: Reference ID returned by the target system
-          example: "CBS-TXN-001"
-        reason:
-          type: string
-          maxLength: 500
-          description: Outcome reason or error message from the target system
-        posted_time:
-          type: string
-          format: date-time
-          description: Timestamp when the leg was posted (ISO 8601)
-        request_payload:
-          type: string
-          description: JSON payload sent to the target system (stored as JSONB)
-        response_payload:
-          type: string
-          description: JSON response received from the target system (stored as JSONB)
-        mode:
-          $ref: '#/components/schemas/LegMode'
-        operation:
-          type: string
-          maxLength: 20
-          description: "Operation type. Valid values: POSTING | ADD_HOLD | REMOVE_HOLD"
-          example: "POSTING"
-
-    UpdateLegRequest:
-      type: object
-      description: Payload for updating a leg after an external system call (retry path)
-      required:
-        - status
-      properties:
-        status:
-          $ref: '#/components/schemas/LegStatus'
-        reference_id:
-          type: string
-          maxLength: 100
-          description: Reference ID returned by the target system
-        reason:
-          type: string
-          maxLength: 500
-          description: Outcome reason or error message
-        posted_time:
-          type: string
-          format: date-time
-          description: Timestamp when the leg was posted
-        request_payload:
-          type: string
-          description: JSON payload sent to the target system
-        response_payload:
-          type: string
-          description: JSON response from the target system
-        mode:
-          $ref: '#/components/schemas/LegMode'
-        attempt_number:
-          type: integer
-          minimum: 1
-          description: Attempt count to set on this leg
-          example: 2
 
     ManualUpdateLegRequest:
       type: object

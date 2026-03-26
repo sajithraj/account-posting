@@ -1,7 +1,8 @@
 # Account Posting Orchestrator
 
-Accepts posting requests from upstream banking systems, routes them to core banking systems (CBS, GL, OBPM) via a
-configurable strategy, tracks every response leg, and provides a React UI with search and retry capability.
+Accepts posting requests from upstream banking systems, routes them to core banking targets (CBS, GL, OBPM) via a
+configurable routing strategy, tracks every response leg, and provides a React UI with search, retry, and manual
+override capability.
 
 ---
 
@@ -9,121 +10,151 @@ configurable strategy, tracks every response leg, and provides a React UI with s
 
 ```
 project/
-├── account-posting/    Spring Boot 3.5, Java 21 — port 8080
-├── db/                 Flyway migration scripts (PostgreSQL) — env-specific folders
-├── ui/                 React 18 + TypeScript + Vite — port 3000
-├── docs/               Architecture and design diagrams (Mermaid)
-└── docker-compose.yml  Full-stack Docker Compose
+├── backend/    Spring Boot 3.5 · Java 17 · Maven            port 8080
+├── db/         Flyway migration scripts (env-specific)
+├── ui/         React 18 · TypeScript · Vite                 port 3000
+├── deploy/     Docker Compose files per environment
+├── docs/       Architecture diagrams (Mermaid)
+└── openapi.yml Full API spec (OpenAPI 3.0)
 ```
 
 Each module has its own README with full details:
 
-- [`account-posting/README.md`](account-posting/README.md) — API reference, package structure, Spring profiles, design
-  notes
-- [`db/README.md`](db/README.md) — Migration strategy, env-specific folders, promotion workflow
-- [`ui/README.md`](ui/README.md) — Pages, components, run commands
-- [`docs/README.md`](docs/README.md) — Architecture diagrams index
+- [`backend/README.md`](backend/README.md) — API reference, package structure, flows, design notes
+- [`db/README.md`](db/README.md) — Migration strategy, environment folders, promotion workflow
 
 ---
 
 ## Prerequisites
 
-| Tool   | Version |
-|--------|---------|
-| Java   | 21+     |
-| Maven  | 3.9+    |
-| Node   | 20+     |
-| Docker | 24+     |
+| Tool   | Min Version | Purpose                         |
+|--------|-------------|---------------------------------|
+| Java   | 17          | Backend runtime                 |
+| Maven  | 3.9         | Backend build + db migrations   |
+| Node   | 20          | UI build                        |
+| Docker | 24          | Containerised stack / Postgres  |
 
 ---
 
-## Option A — Run everything with Docker
+## Quick Start — Docker (recommended)
 
 ```bash
 # From the project root
-docker compose up --build
+docker compose -f deploy/docker-compose.dev.yml up --build -d
 ```
 
-Services come up in order:
+Services start in dependency order:
 
-1. `postgres` — starts and passes health check
-2. `flyway` — runs all migrations then exits
-3. `account-posting` — starts once flyway completes
-4. `ui` — starts once the API health check passes
-
-| Service         | URL                       |
-|-----------------|---------------------------|
-| React UI        | http://localhost:3000     |
-| Spring Boot API | http://localhost:8080/api |
-| PostgreSQL      | localhost:5432            |
+| Order | Service    | Waits for             | URL                          |
+|-------|------------|-----------------------|------------------------------|
+| 1     | `postgres`  | —                    | `localhost:5432`             |
+| 2     | `flyway`    | postgres healthy     | (exits after migration)      |
+| 3     | `backend`   | flyway completed     | `http://localhost:8080`      |
+| 4     | `ui`        | backend healthy      | `http://localhost:3000`      |
 
 ```bash
-docker compose down       # stop, keep data volume
-docker compose down -v    # stop, delete data volume
+docker compose -f deploy/docker-compose.dev.yml down      # stop, keep data
+docker compose -f deploy/docker-compose.dev.yml down -v   # stop + wipe volume
 ```
 
 ---
 
-## Option B — Run locally (manual steps)
-
-### 1. Start PostgreSQL
+## Quick Start — Local (H2, no Docker)
 
 ```bash
-docker compose up -d postgres
-```
-
-### 2. Run DB migrations
-
-```bash
-cd db
-mvn flyway:migrate -Pdev   # applies dev/V1–V12
-mvn flyway:info            # verify what was applied
-```
-
-See [`db/README.md`](db/README.md) for full migration details and environment-specific instructions.
-
-### 3. Start the API
-
-```bash
-cd account-posting
+# 1. Start the backend (H2 in-memory, seed data auto-loaded)
+cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=local
-```
 
-API base: `http://localhost:8080/api`
-
-### 4. Start the UI
-
-```bash
+# 2. Start the UI
 cd ui
-npm install     # first time only
+npm install
 npm run dev
 ```
 
-Open: `http://localhost:3000`
+`local` profile uses H2 in-memory — no database setup required.
+Seed data (`data-local.sql`) is loaded automatically on startup.
 
 ---
 
-## Quick API Reference
+## Quick Start — Local backend against Docker Postgres
 
-Base URL: `http://localhost:8080/api`
+```bash
+# 1. Start only Postgres + run migrations
+docker compose -f deploy/docker-compose.dev.yml up -d postgres
+cd db && mvn flyway:migrate -Pdev
 
-| Method | Path                      | Description                   |
-|--------|---------------------------|-------------------------------|
-| `POST` | `/account-posting`        | Submit a new posting request  |
-| `GET`  | `/account-posting`        | Search postings (paginated)   |
-| `GET`  | `/account-posting/{id}`   | Get a posting with all legs   |
-| `POST` | `/account-posting/retry`  | Retry PENDING/FAILED legs     |
-| `GET`  | `/account-posting/config` | List routing config entries   |
-| `POST` | `/account-posting/config` | Create a routing config entry |
-
-All requests and responses use **snake_case** JSON. See [`account-posting/README.md`](account-posting/README.md) for the
-full API reference.
+# 2. Start backend with dev profile
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
 
 ---
 
-## Architecture Diagrams
+## API Base URL
 
-All diagrams are in `docs/` in Mermaid syntax — viewable in VS Code (Markdown Preview Mermaid Support), GitHub/GitLab
-natively, or at [mermaid.live](https://mermaid.live).
+All endpoints are served at `http://localhost:8080` (no `/api` prefix).
 
-See [`docs/README.md`](docs/README.md) for the full index.
+### Core Endpoints
+
+| Method   | Path                                              | Description                        |
+|----------|---------------------------------------------------|------------------------------------|
+| `POST`   | `/v2/payment/account-posting`                     | Submit a new posting               |
+| `GET`    | `/v2/payment/account-posting`                     | Search postings (paginated)        |
+| `GET`    | `/v2/payment/account-posting/{postingId}`         | Get posting + all legs             |
+| `POST`   | `/v2/payment/account-posting/retry`               | Retry PNDG postings                |
+| `GET`    | `/v2/payment/account-posting/history`             | Search archived postings           |
+| `GET`    | `/v2/payment/account-posting/{id}/leg`            | List legs for a posting            |
+| `GET`    | `/v2/payment/account-posting/{id}/leg/{legId}`    | Get a single leg                   |
+| `PATCH`  | `/v2/payment/account-posting/{id}/leg/{legId}`    | Manual leg status override (UI)    |
+| `GET`    | `/v2/payment/account-posting/config`              | List all routing configs           |
+| `POST`   | `/v2/payment/account-posting/config`              | Create routing config entry        |
+| `PUT`    | `/v2/payment/account-posting/config/{configId}`   | Update routing config entry        |
+| `DELETE` | `/v2/payment/account-posting/config/{configId}`   | Delete routing config entry        |
+| `POST`   | `/v2/payment/account-posting/config/cache/flush`  | Flush config cache                 |
+
+Full spec: [`openapi.yml`](openapi.yml)
+
+---
+
+## Routing Config (canonical seed data)
+
+| source_name   | request_type          | target legs (order → target : operation)       |
+|---------------|-----------------------|------------------------------------------------|
+| `IMX`         | `IMX_CBS_GL`          | 1→CBS:POSTING, 2→GL:POSTING                    |
+| `IMX`         | `IMX_OBPM`            | 1→OBPM:POSTING                                 |
+| `RMS`         | `FED_RETURN`          | 1→CBS:POSTING, 2→GL:POSTING                    |
+| `RMS`         | `GL_RETURN`           | 1→GL:POSTING, 2→GL:POSTING                     |
+| `RMS`         | `MCA_RETURN`          | 1→OBPM:POSTING                                 |
+| `STABLECOIN`  | `BUY_CUSTOMER_POSTING`| 1→CBS:REMOVE_HOLD, 2→CBS:POSTING, 3→GL:POSTING |
+| `STABLECOIN`  | `ADD_ACCOUNT_HOLD`    | 1→CBS:ADD_HOLD                                 |
+| `STABLECOIN`  | `CUSTOMER_POSTING`    | 1→CBS:POSTING, 2→GL:POSTING                    |
+
+---
+
+## Posting Status Flow
+
+```
+         ┌─────────┐
+POST ──► │  PNDG   │ ──► all legs SUCCESS ──► ACSP
+         │(pending)│ ──► any leg fails    ──► stays PNDG (retryable)
+         └─────────┘ ──► validation fail  ──► RJCT (terminal)
+```
+
+| Status | Meaning                                         |
+|--------|-------------------------------------------------|
+| `PNDG` | Pending — one or more legs not yet SUCCESS      |
+| `ACSP` | Accepted / Success — all legs succeeded         |
+| `RJCT` | Rejected — validation or config failure         |
+
+---
+
+## Environment Summary
+
+| Env     | Compose File                      | Spring Profile | DB              |
+|---------|-----------------------------------|----------------|-----------------|
+| local   | (no Docker — H2 in-memory)        | `local`        | H2              |
+| dev     | `deploy/docker-compose.dev.yml`   | `dev`          | PostgreSQL      |
+| qa      | `deploy/docker-compose.qa.yml`    | `qa`           | PostgreSQL      |
+| uat     | `deploy/docker-compose.uat.yml`   | `uat`          | PostgreSQL      |
+| prod    | `deploy/docker-compose.prod.yml`  | `prod`         | PostgreSQL      |

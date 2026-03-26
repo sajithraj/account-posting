@@ -1,42 +1,54 @@
-# account-posting — Spring Boot API
+# backend — Account Posting Service
 
-Spring Boot 3.5 · Java 17 · Maven · PostgreSQL · Kafka (optional)
+Spring Boot 3.5.12 · Java 17 · Maven · PostgreSQL (prod) / H2 (local) · Kafka (optional)
+
+---
+
+## Prerequisites
+
+| Tool  | Version |
+|-------|---------|
+| Java  | 17      |
+| Maven | 3.9+    |
 
 ---
 
 ## Run Commands
 
 ```bash
-# Local development
+# Local dev — H2 in-memory, seed data auto-loaded, no external DB needed
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 
-# Build (skip tests)
+# Dev — connects to PostgreSQL (Docker or local instance on 5432)
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+# Build JAR (skip tests)
 mvn clean package -DskipTests
 
 # Run all tests
 mvn test
 
 # Run a specific test class
-mvn test -Dtest=AccountPostingServiceImplTest
+mvn test -Dtest=AccountPostingIntegrationTest
 ```
 
 ---
 
 ## Spring Profiles
 
-Each environment has a fully self-contained `application-{env}.yml`. None of them inherit from `application.yml` — all
-config keys are explicitly set. Credentials are hardcoded as placeholders; CyberArk injects the real values at runtime.
+Each profile has a fully self-contained `application-{env}.yml`.
+Credentials are placeholder values — real values are injected by CyberArk at runtime.
 
-| Profile  | File                     | Notes                                          |
-|----------|--------------------------|------------------------------------------------|
-| `local`  | `application-local.yml`  | Kafka disabled, show-sql=true, DEBUG logging   |
-| `dev`    | `application-dev.yml`    | Kafka enabled, DEBUG logging                   |
-| `qa`     | `application-qa.yml`     | Kafka enabled, INFO logging                    |
-| `uat`    | `application-uat.yml`    | Kafka enabled, INFO logging                    |
-| `prod`   | `application-prod.yml`   | Kafka enabled, pool-size 20, WARN root logging |
-| `docker` | `application-docker.yml` | Kafka enabled, INFO logging                    |
+| Profile  | Database           | Kafka    | Log Level     | Notes                            |
+|----------|--------------------|----------|---------------|----------------------------------|
+| `local`  | H2 in-memory       | disabled | DEBUG         | `ddl-auto: create-drop`, seed SQL|
+| `dev`    | PostgreSQL :5432   | disabled | DEBUG         |                                  |
+| `docker` | PostgreSQL (container) | disabled | INFO     | Used inside Docker Compose stack |
+| `qa`     | PostgreSQL         | disabled | INFO          |                                  |
+| `uat`    | PostgreSQL         | disabled | INFO          |                                  |
+| `prod`   | PostgreSQL         | disabled | INFO          | Pool size 20                     |
 
-Activate with: `-Dspring-boot.run.profiles=local` (or set `SPRING_PROFILES_ACTIVE` env var in K8s).
+Activate: `-Dspring-boot.run.profiles=local` or env var `SPRING_PROFILES_ACTIVE=dev`
 
 ---
 
@@ -45,108 +57,216 @@ Activate with: `-Dspring-boot.run.profiles=local` (or set `SPRING_PROFILES_ACTIV
 ```
 com.accountposting
 ├── AccountPostingApplication.java
+│
 ├── config/
-│   ├── JpaConfig.java              @EnableJpaAuditing + @EnableJpaRepositories
-│   ├── CacheConfig.java            Caffeine cache — "configsByRequestType" (500 max, 1h TTL)
-│   └── AsyncConfig.java            retryExecutor thread pool (core=4, max=10, queue=100)
-├── common/
-│   ├── entity/BaseEntity.java      createdAt / updatedAt via JPA auditing
-│   ├── response/ApiResponse.java   Generic { success, data, error, timestamp } envelope
-│   ├── response/ApiError.java      Error detail + field-level validation errors
-│   └── exception/
-│       ├── GlobalExceptionHandler  404 / 422 / 400 / 500 mapped to ApiResponse
-│       ├── ResourceNotFoundException → HTTP 404
-│       └── BusinessException         → HTTP 422, carries error code string
+│   ├── JpaConfig.java          @EnableJpaAuditing + @EnableJpaRepositories
+│   ├── CacheConfig.java        Caffeine — "configsByRequestType" cache (500 max, 1h TTL)
+│   └── AsyncConfig.java        retryExecutor thread pool (core=4, max=10, queue=100)
+│
 ├── entity/
-│   ├── AccountPostingEntity        account_posting table
-│   ├── AccountPostingLegEntity     account_posting_leg table
-│   ├── PostingConfig               posting_config table
-│   └── enums/                      PostingStatus (PNDG/ACSP/RJCT), LegStatus (PENDING/SUCCESS/FAILED), LegMode, CreditDebitIndicator
+│   ├── BaseEntity.java                    createdAt / updatedAt via JPA auditing (@MappedSuperclass)
+│   ├── AccountPostingEntity.java          account_posting table
+│   ├── AccountPostingLegEntity.java       account_posting_leg table (@Version for optimistic lock)
+│   ├── AccountPostingHistoryEntity.java   account_posting_history table (archive)
+│   ├── AccountPostingLegHistoryEntity.java account_posting_leg_history table (archive)
+│   ├── PostingConfig.java                 posting_config table
+│   └── enums/
+│       ├── PostingStatus    PNDG | ACSP | RJCT
+│       ├── LegStatus        PENDING | SUCCESS | FAILED
+│       ├── LegMode          NORM | RETRY | MANUAL
+│       ├── CreditDebitIndicator  CREDIT | DEBIT
+│       ├── SourceName       IMX | RMS | STABLECOIN (validation enum)
+│       └── RequestType      All valid request type values (validation enum)
+│
 ├── repository/
-│   ├── AccountPostingRepository    JpaSpecificationExecutor + custom @Modifying queries
-│   ├── AccountPostingLegRepository listByPostingId, lockForRetry
-│   ├── PostingConfigRepository     findByRequestTypeOrderByOrderSeqAsc (@Cacheable)
-│   └── AccountPostingSpecification dynamic JPA Criteria predicates for search
-├── dto/                            Request/Response DTOs — all snake_case over the wire
-├── mapper/
-│   ├── AccountPostingMapper        MapStruct — entity ↔ DTO
-│   └── AccountPostingLegMapper     MapStruct — leg entity ↔ DTO, factory methods
-├── service/
+│   ├── AccountPostingRepository          JpaSpecificationExecutor + custom @Modifying queries:
+│   │                                      findEligibleIdsForRetry(), lockEligibleByIds()
+│   ├── AccountPostingLegRepository       listByPostingId, listNonSuccessLegs, lockForRetry
+│   ├── AccountPostingHistoryRepository   JpaSpecificationExecutor (read-only)
+│   ├── AccountPostingLegHistoryRepository findByPostingIdOrderByLegOrder
+│   ├── PostingConfigRepository           findByRequestTypeOrderByOrderSeqAsc (@Cacheable)
+│   ├── AccountPostingSpecification       dynamic JPA Criteria — active table search
+│   └── AccountPostingHistorySpecification dynamic JPA Criteria — history table search
+│
+├── dto/
 │   ├── accountposting/
-│   │   ├── AccountPostingServiceImpl          create / search / findById / retry
-│   │   ├── AccountPostingRequestValidator     single validate() — field + enum checks
-│   │   └── strategy/
-│   │       ├── PostingStrategy (interface)    getPostingFlow() + process()
-│   │       ├── PostingStrategyFactory         resolves by "{targetSystem}_{operation}" key
-│   │       ├── CBSPostingService              CBS_POSTING — stub, replace with real HTTP client
-│   │       ├── GLPostingService               GL_POSTING  — stub, replace with real HTTP client
-│   │       ├── OBPMPostingService             OBPM_POSTING — stub, replace with real HTTP client
-│   │       ├── CBSAddHoldService              CBS_ADD_HOLD — stub (ADD_ACCOUNT_HOLD flow)
-│   │       ├── CBSRemoveHoldService           CBS_REMOVE_HOLD — stub (BUY_CUSTOMER_POSTING flow)
-│   │       └── ExternalApiHelper              builds outbound payloads + stub call methods
+│   │   ├── AccountPostingRequestV2        Inbound create request
+│   │   ├── AccountPostingCreateResponseV2 Response to create (includes leg outcomes)
+│   │   ├── AccountPostingFullResponseV2   Full posting + legs (used for search / findById)
+│   │   └── AccountPostingSearchRequestV2  Search filter params (@ModelAttribute)
 │   ├── accountpostingleg/
-│   │   └── AccountPostingLegServiceImpl       addLeg / listLegs / getLeg / updateLeg / manualUpdate
+│   │   ├── AccountPostingLegRequestV2     Create leg internally
+│   │   ├── AccountPostingLegResponseV2    Leg read response
+│   │   ├── LegResponseV2                  Leg outcome returned from strategies
+│   │   ├── LegCreateResponseV2            Leg outcome inside create response
+│   │   ├── UpdateLegRequestV2             Full leg update (internal — not exposed via HTTP)
+│   │   └── ManualUpdateRequestV2          PATCH — status + optional reason (UI)
+│   ├── config/
+│   │   ├── PostingConfigRequestV2         Create/update config
+│   │   └── PostingConfigResponseV2        Config read response
 │   ├── retry/
-│   │   └── PostingRetryProcessor              parallel retry — one CompletableFuture per posting
-│   └── config/
-│       └── PostingConfigServiceImpl           CRUD + cache flush
+│   │   ├── RetryRequestV2                 Optional list of postingIds; empty = retry all
+│   │   └── RetryResponseV2                totalPostings / successCount / failedCount
+│   └── ExternalCallResultV2               Outcome from a strategy's external call
+│
+├── mapper/
+│   ├── AccountPostingMapperV2     MapStruct — entity ↔ DTO, history ↔ DTO
+│   ├── AccountPostingLegMapperV2  MapStruct — leg entity ↔ DTO, factory methods, history ↔ DTO
+│   └── PostingConfigMapperV2      MapStruct — config entity ↔ DTO
+│
+├── service/
+│   ├── AccountPostingRequestValidatorV2
+│   │     Single validate() — checks SourceName enum, RequestType enum
+│   │
+│   ├── accountposting/
+│   │   ├── AccountPostingServiceV2 (interface)
+│   │   ├── AccountPostingServiceImplV2
+│   │   │     create / search / findById / retry / searchHistory
+│   │   └── strategy/
+│   │       ├── PostingStrategy (interface)
+│   │       │     getPostingFlow()  — returns "{TARGET_SYSTEM}_{OPERATION}" key
+│   │       │     process()         — executes the leg, returns LegResponseV2
+│   │       ├── PostingStrategyFactory
+│   │       │     Resolves strategy by "{targetSystem}_{operation}" key at startup
+│   │       ├── ExternalApiHelper   Builds outbound payloads; stub call methods — REPLACE before go-live
+│   │       └── impl/
+│   │           ├── CBSPostingService     CBS_POSTING
+│   │           ├── GLPostingService      GL_POSTING
+│   │           ├── OBPMPostingService    OBPM_POSTING
+│   │           ├── CBSAddHoldService     CBS_ADD_HOLD
+│   │           └── CBSRemoveHoldService  CBS_REMOVE_HOLD
+│   │
+│   ├── accountpostingleg/
+│   │   ├── AccountPostingLegServiceV2 (interface)
+│   │   └── AccountPostingLegServiceImplV2
+│   │         addLeg / listLegs / listNonSuccessLegs / getLeg / updateLeg / manualUpdateLeg
+│   │
+│   ├── retry/
+│   │   └── PostingRetryProcessorV2
+│   │         Processes one posting's retry in its own @Transactional.
+│   │         Called asynchronously from AccountPostingServiceImplV2.
+│   │
+│   ├── config/
+│   │   ├── PostingConfigServiceV2 (interface)
+│   │   └── PostingConfigServiceImplV2    CRUD + flushCache()
+│   │
+│   └── archival/
+│       ├── ArchivalServiceV2 (interface)
+│       └── ArchivalServiceImplV2
+│             @Scheduled job — moves ACSP/RJCT records older than threshold-days to history tables.
+│             Configurable: app.archival.enabled, cron, threshold-days, batch-size
+│
 ├── event/
-│   ├── PostingSuccessEvent (record)            postingId, e2eRef, requestType, targetSystems
-│   └── PostingEventPublisher                  @ConditionalOnProperty(kafka.enabled=true)
+│   ├── PostingSuccessEvent (record)  postingId, e2eRef, requestType, targetSystems, occurredAt
+│   └── PostingEventPublisher         Publishes to Kafka. Bean created only when app.kafka.enabled=true.
+│
+├── exception/
+│   ├── GlobalExceptionHandler        Maps exceptions → structured ErrorResponse
+│   ├── ResourceNotFoundException     → HTTP 404
+│   └── BusinessException             → HTTP 422, carries error code string
+│
 ├── controller/
-│   ├── AccountPostingController               POST / GET / GET/{id} / POST /retry
-│   ├── AccountPostingLegController            POST / GET / GET/{legId} / PUT / PATCH
-│   └── PostingConfigController                CRUD + GET /{requestType} + POST /cache/flush
-└── util/
-    └── MappingUtils                           objectMapper.writeValueAsString() wrapper
+│   ├── AccountPostingControllerV2    POST / GET / GET/{id} / POST /retry / GET /history
+│   ├── AccountPostingLegControllerV2 GET / GET/{legId} / PATCH/{legId}
+│   └── PostingConfigControllerV2     GET / POST / PUT/{id} / DELETE/{id} / POST /cache/flush
+│
+└── utils/
+    └── AppUtility    objectMapper.writeValueAsString() wrapper used for logging
 ```
 
 ---
 
 ## Key Flows
 
-### POST /account-posting
+### POST /v2/payment/account-posting — Create Posting
 
-1. Idempotency guard on `endToEndReferenceId`
-2. Map request → entity (status=PENDING), save to DB
-3. `validate(request)` — field checks then enum membership; throws `BusinessException` on failure (posting saved as
-   FAILED for audit trail)
-4. Load `posting_config` ordered by `order_seq` ascending (cached by `requestType`)
-5. For each config entry: insert PENDING leg → call `ExternalApiHelper` stub → update leg to SUCCESS/FAILED
-6. Update posting status (SUCCESS if all legs SUCCESS, else FAILED) + save response payload
-7. Publish `PostingSuccessEvent` to Kafka if all SUCCESS and Kafka enabled
+```
+1.  Idempotency check on end_to_end_reference_id → 422 DUPLICATE_E2E_REF if exists
+2.  Map request → AccountPostingEntity (status=PNDG), save (audit trail from this point)
+3.  requestValidator.validate(request) — checks SourceName + RequestType enums
+    └─ failure: set status=RJCT, save response_payload with error, throw BusinessException
+4.  Load posting_config for request_type ordered by order_seq (Caffeine-cached per requestType)
+    └─ empty: set status=RJCT, throw BusinessException NO_CONFIG_FOUND
+5.  Set target_systems = CBS_GL / OBPM / etc. (joined config target names), save
+6.  Pre-insert all legs as PENDING before calling any external system
+    └─ guarantees every leg is visible and retryable even if an earlier call fails mid-flight
+7.  For each pre-inserted leg (in order_seq order):
+    a. Resolve PostingStrategy by "{targetSystem}_{operation}" key
+    b. strategy.process() → calls ExternalApiHelper stub → returns LegResponseV2
+    c. Leg updated to SUCCESS or FAILED
+8.  Evaluate outcome:
+    └─ all SUCCESS → posting.status = ACSP
+    └─ any FAILED  → posting.status = PNDG  (retryable)
+9.  Save response_payload (serialised response)
+10. If ACSP and Kafka enabled → publish PostingSuccessEvent
+```
 
-### POST /account-posting/retry
+### POST /v2/payment/account-posting/retry — Retry
 
-1. Resolve candidate IDs — if none supplied, `findEligibleIdsForRetry(PNDG, now)` returns IDs where `status=PNDG` and
-   the lock has expired or is null
-2. Lock atomically: `lockEligibleByIds` (`@Modifying` JPQL UPDATE) sets `retry_locked_until = NOW() + 2 min`
-3. Dispatch one `CompletableFuture` per locked ID to the `retryExecutor` thread pool
-4. Each `PostingRetryProcessorV2.process()` runs in its own `@Transactional`: retries non-SUCCESS legs via the matching
-   strategy (key = `{targetSystem}_{operation}`), updates posting to `ACSP` or `PNDG`, and **clears `retry_locked_until`
-   ** so the posting is immediately retryable again
+```
+1.  If posting_ids supplied → use those; else query findEligibleIdsForRetry(PNDG, now)
+    └─ eligible = status=PNDG AND (retry_locked_until IS NULL OR retry_locked_until < now)
+2.  Atomic lock: single @Modifying JPQL UPDATE sets retry_locked_until = now + 120s
+3.  Dispatch one CompletableFuture per locked posting to retryExecutor thread pool
+    └─ MDC context (traceId etc.) propagated to each async thread
+4.  PostingRetryProcessorV2.process(postingId) — own @Transactional per posting:
+    a. Deserialise original request from request_payload
+    b. Fetch non-SUCCESS legs (PENDING or FAILED)
+    c. For each leg: resolve strategy by "{targetSystem}_{operation}", call, update leg
+    d. Re-evaluate all legs → ACSP if all SUCCESS, else PNDG
+    e. Always clear retry_locked_until (posting immediately retryable again)
+    f. If ACSP and Kafka enabled → publish PostingSuccessEvent
+5.  CompletableFuture.allOf().join() — wait for all
+6.  Return RetryResponseV2 { totalPostings, successCount, failedCount }
+```
 
-### GET /account-posting (search)
+### GET /v2/payment/account-posting — Search
 
-`AccountPostingSpecification.from(criteria)` composes JPA Criteria predicates — every field is optional.
+```
+AccountPostingSpecification.from(criteria)
+  Builds JPA Criteria predicates dynamically — every field is optional and composable.
+  Filters: status, sourceName, requestType, sourceReferenceId, endToEndReferenceId,
+           targetSystem (LIKE), fromDate, toDate
+  Returns Spring Data Page with leg list per posting fetched separately.
+```
+
+### GET /v2/payment/account-posting/{postingId} — Find by ID
+
+```
+1. Check account_posting table
+2. If not found → transparent fallback to account_posting_history
+3. Throws 404 only if not found in either table
+```
+
+### Archival Job
+
+```
+Runs on schedule (default: daily 02:00, configurable via app.archival.cron)
+Moves records older than app.archival.threshold-days (default 90) in batches:
+  account_posting      → account_posting_history
+  account_posting_leg  → account_posting_leg_history
+Processes app.archival.batch-size rows per committed transaction.
+Disabled on local profile (app.archival.enabled=false).
+```
 
 ---
 
 ## API Reference
 
-All request/response bodies use **snake_case** (configured globally via Jackson `SNAKE_CASE` naming strategy).
+Base URL: `http://localhost:8080`
+All JSON uses **snake_case** (Jackson `SNAKE_CASE` naming strategy applied globally).
 
 ### Account Posting
 
-| Method | Path                           | Status | Description                             |
-|--------|--------------------------------|--------|-----------------------------------------|
-| `POST` | `/account-posting`             | 201    | Submit a new posting                    |
-| `GET`  | `/account-posting`             | 200    | Search with filters (paginated)         |
-| `GET`  | `/account-posting/{postingId}` | 200    | Get posting with all legs               |
-| `POST` | `/account-posting/retry`       | 200    | Retry non-SUCCESS legs on PNDG postings |
+| Method | Path                                          | Status | Description                           |
+|--------|-----------------------------------------------|--------|---------------------------------------|
+| `POST` | `/v2/payment/account-posting`                 | 201    | Submit a new posting                  |
+| `GET`  | `/v2/payment/account-posting`                 | 200    | Search active postings (paginated)    |
+| `GET`  | `/v2/payment/account-posting/{postingId}`     | 200    | Get posting + all legs (active + history fallback) |
+| `POST` | `/v2/payment/account-posting/retry`           | 200    | Retry PNDG postings                   |
+| `GET`  | `/v2/payment/account-posting/history`         | 200    | Search archived postings (paginated)  |
 
-**POST /account-posting — request body:**
-
+**Create request body:**
 ```json
 {
   "source_reference_id": "SRC-1001",
@@ -156,48 +276,60 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
   "amount": 1500.00,
   "currency": "USD",
   "credit_debit_indicator": "CREDIT",
-  "debtor_account": "13246589",
-  "creditor_account": "98753123",
-  "requested_execution_date": "2026-03-22",
-  "remittance_information": "salary payment"
+  "debtor_account": "1324658900",
+  "creditor_account": "9875312300",
+  "requested_execution_date": "2026-03-23",
+  "remittance_information": "Invoice payment"
 }
 ```
 
-**GET /account-posting — query parameters:**
+**Search query parameters:**
 
-| Param                     | Type               | Description                |
-|---------------------------|--------------------|----------------------------|
-| `status`                  | `PNDG\|ACSP\|RJCT` | Filter by posting status   |
-| `source_reference_id`     | string             | Exact match                |
-| `end_to_end_reference_id` | string             | Exact match                |
-| `source_name`             | string             | Exact match                |
-| `request_type`            | string             | Exact match                |
-| `target_system`           | string             | Partial match (LIKE)       |
-| `from_date`               | `yyyy-MM-dd`       | Execution date range start |
-| `to_date`                 | `yyyy-MM-dd`       | Execution date range end   |
-| `page`                    | int                | 0-based (default 0)        |
-| `size`                    | int                | Page size (default 20)     |
+| Param                       | Type              | Match   |
+|-----------------------------|-------------------|---------|
+| `status`                    | `PNDG\|ACSP\|RJCT`| exact   |
+| `source_name`               | string            | exact   |
+| `request_type`              | string            | exact   |
+| `source_reference_id`       | string            | exact   |
+| `end_to_end_reference_id`   | string            | exact   |
+| `target_system`             | string            | LIKE    |
+| `from_date`                 | `yyyy-MM-dd`      | >=      |
+| `to_date`                   | `yyyy-MM-dd`      | <=      |
+| `page`                      | int               | 0-based |
+| `size`                      | int               | default 20 |
 
-### Legs
+### Posting Legs
 
-| Method  | Path                                       | Status | Description                          |
-|---------|--------------------------------------------|--------|--------------------------------------|
-| `POST`  | `/account-posting/{postingId}/leg`         | 201    | Add a leg manually                   |
-| `GET`   | `/account-posting/{postingId}/leg`         | 200    | List all legs                        |
-| `GET`   | `/account-posting/{postingId}/leg/{legId}` | 200    | Get a single leg                     |
-| `PUT`   | `/account-posting/{postingId}/leg/{legId}` | 200    | Full leg update                      |
-| `PATCH` | `/account-posting/{postingId}/leg/{legId}` | 200    | Manual status override (mode=MANUAL) |
+| Method  | Path                                                  | Status | Description                        |
+|---------|-------------------------------------------------------|--------|------------------------------------|
+| `GET`   | `/v2/payment/account-posting/{postingId}/leg`         | 200    | List all legs ordered by leg_order |
+| `GET`   | `/v2/payment/account-posting/{postingId}/leg/{legId}` | 200    | Get a single leg                   |
+| `PATCH` | `/v2/payment/account-posting/{postingId}/leg/{legId}` | 200    | Manual status override (mode=MANUAL) |
+
+> **Note:** `PUT` leg endpoint is intentionally absent. `legService.updateLeg()` is called in-process
+> by strategy services only — it is not exposed over HTTP.
+
+**PATCH body:**
+```json
+{
+  "status": "SUCCESS",
+  "reason": "Confirmed by ops team"
+}
+```
 
 ### Posting Config
 
-| Method   | Path                                    | Status | Description                             |
-|----------|-----------------------------------------|--------|-----------------------------------------|
-| `GET`    | `/account-posting/config`               | 200    | List all config entries                 |
-| `GET`    | `/account-posting/config/{requestType}` | 200    | Get targets for a request type (cached) |
-| `POST`   | `/account-posting/config`               | 201    | Create a config entry                   |
-| `PUT`    | `/account-posting/config/{configId}`    | 200    | Update a config entry                   |
-| `DELETE` | `/account-posting/config/{configId}`    | 204    | Delete a config entry                   |
-| `POST`   | `/account-posting/config/cache/flush`   | 204    | Flush the config cache                  |
+| Method   | Path                                              | Status | Description                          |
+|----------|---------------------------------------------------|--------|--------------------------------------|
+| `GET`    | `/v2/payment/account-posting/config`              | 200    | List all config entries              |
+| `GET`    | `/v2/payment/account-posting/config/{requestType}`| 200    | Get routing for one request type     |
+| `POST`   | `/v2/payment/account-posting/config`              | 201    | Create a config entry                |
+| `PUT`    | `/v2/payment/account-posting/config/{configId}`   | 200    | Update a config entry                |
+| `DELETE` | `/v2/payment/account-posting/config/{configId}`   | 204    | Delete a config entry                |
+| `POST`   | `/v2/payment/account-posting/config/cache/flush`  | 204    | Flush the in-memory config cache     |
+
+> Config entries are Caffeine-cached per `requestType` (500 max entries, 1h TTL).
+> Always call `POST /config/cache/flush` after any config change.
 
 ### Error Response Structure
 
@@ -207,53 +339,98 @@ All request/response bodies use **snake_case** (configured globally via Jackson 
   "name": "ERROR_CODE",
   "message": "Human-readable description",
   "errors": [
-    {
-      "field": "amount",
-      "message": "must be greater than 0"
-    }
+    { "field": "amount", "message": "must be greater than 0" }
   ]
 }
 ```
 
-| HTTP | Code                     | Cause                                          |
-|------|--------------------------|------------------------------------------------|
-| 400  | `VALIDATION_FAILED`      | @NotBlank / @NotNull / @Size constraint        |
-| 400  | `INVALID_REQUEST_BODY`   | Malformed JSON                                 |
-| 400  | `INVALID_ENUM_VALUE`     | Unknown sourceName or requestType              |
-| 404  | `NOT_FOUND`              | Resource does not exist                        |
-| 422  | `DUPLICATE_E2E_REF`      | Duplicate endToEndReferenceId                  |
-| 422  | `NO_CONFIG_FOUND`        | No posting_config for the given requestType    |
-| 422  | `DUPLICATE_CONFIG_ORDER` | Unique constraint on (request_type, order_seq) |
-| 500  | `INTERNAL_ERROR`         | Unexpected server error                        |
+| HTTP | Code                     | Cause                                             |
+|------|--------------------------|---------------------------------------------------|
+| 400  | `VALIDATION_FAILED`      | Bean validation failure — includes `errors[]`     |
+| 400  | `INVALID_REQUEST_BODY`   | Malformed / unparseable JSON body                 |
+| 400  | `INVALID_ENUM_VALUE`     | Unknown `source_name` or `request_type`           |
+| 404  | `NOT_FOUND`              | Posting or config entry does not exist            |
+| 422  | `DUPLICATE_E2E_REF`      | Duplicate `end_to_end_reference_id`               |
+| 422  | `NO_CONFIG_FOUND`        | No `posting_config` for the given `request_type`  |
+| 422  | `DUPLICATE_CONFIG_ORDER` | Unique constraint on `(request_type, order_seq)`  |
+| 500  | `INTERNAL_ERROR`         | Unexpected server error                           |
+
+---
+
+## Health & Monitoring
+
+| Endpoint                    | Description        |
+|-----------------------------|--------------------|
+| `GET /actuator/health`      | Application health |
+| `GET /actuator/info`        | Build info         |
+| `GET /actuator/metrics`     | Micrometer metrics |
 
 ---
 
 ## Design Notes
 
-- **Leg decoupling** — `AccountPostingLeg.postingId` is a plain `Long` column, not a `@ManyToOne`. The `leg` package
-  never imports from `posting`.
-- **Pre-insert legs** — All legs are saved as `PENDING` before any external call. If a call fails mid-flight, every leg
-  already exists for retry.
-- **Two-step retry lock** — `findEligibleIdsForRetry` (JPQL SELECT) + `lockEligibleByIds` (`@Modifying` JPQL UPDATE)
-  sets `retry_locked_until = NOW() + 2 min`. The processor clears the lock after processing so the posting is
-  immediately retryable. H2 and PostgreSQL compatible (no `UPDATE ... RETURNING`).
-- **ExternalApiHelper** — All build/stub methods for CBS, GL, and OBPM live in one `@Component`. Replace stub `call*()`
-  methods with real HTTP clients before go-live.
-- **Kafka conditional** — `PostingEventPublisher` is only wired when `app.kafka.enabled=true`. The service null-checks
-  the publisher before calling it.
-- **Caffeine cache** — `posting_config` entries are cached per `requestType` with a 1-hour TTL. Use
-  `POST /config/cache/flush` after any config change.
-- **Snake_case** — Jackson `SNAKE_CASE` naming strategy is configured globally. All JSON bodies in and out are
-  snake_case. URL query parameters remain camelCase (Jackson does not apply naming strategies to `@ModelAttribute`).
-- **No HTTP between packages** — `posting` and `leg` packages run in the same JVM and communicate via direct method
-  calls. `AccountPostingServiceImpl` injects `AccountPostingLegService` directly.
+### Leg Decoupling
+`AccountPostingLegEntity.postingId` is a plain `Long` column — not a JPA `@ManyToOne`.
+The `leg` package never imports from `posting`.
+**Why:** Prevents accidental cascade operations, avoids N+1 lazy-loading pitfalls, and keeps the
+packages independently deployable. Fetching is always explicit.
+
+### Pre-insert Legs
+All legs are saved as `PENDING` before any external call is made. If a call fails mid-flight,
+every leg already exists in the DB and is immediately retryable without any special recovery path.
+
+### Retry Lock Design
+Two-phase lock — no `SELECT FOR UPDATE`, no `SKIP LOCKED`:
+1. `findEligibleIdsForRetry()` — JPQL SELECT (no lock) identifies candidates
+2. `lockEligibleByIds()` — single `@Modifying` JPQL UPDATE sets `retry_locked_until = now + 120s`
+
+The lock is cleared by `PostingRetryProcessorV2` at the end of processing (success or failure),
+so the posting is immediately retryable again. Works on H2, PostgreSQL, and Oracle.
+
+### Strategy Pattern
+Each target system × operation combination is a separate `@Component`:
+
+| Strategy key       | Class                 | Target system call         |
+|--------------------|----------------------|----------------------------|
+| `CBS_POSTING`      | CBSPostingService    | CBS core banking post      |
+| `GL_POSTING`       | GLPostingService     | General ledger post        |
+| `OBPM_POSTING`     | OBPMPostingService   | OBPM post                  |
+| `CBS_ADD_HOLD`     | CBSAddHoldService    | CBS add hold               |
+| `CBS_REMOVE_HOLD`  | CBSRemoveHoldService | CBS remove hold            |
+
+`PostingStrategyFactory` builds a `Map<String, PostingStrategy>` at startup keyed by
+`getPostingFlow()`. Add a new target system by implementing `PostingStrategy` — no other
+changes needed.
+
+> **All strategy `call*()` methods in `ExternalApiHelper` are stubs.
+> Replace them with real HTTP client calls before go-live.**
+
+### JSON Payload Columns
+`request_payload` and `response_payload` are stored as JSON.
+Annotated with `@JdbcTypeCode(SqlTypes.JSON)` — Hibernate maps to:
+- `JSONB` on PostgreSQL
+- `JSON` on H2
+- `CLOB` / native JSON on Oracle
+
+### Kafka
+`PostingEventPublisher` is conditionally created (`@ConditionalOnProperty("app.kafka.enabled", havingValue="true")`).
+The service null-checks the publisher before use — Kafka being disabled never causes a NullPointerException.
+
+### Archival
+`ArchivalServiceImplV2` moves records older than `threshold-days` from active to history tables
+in configurable batches. Each batch runs in its own transaction (`TransactionTemplate`).
+`GET /v2/payment/account-posting/{postingId}` is archive-transparent — it falls back to the
+history table automatically if the posting is not found in the active table.
 
 ---
 
-## Health & Metrics
+## Testing
 
-| Endpoint                    | Description        |
-|-----------------------------|--------------------|
-| `GET /api/actuator/health`  | Application health |
-| `GET /api/actuator/info`    | Build info         |
-| `GET /api/actuator/metrics` | Micrometer metrics |
+```bash
+mvn test                                         # all tests
+mvn test -Dtest=AccountPostingIntegrationTest    # integration tests only
+mvn test -Dtest=AccountPostingServiceImplTest    # unit tests only
+```
+
+Integration tests use H2 in-memory with `application-integration-test.yml`.
+Strategy stubs are used in tests — no real external system calls.
