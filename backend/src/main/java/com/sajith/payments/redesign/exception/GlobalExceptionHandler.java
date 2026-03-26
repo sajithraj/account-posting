@@ -1,5 +1,6 @@
 package com.sajith.payments.redesign.exception;
 
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import com.sajith.payments.redesign.dto.retry.ErrorResponseV2;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -42,6 +43,17 @@ public class GlobalExceptionHandler {
                         .id(UUID.randomUUID().toString())
                         .name(ex.getCode())
                         .message(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(InvalidDefinitionException.class)
+    public ResponseEntity<ErrorResponseV2> handleInvalidDefinition(InvalidDefinitionException ex) {
+        log.error("Jackson type definition error — likely missing serializer/deserializer :: {} .", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorResponseV2.builder()
+                        .id(UUID.randomUUID().toString())
+                        .name("SERIALIZATION_CONFIG_ERROR")
+                        .message("Server could not process the request due to a data type configuration issue")
                         .build());
     }
 
