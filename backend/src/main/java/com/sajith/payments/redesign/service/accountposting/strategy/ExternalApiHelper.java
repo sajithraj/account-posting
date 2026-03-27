@@ -1,6 +1,6 @@
 package com.sajith.payments.redesign.service.accountposting.strategy;
 
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -17,12 +17,12 @@ import java.util.UUID;
 public class ExternalApiHelper {
 
     // -- CBS ------------------------------------------------------------------
-    public Map<String, Object> buildCbsRequest(AccountPostingRequestV2 request, String transactionIndex) {
+    public Map<String, Object> buildCbsRequest(IncomingPostingRequest request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
-        req.put("end_to_end_id", request.getEndToEndReferenceId());
+        req.put("end_to_end_id", request.getEndToEndRefId());
         req.put("transaction_index", transactionIndex);
         req.put("target_system", "CBS");
-        req.put("amount", request.getAmount());
+        req.put("amount", request.getAmount().getValue());
         req.put("description1", request.getRemittanceInformation() != null
                 ? request.getRemittanceInformation() : "Payment");
         req.put("transaction_code", 9034);
@@ -39,13 +39,13 @@ public class ExternalApiHelper {
     }
 
     // -- CBS ADD_HOLD ---------------------------------------------------------
-    public Map<String, Object> buildCbsAddHoldRequest(AccountPostingRequestV2 request, String transactionIndex) {
+    public Map<String, Object> buildCbsAddHoldRequest(IncomingPostingRequest request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
-        req.put("end_to_end_id", request.getEndToEndReferenceId());
+        req.put("end_to_end_id", request.getEndToEndRefId());
         req.put("transaction_index", transactionIndex);
         req.put("target_system", "CBS");
         req.put("operation", "ADD_HOLD");
-        req.put("amount", request.getAmount());
+        req.put("amount", request.getAmount().getValue());
         req.put("account", request.getDebtorAccount());
         return req;
     }
@@ -58,13 +58,13 @@ public class ExternalApiHelper {
     }
 
     // -- CBS REMOVE_HOLD ------------------------------------------------------
-    public Map<String, Object> buildCbsRemoveHoldRequest(AccountPostingRequestV2 request, String transactionIndex) {
+    public Map<String, Object> buildCbsRemoveHoldRequest(IncomingPostingRequest request, String transactionIndex) {
         Map<String, Object> req = new LinkedHashMap<>();
-        req.put("end_to_end_id", request.getEndToEndReferenceId());
+        req.put("end_to_end_id", request.getEndToEndRefId());
         req.put("transaction_index", transactionIndex);
         req.put("target_system", "CBS");
         req.put("operation", "REMOVE_HOLD");
-        req.put("amount", request.getAmount());
+        req.put("amount", request.getAmount().getValue());
         req.put("account", request.getDebtorAccount());
         return req;
     }
@@ -77,11 +77,11 @@ public class ExternalApiHelper {
     }
 
     // -- GL -------------------------------------------------------------------
-    public Map<String, Object> buildGlRequest(AccountPostingRequestV2 request) {
+    public Map<String, Object> buildGlRequest(IncomingPostingRequest request) {
         Map<String, Object> req = new LinkedHashMap<>();
-        req.put("end_to_end_id", request.getEndToEndReferenceId());
+        req.put("end_to_end_id", request.getEndToEndRefId());
         req.put("target_system", "GL");
-        req.put("amount", request.getAmount());
+        req.put("amount", request.getAmount().getValue());
         req.put("rem_info", List.of(request.getRemittanceInformation() != null
                 ? request.getRemittanceInformation() : "Payment"));
         req.put("dept_code", 12);
@@ -97,12 +97,12 @@ public class ExternalApiHelper {
     }
 
     // -- OBPM -----------------------------------------------------------------
-    public Map<String, Object> buildObpmRequest(AccountPostingRequestV2 request) {
+    public Map<String, Object> buildObpmRequest(IncomingPostingRequest request) {
         Map<String, Object> req = new LinkedHashMap<>();
-        req.put("end_to_end_id", request.getEndToEndReferenceId());
+        req.put("end_to_end_id", request.getEndToEndRefId());
         req.put("target_system", "OBPM");
-        req.put("amount", request.getAmount());
-        req.put("currency", request.getCurrency());
+        req.put("amount", request.getAmount().getValue());
+        req.put("currency", request.getAmount().getCurrency());
         req.put("remit_info1", request.getRemittanceInformation() != null
                 ? request.getRemittanceInformation() : "Payment");
         req.put("mca_code", 97);

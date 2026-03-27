@@ -1,7 +1,7 @@
 package com.sajith.payments.redesign.dto.accountpostingleg;
 
-import com.sajith.payments.redesign.entity.enums.LegStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sajith.payments.redesign.entity.enums.LegStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 

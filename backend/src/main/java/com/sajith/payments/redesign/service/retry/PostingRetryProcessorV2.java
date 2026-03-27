@@ -1,6 +1,7 @@
 package com.sajith.payments.redesign.service.retry;
 
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
 import com.sajith.payments.redesign.entity.AccountPostingEntity;
@@ -10,14 +11,12 @@ import com.sajith.payments.redesign.repository.AccountPostingRepository;
 import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrategy;
 import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrategyFactory;
 import com.sajith.payments.redesign.service.accountpostingleg.AccountPostingLegServiceV2;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -46,7 +45,7 @@ public class PostingRetryProcessorV2 {
         MDC.put("e2eRef", posting.getEndToEndReferenceId());
         MDC.put("requestType", posting.getRequestType());
 
-        AccountPostingRequestV2 originalRequest = deserializeRequest(posting.getRequestPayload());
+        IncomingPostingRequest originalRequest = deserializeRequest(posting.getRequestPayload());
         if (originalRequest == null) {
             log.error("Original request payload is missing or unreadable, skipping for posting id :: {} .", postingId);
             return false;
@@ -96,12 +95,12 @@ public class PostingRetryProcessorV2 {
         return fullySucceeded;
     }
 
-    private AccountPostingRequestV2 deserializeRequest(String requestPayload) {
+    private IncomingPostingRequest deserializeRequest(String requestPayload) {
         if (requestPayload == null) return null;
         try {
             com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(requestPayload);
             String json = node.isTextual() ? node.textValue() : requestPayload;
-            return objectMapper.readValue(json, AccountPostingRequestV2.class);
+            return objectMapper.readValue(json, IncomingPostingRequest.class);
         } catch (Exception ex) {
             log.error("Failed to deserialize requestPayload. Error message :: {} .", ex.getMessage(), ex);
             return null;

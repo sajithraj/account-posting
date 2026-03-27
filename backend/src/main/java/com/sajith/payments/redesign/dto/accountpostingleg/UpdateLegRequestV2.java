@@ -1,13 +1,13 @@
 package com.sajith.payments.redesign.dto.accountpostingleg;
 
-import com.sajith.payments.redesign.entity.enums.LegMode;
-import com.sajith.payments.redesign.entity.enums.LegStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
+import com.sajith.payments.redesign.entity.enums.LegMode;
+import com.sajith.payments.redesign.entity.enums.LegStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 

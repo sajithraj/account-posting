@@ -1,6 +1,7 @@
 package com.sajith.payments.redesign.service;
 
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
+import com.sajith.payments.redesign.entity.enums.CreditDebitIndicator;
 import com.sajith.payments.redesign.entity.enums.RequestType;
 import com.sajith.payments.redesign.entity.enums.SourceName;
 import com.sajith.payments.redesign.exception.BusinessException;
@@ -22,17 +23,17 @@ public class AccountPostingRequestValidatorV2 {
     private static final List<String> VALID_REQUEST_TYPES =
             Arrays.stream(RequestType.values()).map(Enum::name).toList();
 
-    public void validate(AccountPostingRequestV2 request) {
+    public void validate(IncomingPostingRequest request) {
         List<String> errors = new ArrayList<>();
 
-        if (isBlank(request.getSourceReferenceId()))
+        if (isBlank(request.getSourceRefId()))
             errors.add("sourceReferenceId is required");
-        else if (request.getSourceReferenceId().length() > 100)
+        else if (request.getSourceRefId().length() > 100)
             errors.add("sourceReferenceId must not exceed 100 characters");
 
-        if (isBlank(request.getEndToEndReferenceId()))
+        if (isBlank(request.getEndToEndRefId()))
             errors.add("endToEndReferenceId is required");
-        else if (request.getEndToEndReferenceId().length() > 100)
+        else if (request.getEndToEndRefId().length() > 100)
             errors.add("endToEndReferenceId must not exceed 100 characters");
 
         if (isBlank(request.getSourceName()))
@@ -41,17 +42,24 @@ public class AccountPostingRequestValidatorV2 {
         if (isBlank(request.getRequestType()))
             errors.add("requestType is required");
 
-        if (request.getAmount() == null)
+        if (request.getAmount() == null || isBlank(request.getAmount().getValue())) {
             errors.add("amount is required");
-        else if (request.getAmount().compareTo(new BigDecimal("0.0001")) < 0)
-            errors.add("amount must be greater than zero");
+        } else {
+            try {
+                BigDecimal amountValue = new BigDecimal(request.getAmount().getValue());
+                if (amountValue.compareTo(new BigDecimal("0.0001")) < 0)
+                    errors.add("amount must be greater than zero");
+            } catch (NumberFormatException e) {
+                errors.add("amount value is not a valid number");
+            }
+        }
 
-        if (isBlank(request.getCurrency()))
+        if (request.getAmount() == null || isBlank(request.getAmount().getCurrency()))
             errors.add("currency is required");
-        else if (request.getCurrency().trim().length() != 3)
+        else if (request.getAmount().getCurrency().trim().length() != 3)
             errors.add("currency must be a 3-letter ISO code");
 
-        if (request.getCreditDebitIndicator() == null)
+        if (isBlank(request.getCreditDebitIndicator()))
             errors.add("creditDebitIndicator is required");
 
         if (isBlank(request.getDebtorAccount()))
@@ -64,7 +72,7 @@ public class AccountPostingRequestValidatorV2 {
         else if (request.getCreditorAccount().length() > 50)
             errors.add("creditorAccount must not exceed 50 characters");
 
-        if (request.getRequestedExecutionDate() == null)
+        if (isBlank(request.getRequestedExecutionDate()))
             errors.add("requestedExecutionDate is required");
 
         if (request.getRemittanceInformation() != null
@@ -82,6 +90,14 @@ public class AccountPostingRequestValidatorV2 {
 
         if (!isBlank(request.getRequestType()) && !VALID_REQUEST_TYPES.contains(request.getRequestType()))
             errors.add("requestType '" + request.getRequestType() + "' is not valid. Accepted values: " + VALID_REQUEST_TYPES);
+
+        if (!isBlank(request.getCreditDebitIndicator())) {
+            try {
+                CreditDebitIndicator.valueOf(request.getCreditDebitIndicator().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                errors.add("creditDebitIndicator '" + request.getCreditDebitIndicator() + "' is not valid. Accepted values: CREDIT, DEBIT");
+            }
+        }
 
         if (!errors.isEmpty()) {
             String message = String.join("; ", errors);

@@ -2,8 +2,8 @@ package com.sajith.payments.redesign.service.accountposting;
 
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingCreateResponseV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingFullResponseV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingSearchRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegRequestV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegCreateResponseV2;
@@ -69,11 +69,12 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     private final AppUtility appUtility;
     @Qualifier("retryExecutor")
     private final Executor retryExecutor;
+
     // noRollbackFor: pre-leg failures (e.g. no config) persist the FAILED status before throwing
     @Override
     @Transactional(noRollbackFor = BusinessException.class)
-    public AccountPostingCreateResponseV2 create(AccountPostingRequestV2 request) {
-        MDC.put("e2eRef", request.getEndToEndReferenceId());
+    public AccountPostingCreateResponseV2 create(IncomingPostingRequest request) {
+        MDC.put("e2eRef", request.getEndToEndRefId());
         MDC.put("requestType", request.getRequestType());
         try {
             return doCreate(request);
@@ -85,13 +86,13 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
         }
     }
 
-    private AccountPostingCreateResponseV2 doCreate(AccountPostingRequestV2 request) {
+    private AccountPostingCreateResponseV2 doCreate(IncomingPostingRequest request) {
         log.info("Request received for create posting :: {} . ", appUtility.toObjectToString(request));
 
-        if (repository.existsByEndToEndReferenceId(request.getEndToEndReferenceId())) {
-            log.error("Duplicate posting received so rejected for end to end reference id :: {}", request.getEndToEndReferenceId());
+        if (repository.existsByEndToEndReferenceId(request.getEndToEndRefId())) {
+            log.error("Duplicate posting received so rejected for end to end reference id :: {}", request.getEndToEndRefId());
             throw new BusinessException("DUPLICATE_E2E_REF",
-                    "Posting already exists for endToEndReferenceId: " + request.getEndToEndReferenceId());
+                    "Posting already exists for endToEndReferenceId: " + request.getEndToEndRefId());
         }
 
         // Save an initial PENDING record first so validation failures are always auditable in the DB.
@@ -171,11 +172,11 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
         String finalReason = allSuccess
                 ? "Request processed successfully"
                 : legResponses.stream()
-                .filter(l -> !"SUCCESS".equalsIgnoreCase(l.getStatus()))
-                .map(LegResponseV2::getReason)
-                .filter(r -> r != null && !r.isBlank())
-                .reduce((first, second) -> second)
-                .orElse("One or more legs failed");
+                  .filter(l -> !"SUCCESS".equalsIgnoreCase(l.getStatus()))
+                  .map(LegResponseV2::getReason)
+                  .filter(r -> r != null && !r.isBlank())
+                  .reduce((first, second) -> second)
+                  .orElse("One or more legs failed");
         posting.setStatus(finalStatus);
         posting.setReason(finalReason);
 

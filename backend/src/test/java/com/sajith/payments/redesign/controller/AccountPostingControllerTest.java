@@ -1,19 +1,19 @@
 package com.sajith.payments.redesign.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingCreateResponseV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingFullResponseV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingSearchRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.Amount;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
 import com.sajith.payments.redesign.dto.retry.RetryRequestV2;
 import com.sajith.payments.redesign.dto.retry.RetryResponseV2;
-import com.sajith.payments.redesign.entity.enums.CreditDebitIndicator;
 import com.sajith.payments.redesign.entity.enums.PostingStatus;
 import com.sajith.payments.redesign.exception.BusinessException;
 import com.sajith.payments.redesign.exception.GlobalExceptionHandler;
 import com.sajith.payments.redesign.exception.ResourceNotFoundException;
 import com.sajith.payments.redesign.service.accountposting.AccountPostingServiceV2;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,11 +26,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -54,18 +53,20 @@ class AccountPostingControllerTest {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private AccountPostingRequestV2 validRequest() {
-        AccountPostingRequestV2 req = new AccountPostingRequestV2();
-        req.setSourceReferenceId("SRC-001");
-        req.setEndToEndReferenceId("E2E-001");
+    private IncomingPostingRequest validRequest() {
+        IncomingPostingRequest req = new IncomingPostingRequest();
+        req.setSourceRefId("SRC-001");
+        req.setEndToEndRefId("E2E-001");
         req.setSourceName("IMX");
         req.setRequestType("IMX_CBS_GL");
-        req.setAmount(new BigDecimal("100.00"));
-        req.setCurrency("USD");
-        req.setCreditDebitIndicator(CreditDebitIndicator.CREDIT);
+        Amount amount = new Amount();
+        amount.setValue("100.00");
+        amount.setCurrency("USD");
+        req.setAmount(amount);
+        req.setCreditDebitIndicator("CREDIT");
         req.setDebtorAccount("ACC-DEBTOR-001");
         req.setCreditorAccount("ACC-CREDITOR-001");
-        req.setRequestedExecutionDate(LocalDate.of(2026, 3, 21));
+        req.setRequestedExecutionDate("2026-03-21");
         return req;
     }
 
@@ -102,116 +103,6 @@ class AccountPostingControllerTest {
                     .andExpect(jsonPath("$.source_reference_id").value("SRC-001"))
                     .andExpect(jsonPath("$.end_to_end_reference_id").value("E2E-001"))
                     .andExpect(jsonPath("$.posting_status").value("ACSP"));
-        }
-
-        @Test
-        void returns400_whenAllRequiredFieldsMissing() throws Exception {
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{}"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.name").value("VALIDATION_FAILED"))
-                    .andExpect(jsonPath("$.errors", hasSize(greaterThanOrEqualTo(5))))
-                    .andExpect(jsonPath("$.errors[*].field",
-                            hasItems("sourceReferenceId", "endToEndReferenceId", "amount",
-                                    "currency", "requestedExecutionDate")));
-        }
-
-        @Test
-        void returns400_whenSourceReferenceIdBlank() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setSourceReferenceId("   ");
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.name").value("VALIDATION_FAILED"))
-                    .andExpect(jsonPath("$.errors[?(@.field=='sourceReferenceId')]").exists());
-        }
-
-        @Test
-        void returns400_whenAmountIsZero() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setAmount(BigDecimal.ZERO);
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[?(@.field=='amount')]").exists());
-        }
-
-        @Test
-        void returns400_whenAmountIsNegative() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setAmount(new BigDecimal("-10.00"));
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[?(@.field=='amount')]").exists());
-        }
-
-        @Test
-        void returns400_whenCurrencyIsWrongLength() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setCurrency("US");
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[?(@.field=='currency')]").exists());
-        }
-
-        @Test
-        void returns400_whenSourceNameMissing() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setSourceName(null);
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[?(@.field=='sourceName')]").exists());
-        }
-
-        @Test
-        void returns400_whenRequestTypeMissing() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setRequestType(null);
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[?(@.field=='requestType')]").exists());
-        }
-
-        @Test
-        void returns400_whenCreditDebitIndicatorMissing() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setCreditDebitIndicator(null);
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[?(@.field=='creditDebitIndicator')]").exists());
-        }
-
-        @Test
-        void returns400_whenRequestedExecutionDateMissing() throws Exception {
-            AccountPostingRequestV2 req = validRequest();
-            req.setRequestedExecutionDate(null);
-
-            mockMvc.perform(post("/v2/payment/account-posting")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[?(@.field=='requestedExecutionDate')]").exists());
         }
 
         @Test

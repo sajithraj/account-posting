@@ -1,7 +1,7 @@
 package com.sajith.payments.redesign.mapper;
 
 import com.sajith.payments.redesign.dto.ExternalCallResultV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegRequestV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegCreateResponseV2;
@@ -51,7 +51,7 @@ public interface AccountPostingLegMapperV2 {
     @Mapping(target = "operation", source = "operation")
     @Mapping(target = "requestPayload", source = "requestPayload")
     AccountPostingLegRequestV2 toCreateLegRequest(
-            AccountPostingRequestV2 request,
+            IncomingPostingRequest request,
             Integer legOrder,
             String targetSystem,
             LegMode mode,

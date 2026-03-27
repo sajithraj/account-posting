@@ -1,7 +1,9 @@
 package com.sajith.payments.redesign.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingCreateResponseV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.Amount;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegRequestV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
@@ -9,7 +11,6 @@ import com.sajith.payments.redesign.dto.retry.RetryRequestV2;
 import com.sajith.payments.redesign.dto.retry.RetryResponseV2;
 import com.sajith.payments.redesign.entity.AccountPostingEntity;
 import com.sajith.payments.redesign.entity.PostingConfig;
-import com.sajith.payments.redesign.entity.enums.CreditDebitIndicator;
 import com.sajith.payments.redesign.entity.enums.PostingStatus;
 import com.sajith.payments.redesign.exception.BusinessException;
 import com.sajith.payments.redesign.mapper.AccountPostingLegMapperV2;
@@ -24,7 +25,6 @@ import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrat
 import com.sajith.payments.redesign.service.accountpostingleg.AccountPostingLegServiceV2;
 import com.sajith.payments.redesign.service.retry.PostingRetryProcessorV2;
 import com.sajith.payments.redesign.utils.AppUtility;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -97,7 +96,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_allLegsSucceed_postingStatusIsSavedAsSuccess() {
-        AccountPostingRequestV2 request = buildRequest("e2e-001");
+        IncomingPostingRequest request = buildRequest("e2e-001");
         AccountPostingEntity posting = buildPosting(1L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
@@ -145,7 +144,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_noConfigFound_savesFailedStatusAndThrowsBusinessException() {
-        AccountPostingRequestV2 request = buildRequest("e2e-002");
+        IncomingPostingRequest request = buildRequest("e2e-002");
         AccountPostingEntity posting = buildPosting(2L, PostingStatus.PNDG);
 
         when(repository.existsByEndToEndReferenceId("e2e-002")).thenReturn(false);
@@ -173,7 +172,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_duplicateE2eRef_throwsBusinessExceptionWithoutPersisting() {
-        AccountPostingRequestV2 request = buildRequest("e2e-dup");
+        IncomingPostingRequest request = buildRequest("e2e-dup");
         when(repository.existsByEndToEndReferenceId("e2e-dup")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
@@ -188,7 +187,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_oneLegFails_postingStatusIsSavedAsPending() {
-        AccountPostingRequestV2 request = buildRequest("e2e-003");
+        IncomingPostingRequest request = buildRequest("e2e-003");
         AccountPostingEntity posting = buildPosting(3L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
@@ -231,7 +230,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void create_allLegsFail_postingStatusIsSavedAsPending() {
-        AccountPostingRequestV2 request = buildRequest("e2e-004");
+        IncomingPostingRequest request = buildRequest("e2e-004");
         AccountPostingEntity posting = buildPosting(4L, PostingStatus.PNDG);
 
         PostingConfig config1 = buildConfig(1, "CBS");
@@ -337,18 +336,20 @@ class AccountPostingServiceImplTest {
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    private AccountPostingRequestV2 buildRequest(String e2eRef) {
-        AccountPostingRequestV2 req = new AccountPostingRequestV2();
-        req.setSourceReferenceId("SRC-001");
-        req.setEndToEndReferenceId(e2eRef);
+    private IncomingPostingRequest buildRequest(String e2eRef) {
+        IncomingPostingRequest req = new IncomingPostingRequest();
+        req.setSourceRefId("SRC-001");
+        req.setEndToEndRefId(e2eRef);
         req.setSourceName("IMX");
         req.setRequestType("IMX_CBS_GL");
-        req.setAmount(new BigDecimal("1000.00"));
-        req.setCurrency("USD");
-        req.setCreditDebitIndicator(CreditDebitIndicator.CREDIT);
+        Amount amount = new Amount();
+        amount.setValue("1000.00");
+        amount.setCurrency("USD");
+        req.setAmount(amount);
+        req.setCreditDebitIndicator("CREDIT");
         req.setDebtorAccount("ACC-DEBIT");
         req.setCreditorAccount("ACC-CREDIT");
-        req.setRequestedExecutionDate(LocalDate.now());
+        req.setRequestedExecutionDate(LocalDate.now().toString());
         return req;
     }
 

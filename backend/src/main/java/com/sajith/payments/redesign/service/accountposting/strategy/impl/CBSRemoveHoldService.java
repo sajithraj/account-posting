@@ -1,7 +1,7 @@
 package com.sajith.payments.redesign.service.accountposting.strategy.impl;
 
 import com.sajith.payments.redesign.dto.ExternalCallResultV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
 import com.sajith.payments.redesign.entity.enums.LegMode;
@@ -39,7 +39,7 @@ public class CBSRemoveHoldService implements PostingStrategy {
     }
 
     @Override
-    public LegResponseV2 process(Long postingId, int legOrder, AccountPostingRequestV2 request,
+    public LegResponseV2 process(Long postingId, int legOrder, IncomingPostingRequest request,
                                  boolean isRetry, Long existingLegId) {
         log.info("CBS_REMOVE_HOLD {} | postingId={} flow={}", isRetry ? "RETRY" : "CREATE", postingId, getPostingFlow());
 

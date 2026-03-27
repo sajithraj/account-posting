@@ -9,10 +9,10 @@ The Spring Boot application has **no Flyway dependency** — it connects to an a
 
 ## Prerequisites
 
-| Tool  | Version |
-|-------|---------|
-| Java  | 17      |
-| Maven | 3.9+    |
+| Tool                 | Version                |
+|----------------------|------------------------|
+| Java                 | 17                     |
+| Maven                | 3.9+                   |
 | PostgreSQL or Oracle | running and accessible |
 
 ---
@@ -32,6 +32,7 @@ db/src/main/resources/db/migration/
 ```
 
 All environments currently have a **single consolidated `V1__baseline_schema.sql`** containing:
+
 - Full schema (tables, indexes, constraints, history tables)
 - Canonical `posting_config` seed data
 
@@ -75,86 +76,90 @@ mvn flyway:migrate -Pprod \
 ### Tables
 
 #### `account_posting`
+
 Main posting record. One row per posting request.
 
-| Column                    | Type            | Notes                                              |
-|---------------------------|-----------------|----------------------------------------------------|
-| `posting_id`              | BIGSERIAL PK    | Auto-generated                                     |
-| `source_reference_id`     | VARCHAR(100)    | Source system's own reference                      |
-| `end_to_end_reference_id` | VARCHAR(100) UQ | Idempotency key — must be unique                   |
-| `source_name`             | VARCHAR(100)    | IMX / RMS / STABLECOIN                             |
-| `request_type`            | VARCHAR(50)     | IMX_CBS_GL / IMX_OBPM / etc.                       |
-| `amount`                  | NUMERIC(19,4)   |                                                    |
-| `currency`                | VARCHAR(3)      | ISO 4217 (e.g. USD)                                |
-| `credit_debit_indicator`  | VARCHAR(6)      | CREDIT / DEBIT                                     |
-| `debtor_account`          | VARCHAR(50)     |                                                    |
-| `creditor_account`        | VARCHAR(50)     |                                                    |
-| `requested_execution_date`| DATE            |                                                    |
-| `remittance_information`  | VARCHAR(500)    | Optional free-text                                 |
-| `status`                  | VARCHAR(10)     | PNDG / ACSP / RJCT                                 |
-| `request_payload`         | JSONB           | Serialised original request                        |
-| `response_payload`        | JSONB           | Serialised final response                          |
-| `retry_locked_until`      | TIMESTAMPTZ     | Non-null = posting is locked for retry             |
-| `target_systems`          | VARCHAR(500)    | Underscore-joined list: CBS_GL / OBPM / etc.       |
-| `reason`                  | VARCHAR(1000)   | Final outcome message                              |
-| `created_at`              | TIMESTAMPTZ     | Set on insert (JPA auditing)                       |
-| `updated_at`              | TIMESTAMPTZ     | Set on update (JPA auditing)                       |
+| Column                     | Type            | Notes                                        |
+|----------------------------|-----------------|----------------------------------------------|
+| `posting_id`               | BIGSERIAL PK    | Auto-generated                               |
+| `source_reference_id`      | VARCHAR(100)    | Source system's own reference                |
+| `end_to_end_reference_id`  | VARCHAR(100) UQ | Idempotency key — must be unique             |
+| `source_name`              | VARCHAR(100)    | IMX / RMS / STABLECOIN                       |
+| `request_type`             | VARCHAR(50)     | IMX_CBS_GL / IMX_OBPM / etc.                 |
+| `amount`                   | NUMERIC(19,4)   |                                              |
+| `currency`                 | VARCHAR(3)      | ISO 4217 (e.g. USD)                          |
+| `credit_debit_indicator`   | VARCHAR(6)      | CREDIT / DEBIT                               |
+| `debtor_account`           | VARCHAR(50)     |                                              |
+| `creditor_account`         | VARCHAR(50)     |                                              |
+| `requested_execution_date` | DATE            |                                              |
+| `remittance_information`   | VARCHAR(500)    | Optional free-text                           |
+| `status`                   | VARCHAR(10)     | PNDG / ACSP / RJCT                           |
+| `request_payload`          | JSONB           | Serialised original request                  |
+| `response_payload`         | JSONB           | Serialised final response                    |
+| `retry_locked_until`       | TIMESTAMPTZ     | Non-null = posting is locked for retry       |
+| `target_systems`           | VARCHAR(500)    | Underscore-joined list: CBS_GL / OBPM / etc. |
+| `reason`                   | VARCHAR(1000)   | Final outcome message                        |
+| `created_at`               | TIMESTAMPTZ     | Set on insert (JPA auditing)                 |
+| `updated_at`               | TIMESTAMPTZ     | Set on update (JPA auditing)                 |
 
 #### `account_posting_leg`
+
 One row per target system call within a posting.
 
-| Column           | Type         | Notes                                           |
-|------------------|--------------|-------------------------------------------------|
-| `posting_leg_id` | BIGSERIAL PK |                                                 |
-| `posting_id`     | BIGINT FK    | References `account_posting.posting_id`         |
-| `leg_order`      | INT          | Execution sequence (1-based, from posting_config)|
-| `target_system`  | VARCHAR(100) | CBS / GL / OBPM                                 |
-| `account`        | VARCHAR(50)  | Account used for this leg                       |
-| `status`         | VARCHAR(10)  | PENDING / SUCCESS / FAILED                      |
-| `reference_id`   | VARCHAR(100) | Reference returned by target system             |
-| `reason`         | VARCHAR(500) | Failure reason or success note                  |
-| `attempt_number` | INT          | 1 = first attempt, increments on retry          |
-| `posted_time`    | TIMESTAMPTZ  | Timestamp returned by target system             |
-| `request_payload`| JSONB        | Outbound payload sent to target system          |
-| `response_payload`| JSONB       | Raw response from target system                 |
-| `mode`           | VARCHAR(10)  | NORM / RETRY / MANUAL                           |
-| `operation`      | VARCHAR(20)  | POSTING / ADD_HOLD / REMOVE_HOLD                |
-| `created_at`     | TIMESTAMPTZ  |                                                 |
-| `updated_at`     | TIMESTAMPTZ  |                                                 |
+| Column             | Type         | Notes                                             |
+|--------------------|--------------|---------------------------------------------------|
+| `posting_leg_id`   | BIGSERIAL PK |                                                   |
+| `posting_id`       | BIGINT FK    | References `account_posting.posting_id`           |
+| `leg_order`        | INT          | Execution sequence (1-based, from posting_config) |
+| `target_system`    | VARCHAR(100) | CBS / GL / OBPM                                   |
+| `account`          | VARCHAR(50)  | Account used for this leg                         |
+| `status`           | VARCHAR(10)  | PENDING / SUCCESS / FAILED                        |
+| `reference_id`     | VARCHAR(100) | Reference returned by target system               |
+| `reason`           | VARCHAR(500) | Failure reason or success note                    |
+| `attempt_number`   | INT          | 1 = first attempt, increments on retry            |
+| `posted_time`      | TIMESTAMPTZ  | Timestamp returned by target system               |
+| `request_payload`  | JSONB        | Outbound payload sent to target system            |
+| `response_payload` | JSONB        | Raw response from target system                   |
+| `mode`             | VARCHAR(10)  | NORM / RETRY / MANUAL                             |
+| `operation`        | VARCHAR(20)  | POSTING / ADD_HOLD / REMOVE_HOLD                  |
+| `created_at`       | TIMESTAMPTZ  |                                                   |
+| `updated_at`       | TIMESTAMPTZ  |                                                   |
 
 #### `posting_config`
+
 Routing table — maps `request_type` to ordered target systems.
 
-| Column         | Type         | Notes                                                     |
-|----------------|--------------|-----------------------------------------------------------|
-| `config_id`    | BIGSERIAL PK |                                                           |
-| `source_name`  | VARCHAR(100) | IMX / RMS / STABLECOIN                                    |
-| `request_type` | VARCHAR(100) | e.g. IMX_CBS_GL                                           |
-| `target_system`| VARCHAR(100) | CBS / GL / OBPM                                           |
-| `operation`    | VARCHAR(100) | POSTING / ADD_HOLD / REMOVE_HOLD                          |
-| `order_seq`    | INT          | Execution order (1-based)                                 |
-| `created_at`   | TIMESTAMPTZ  |                                                           |
-| `updated_at`   | TIMESTAMPTZ  |                                                           |
+| Column          | Type         | Notes                            |
+|-----------------|--------------|----------------------------------|
+| `config_id`     | BIGSERIAL PK |                                  |
+| `source_name`   | VARCHAR(100) | IMX / RMS / STABLECOIN           |
+| `request_type`  | VARCHAR(100) | e.g. IMX_CBS_GL                  |
+| `target_system` | VARCHAR(100) | CBS / GL / OBPM                  |
+| `operation`     | VARCHAR(100) | POSTING / ADD_HOLD / REMOVE_HOLD |
+| `order_seq`     | INT          | Execution order (1-based)        |
+| `created_at`    | TIMESTAMPTZ  |                                  |
+| `updated_at`    | TIMESTAMPTZ  |                                  |
 
 Unique constraint: `(request_type, order_seq)` — one target per execution slot per request type.
 
 #### `account_posting_history` / `account_posting_leg_history`
+
 Mirror of the active tables. Records are moved here by the archival job (default: 90 days).
 `GET /v2/payment/account-posting/{postingId}` falls back to history automatically.
 
 ### Indexes
 
-| Table                 | Index                          | Columns                      |
-|-----------------------|--------------------------------|------------------------------|
-| account_posting        | idx_ap_status                  | status                       |
-| account_posting        | idx_ap_e2e_ref                 | end_to_end_reference_id      |
-| account_posting        | idx_ap_src_ref                 | source_reference_id          |
-| account_posting        | idx_ap_requested_date          | requested_execution_date     |
-| account_posting        | idx_ap_request_type            | request_type                 |
-| account_posting_leg    | idx_apl_posting_id             | posting_id                   |
-| account_posting_leg    | idx_apl_status                 | status                       |
-| posting_config         | idx_pc_request_type            | request_type                 |
-| posting_config         | idx_pc_source_name             | source_name                  |
+| Table               | Index                 | Columns                  |
+|---------------------|-----------------------|--------------------------|
+| account_posting     | idx_ap_status         | status                   |
+| account_posting     | idx_ap_e2e_ref        | end_to_end_reference_id  |
+| account_posting     | idx_ap_src_ref        | source_reference_id      |
+| account_posting     | idx_ap_requested_date | requested_execution_date |
+| account_posting     | idx_ap_request_type   | request_type             |
+| account_posting_leg | idx_apl_posting_id    | posting_id               |
+| account_posting_leg | idx_apl_status        | status                   |
+| posting_config      | idx_pc_request_type   | request_type             |
+| posting_config      | idx_pc_source_name    | source_name              |
 
 ---
 
@@ -162,22 +167,22 @@ Mirror of the active tables. Records are moved here by the archival job (default
 
 These rows are inserted by `V1__baseline_schema.sql` in every environment:
 
-| source_name  | request_type          | target_system | operation    | order_seq |
-|--------------|-----------------------|---------------|--------------|-----------|
-| IMX          | IMX_CBS_GL            | CBS           | POSTING      | 1         |
-| IMX          | IMX_CBS_GL            | GL            | POSTING      | 2         |
-| IMX          | IMX_OBPM              | OBPM          | POSTING      | 1         |
-| RMS          | FED_RETURN            | CBS           | POSTING      | 1         |
-| RMS          | FED_RETURN            | GL            | POSTING      | 2         |
-| RMS          | GL_RETURN             | GL            | POSTING      | 1         |
-| RMS          | GL_RETURN             | GL            | POSTING      | 2         |
-| RMS          | MCA_RETURN            | OBPM          | POSTING      | 1         |
-| STABLECOIN   | BUY_CUSTOMER_POSTING  | CBS           | POSTING      | 2         |
-| STABLECOIN   | BUY_CUSTOMER_POSTING  | GL            | POSTING      | 3         |
-| STABLECOIN   | ADD_ACCOUNT_HOLD      | CBS           | ADD_HOLD     | 1         |
-| STABLECOIN   | BUY_CUSTOMER_POSTING  | CBS           | REMOVE_HOLD  | 1         |
-| STABLECOIN   | CUSTOMER_POSTING      | CBS           | POSTING      | 1         |
-| STABLECOIN   | CUSTOMER_POSTING      | GL            | POSTING      | 2         |
+| source_name | request_type         | target_system | operation   | order_seq |
+|-------------|----------------------|---------------|-------------|-----------|
+| IMX         | IMX_CBS_GL           | CBS           | POSTING     | 1         |
+| IMX         | IMX_CBS_GL           | GL            | POSTING     | 2         |
+| IMX         | IMX_OBPM             | OBPM          | POSTING     | 1         |
+| RMS         | FED_RETURN           | CBS           | POSTING     | 1         |
+| RMS         | FED_RETURN           | GL            | POSTING     | 2         |
+| RMS         | GL_RETURN            | GL            | POSTING     | 1         |
+| RMS         | GL_RETURN            | GL            | POSTING     | 2         |
+| RMS         | MCA_RETURN           | OBPM          | POSTING     | 1         |
+| STABLECOIN  | BUY_CUSTOMER_POSTING | CBS           | POSTING     | 2         |
+| STABLECOIN  | BUY_CUSTOMER_POSTING | GL            | POSTING     | 3         |
+| STABLECOIN  | ADD_ACCOUNT_HOLD     | CBS           | ADD_HOLD    | 1         |
+| STABLECOIN  | BUY_CUSTOMER_POSTING | CBS           | REMOVE_HOLD | 1         |
+| STABLECOIN  | CUSTOMER_POSTING     | CBS           | POSTING     | 1         |
+| STABLECOIN  | CUSTOMER_POSTING     | GL            | POSTING     | 2         |
 
 ---
 
@@ -212,6 +217,7 @@ The `CHANGELOG.md` in each folder is the authoritative link between environments
 ### Partial promotion (cherry-pick)
 
 If only part of a dev script is needed in QA:
+
 1. Extract the required SQL into a new file in `qa/` as the next QA version
 2. Document in `qa/CHANGELOG.md`: which dev version it came from and what was omitted
 

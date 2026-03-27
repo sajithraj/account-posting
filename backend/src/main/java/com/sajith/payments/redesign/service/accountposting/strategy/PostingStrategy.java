@@ -1,7 +1,7 @@
 package com.sajith.payments.redesign.service.accountposting.strategy;
 
 
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
 
 public interface PostingStrategy {
@@ -22,6 +22,6 @@ public interface PostingStrategy {
      * @param isRetry       when true, updates the existing leg instead of inserting a new one
      * @param existingLegId must be non-null when isRetry=true; identifies the leg to update
      */
-    LegResponseV2 process(Long postingId, int legOrder, AccountPostingRequestV2 request,
+    LegResponseV2 process(Long postingId, int legOrder, IncomingPostingRequest request,
                           boolean isRetry, Long existingLegId);
 }

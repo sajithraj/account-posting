@@ -1,7 +1,5 @@
 package com.sajith.payments.redesign.dto.accountposting;
 
-import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
-import com.sajith.payments.redesign.entity.enums.PostingStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -10,6 +8,8 @@ import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
+import com.sajith.payments.redesign.entity.enums.PostingStatus;
 import lombok.Builder;
 import lombok.Data;
 

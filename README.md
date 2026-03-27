@@ -27,12 +27,12 @@ Each module has its own README with full details:
 
 ## Prerequisites
 
-| Tool   | Min Version | Purpose                         |
-|--------|-------------|---------------------------------|
-| Java   | 17          | Backend runtime                 |
-| Maven  | 3.9         | Backend build + db migrations   |
-| Node   | 20          | UI build                        |
-| Docker | 24          | Containerised stack / Postgres  |
+| Tool   | Min Version | Purpose                        |
+|--------|-------------|--------------------------------|
+| Java   | 17          | Backend runtime                |
+| Maven  | 3.9         | Backend build + db migrations  |
+| Node   | 20          | UI build                       |
+| Docker | 24          | Containerised stack / Postgres |
 
 ---
 
@@ -45,12 +45,12 @@ docker compose -f deploy/docker-compose.dev.yml up --build -d
 
 Services start in dependency order:
 
-| Order | Service    | Waits for             | URL                          |
-|-------|------------|-----------------------|------------------------------|
-| 1     | `postgres`  | —                    | `localhost:5432`             |
-| 2     | `flyway`    | postgres healthy     | (exits after migration)      |
-| 3     | `backend`   | flyway completed     | `http://localhost:8080`      |
-| 4     | `ui`        | backend healthy      | `http://localhost:3000`      |
+| Order | Service    | Waits for        | URL                     |
+|-------|------------|------------------|-------------------------|
+| 1     | `postgres` | —                | `localhost:5432`        |
+| 2     | `flyway`   | postgres healthy | (exits after migration) |
+| 3     | `backend`  | flyway completed | `http://localhost:8080` |
+| 4     | `ui`       | backend healthy  | `http://localhost:3000` |
 
 ```bash
 docker compose -f deploy/docker-compose.dev.yml down      # stop, keep data
@@ -97,21 +97,21 @@ All endpoints are served at `http://localhost:8080` (no `/api` prefix).
 
 ### Core Endpoints
 
-| Method   | Path                                              | Description                        |
-|----------|---------------------------------------------------|------------------------------------|
-| `POST`   | `/v2/payment/account-posting`                     | Submit a new posting               |
-| `GET`    | `/v2/payment/account-posting`                     | Search postings (paginated)        |
-| `GET`    | `/v2/payment/account-posting/{postingId}`         | Get posting + all legs             |
-| `POST`   | `/v2/payment/account-posting/retry`               | Retry PNDG postings                |
-| `GET`    | `/v2/payment/account-posting/history`             | Search archived postings           |
-| `GET`    | `/v2/payment/account-posting/{id}/leg`            | List legs for a posting            |
-| `GET`    | `/v2/payment/account-posting/{id}/leg/{legId}`    | Get a single leg                   |
-| `PATCH`  | `/v2/payment/account-posting/{id}/leg/{legId}`    | Manual leg status override (UI)    |
-| `GET`    | `/v2/payment/account-posting/config`              | List all routing configs           |
-| `POST`   | `/v2/payment/account-posting/config`              | Create routing config entry        |
-| `PUT`    | `/v2/payment/account-posting/config/{configId}`   | Update routing config entry        |
-| `DELETE` | `/v2/payment/account-posting/config/{configId}`   | Delete routing config entry        |
-| `POST`   | `/v2/payment/account-posting/config/cache/flush`  | Flush config cache                 |
+| Method   | Path                                             | Description                     |
+|----------|--------------------------------------------------|---------------------------------|
+| `POST`   | `/v2/payment/account-posting`                    | Submit a new posting            |
+| `GET`    | `/v2/payment/account-posting`                    | Search postings (paginated)     |
+| `GET`    | `/v2/payment/account-posting/{postingId}`        | Get posting + all legs          |
+| `POST`   | `/v2/payment/account-posting/retry`              | Retry PNDG postings             |
+| `GET`    | `/v2/payment/account-posting/history`            | Search archived postings        |
+| `GET`    | `/v2/payment/account-posting/{id}/leg`           | List legs for a posting         |
+| `GET`    | `/v2/payment/account-posting/{id}/leg/{legId}`   | Get a single leg                |
+| `PATCH`  | `/v2/payment/account-posting/{id}/leg/{legId}`   | Manual leg status override (UI) |
+| `GET`    | `/v2/payment/account-posting/config`             | List all routing configs        |
+| `POST`   | `/v2/payment/account-posting/config`             | Create routing config entry     |
+| `PUT`    | `/v2/payment/account-posting/config/{configId}`  | Update routing config entry     |
+| `DELETE` | `/v2/payment/account-posting/config/{configId}`  | Delete routing config entry     |
+| `POST`   | `/v2/payment/account-posting/config/cache/flush` | Flush config cache              |
 
 Full spec: [`openapi.yml`](openapi.yml)
 
@@ -119,16 +119,16 @@ Full spec: [`openapi.yml`](openapi.yml)
 
 ## Routing Config (canonical seed data)
 
-| source_name   | request_type          | target legs (order → target : operation)       |
-|---------------|-----------------------|------------------------------------------------|
-| `IMX`         | `IMX_CBS_GL`          | 1→CBS:POSTING, 2→GL:POSTING                    |
-| `IMX`         | `IMX_OBPM`            | 1→OBPM:POSTING                                 |
-| `RMS`         | `FED_RETURN`          | 1→CBS:POSTING, 2→GL:POSTING                    |
-| `RMS`         | `GL_RETURN`           | 1→GL:POSTING, 2→GL:POSTING                     |
-| `RMS`         | `MCA_RETURN`          | 1→OBPM:POSTING                                 |
-| `STABLECOIN`  | `BUY_CUSTOMER_POSTING`| 1→CBS:REMOVE_HOLD, 2→CBS:POSTING, 3→GL:POSTING |
-| `STABLECOIN`  | `ADD_ACCOUNT_HOLD`    | 1→CBS:ADD_HOLD                                 |
-| `STABLECOIN`  | `CUSTOMER_POSTING`    | 1→CBS:POSTING, 2→GL:POSTING                    |
+| source_name  | request_type           | target legs (order → target : operation)       |
+|--------------|------------------------|------------------------------------------------|
+| `IMX`        | `IMX_CBS_GL`           | 1→CBS:POSTING, 2→GL:POSTING                    |
+| `IMX`        | `IMX_OBPM`             | 1→OBPM:POSTING                                 |
+| `RMS`        | `FED_RETURN`           | 1→CBS:POSTING, 2→GL:POSTING                    |
+| `RMS`        | `GL_RETURN`            | 1→GL:POSTING, 2→GL:POSTING                     |
+| `RMS`        | `MCA_RETURN`           | 1→OBPM:POSTING                                 |
+| `STABLECOIN` | `BUY_CUSTOMER_POSTING` | 1→CBS:REMOVE_HOLD, 2→CBS:POSTING, 3→GL:POSTING |
+| `STABLECOIN` | `ADD_ACCOUNT_HOLD`     | 1→CBS:ADD_HOLD                                 |
+| `STABLECOIN` | `CUSTOMER_POSTING`     | 1→CBS:POSTING, 2→GL:POSTING                    |
 
 ---
 
@@ -141,20 +141,20 @@ POST ──► │  PNDG   │ ──► all legs SUCCESS ──► ACSP
          └─────────┘ ──► validation fail  ──► RJCT (terminal)
 ```
 
-| Status | Meaning                                         |
-|--------|-------------------------------------------------|
-| `PNDG` | Pending — one or more legs not yet SUCCESS      |
-| `ACSP` | Accepted / Success — all legs succeeded         |
-| `RJCT` | Rejected — validation or config failure         |
+| Status | Meaning                                    |
+|--------|--------------------------------------------|
+| `PNDG` | Pending — one or more legs not yet SUCCESS |
+| `ACSP` | Accepted / Success — all legs succeeded    |
+| `RJCT` | Rejected — validation or config failure    |
 
 ---
 
 ## Environment Summary
 
-| Env     | Compose File                      | Spring Profile | DB              |
-|---------|-----------------------------------|----------------|-----------------|
-| local   | (no Docker — H2 in-memory)        | `local`        | H2              |
-| dev     | `deploy/docker-compose.dev.yml`   | `dev`          | PostgreSQL      |
-| qa      | `deploy/docker-compose.qa.yml`    | `qa`           | PostgreSQL      |
-| uat     | `deploy/docker-compose.uat.yml`   | `uat`          | PostgreSQL      |
-| prod    | `deploy/docker-compose.prod.yml`  | `prod`         | PostgreSQL      |
+| Env   | Compose File                     | Spring Profile | DB         |
+|-------|----------------------------------|----------------|------------|
+| local | (no Docker — H2 in-memory)       | `local`        | H2         |
+| dev   | `deploy/docker-compose.dev.yml`  | `dev`          | PostgreSQL |
+| qa    | `deploy/docker-compose.qa.yml`   | `qa`           | PostgreSQL |
+| uat   | `deploy/docker-compose.uat.yml`  | `uat`          | PostgreSQL |
+| prod  | `deploy/docker-compose.prod.yml` | `prod`         | PostgreSQL |

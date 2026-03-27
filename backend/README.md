@@ -39,14 +39,14 @@ mvn test -Dtest=AccountPostingIntegrationTest
 Each profile has a fully self-contained `application-{env}.yml`.
 Credentials are placeholder values — real values are injected by CyberArk at runtime.
 
-| Profile  | Database           | Kafka    | Log Level     | Notes                            |
-|----------|--------------------|----------|---------------|----------------------------------|
-| `local`  | H2 in-memory       | disabled | DEBUG         | `ddl-auto: create-drop`, seed SQL|
-| `dev`    | PostgreSQL :5432   | disabled | DEBUG         |                                  |
-| `docker` | PostgreSQL (container) | disabled | INFO     | Used inside Docker Compose stack |
-| `qa`     | PostgreSQL         | disabled | INFO          |                                  |
-| `uat`    | PostgreSQL         | disabled | INFO          |                                  |
-| `prod`   | PostgreSQL         | disabled | INFO          | Pool size 20                     |
+| Profile  | Database               | Kafka    | Log Level | Notes                             |
+|----------|------------------------|----------|-----------|-----------------------------------|
+| `local`  | H2 in-memory           | disabled | DEBUG     | `ddl-auto: create-drop`, seed SQL |
+| `dev`    | PostgreSQL :5432       | disabled | DEBUG     |                                   |
+| `docker` | PostgreSQL (container) | disabled | INFO      | Used inside Docker Compose stack  |
+| `qa`     | PostgreSQL             | disabled | INFO      |                                   |
+| `uat`    | PostgreSQL             | disabled | INFO      |                                   |
+| `prod`   | PostgreSQL             | disabled | INFO      | Pool size 20                      |
 
 Activate: `-Dspring-boot.run.profiles=local` or env var `SPRING_PROFILES_ACTIVE=dev`
 
@@ -258,15 +258,16 @@ All JSON uses **snake_case** (Jackson `SNAKE_CASE` naming strategy applied globa
 
 ### Account Posting
 
-| Method | Path                                          | Status | Description                           |
-|--------|-----------------------------------------------|--------|---------------------------------------|
-| `POST` | `/v2/payment/account-posting`                 | 201    | Submit a new posting                  |
-| `GET`  | `/v2/payment/account-posting`                 | 200    | Search active postings (paginated)    |
-| `GET`  | `/v2/payment/account-posting/{postingId}`     | 200    | Get posting + all legs (active + history fallback) |
-| `POST` | `/v2/payment/account-posting/retry`           | 200    | Retry PNDG postings                   |
-| `GET`  | `/v2/payment/account-posting/history`         | 200    | Search archived postings (paginated)  |
+| Method | Path                                      | Status | Description                                        |
+|--------|-------------------------------------------|--------|----------------------------------------------------|
+| `POST` | `/v2/payment/account-posting`             | 201    | Submit a new posting                               |
+| `GET`  | `/v2/payment/account-posting`             | 200    | Search active postings (paginated)                 |
+| `GET`  | `/v2/payment/account-posting/{postingId}` | 200    | Get posting + all legs (active + history fallback) |
+| `POST` | `/v2/payment/account-posting/retry`       | 200    | Retry PNDG postings                                |
+| `GET`  | `/v2/payment/account-posting/history`     | 200    | Search archived postings (paginated)               |
 
 **Create request body:**
+
 ```json
 {
   "source_reference_id": "SRC-1001",
@@ -285,31 +286,32 @@ All JSON uses **snake_case** (Jackson `SNAKE_CASE` naming strategy applied globa
 
 **Search query parameters:**
 
-| Param                       | Type              | Match   |
-|-----------------------------|-------------------|---------|
-| `status`                    | `PNDG\|ACSP\|RJCT`| exact   |
-| `source_name`               | string            | exact   |
-| `request_type`              | string            | exact   |
-| `source_reference_id`       | string            | exact   |
-| `end_to_end_reference_id`   | string            | exact   |
-| `target_system`             | string            | LIKE    |
-| `from_date`                 | `yyyy-MM-dd`      | >=      |
-| `to_date`                   | `yyyy-MM-dd`      | <=      |
-| `page`                      | int               | 0-based |
-| `size`                      | int               | default 20 |
+| Param                     | Type               | Match      |
+|---------------------------|--------------------|------------|
+| `status`                  | `PNDG\|ACSP\|RJCT` | exact      |
+| `source_name`             | string             | exact      |
+| `request_type`            | string             | exact      |
+| `source_reference_id`     | string             | exact      |
+| `end_to_end_reference_id` | string             | exact      |
+| `target_system`           | string             | LIKE       |
+| `from_date`               | `yyyy-MM-dd`       | >=         |
+| `to_date`                 | `yyyy-MM-dd`       | <=         |
+| `page`                    | int                | 0-based    |
+| `size`                    | int                | default 20 |
 
 ### Posting Legs
 
-| Method  | Path                                                  | Status | Description                        |
-|---------|-------------------------------------------------------|--------|------------------------------------|
-| `GET`   | `/v2/payment/account-posting/{postingId}/leg`         | 200    | List all legs ordered by leg_order |
-| `GET`   | `/v2/payment/account-posting/{postingId}/leg/{legId}` | 200    | Get a single leg                   |
+| Method  | Path                                                  | Status | Description                          |
+|---------|-------------------------------------------------------|--------|--------------------------------------|
+| `GET`   | `/v2/payment/account-posting/{postingId}/leg`         | 200    | List all legs ordered by leg_order   |
+| `GET`   | `/v2/payment/account-posting/{postingId}/leg/{legId}` | 200    | Get a single leg                     |
 | `PATCH` | `/v2/payment/account-posting/{postingId}/leg/{legId}` | 200    | Manual status override (mode=MANUAL) |
 
 > **Note:** `PUT` leg endpoint is intentionally absent. `legService.updateLeg()` is called in-process
 > by strategy services only — it is not exposed over HTTP.
 
 **PATCH body:**
+
 ```json
 {
   "status": "SUCCESS",
@@ -319,14 +321,14 @@ All JSON uses **snake_case** (Jackson `SNAKE_CASE` naming strategy applied globa
 
 ### Posting Config
 
-| Method   | Path                                              | Status | Description                          |
-|----------|---------------------------------------------------|--------|--------------------------------------|
-| `GET`    | `/v2/payment/account-posting/config`              | 200    | List all config entries              |
-| `GET`    | `/v2/payment/account-posting/config/{requestType}`| 200    | Get routing for one request type     |
-| `POST`   | `/v2/payment/account-posting/config`              | 201    | Create a config entry                |
-| `PUT`    | `/v2/payment/account-posting/config/{configId}`   | 200    | Update a config entry                |
-| `DELETE` | `/v2/payment/account-posting/config/{configId}`   | 204    | Delete a config entry                |
-| `POST`   | `/v2/payment/account-posting/config/cache/flush`  | 204    | Flush the in-memory config cache     |
+| Method   | Path                                               | Status | Description                      |
+|----------|----------------------------------------------------|--------|----------------------------------|
+| `GET`    | `/v2/payment/account-posting/config`               | 200    | List all config entries          |
+| `GET`    | `/v2/payment/account-posting/config/{requestType}` | 200    | Get routing for one request type |
+| `POST`   | `/v2/payment/account-posting/config`               | 201    | Create a config entry            |
+| `PUT`    | `/v2/payment/account-posting/config/{configId}`    | 200    | Update a config entry            |
+| `DELETE` | `/v2/payment/account-posting/config/{configId}`    | 204    | Delete a config entry            |
+| `POST`   | `/v2/payment/account-posting/config/cache/flush`   | 204    | Flush the in-memory config cache |
 
 > Config entries are Caffeine-cached per `requestType` (500 max entries, 1h TTL).
 > Always call `POST /config/cache/flush` after any config change.
@@ -339,48 +341,55 @@ All JSON uses **snake_case** (Jackson `SNAKE_CASE` naming strategy applied globa
   "name": "ERROR_CODE",
   "message": "Human-readable description",
   "errors": [
-    { "field": "amount", "message": "must be greater than 0" }
+    {
+      "field": "amount",
+      "message": "must be greater than 0"
+    }
   ]
 }
 ```
 
-| HTTP | Code                     | Cause                                             |
-|------|--------------------------|---------------------------------------------------|
-| 400  | `VALIDATION_FAILED`      | Bean validation failure — includes `errors[]`     |
-| 400  | `INVALID_REQUEST_BODY`   | Malformed / unparseable JSON body                 |
-| 400  | `INVALID_ENUM_VALUE`     | Unknown `source_name` or `request_type`           |
-| 404  | `NOT_FOUND`              | Posting or config entry does not exist            |
-| 422  | `DUPLICATE_E2E_REF`      | Duplicate `end_to_end_reference_id`               |
-| 422  | `NO_CONFIG_FOUND`        | No `posting_config` for the given `request_type`  |
-| 422  | `DUPLICATE_CONFIG_ORDER` | Unique constraint on `(request_type, order_seq)`  |
-| 500  | `INTERNAL_ERROR`         | Unexpected server error                           |
+| HTTP | Code                     | Cause                                            |
+|------|--------------------------|--------------------------------------------------|
+| 400  | `VALIDATION_FAILED`      | Bean validation failure — includes `errors[]`    |
+| 400  | `INVALID_REQUEST_BODY`   | Malformed / unparseable JSON body                |
+| 400  | `INVALID_ENUM_VALUE`     | Unknown `source_name` or `request_type`          |
+| 404  | `NOT_FOUND`              | Posting or config entry does not exist           |
+| 422  | `DUPLICATE_E2E_REF`      | Duplicate `end_to_end_reference_id`              |
+| 422  | `NO_CONFIG_FOUND`        | No `posting_config` for the given `request_type` |
+| 422  | `DUPLICATE_CONFIG_ORDER` | Unique constraint on `(request_type, order_seq)` |
+| 500  | `INTERNAL_ERROR`         | Unexpected server error                          |
 
 ---
 
 ## Health & Monitoring
 
-| Endpoint                    | Description        |
-|-----------------------------|--------------------|
-| `GET /actuator/health`      | Application health |
-| `GET /actuator/info`        | Build info         |
-| `GET /actuator/metrics`     | Micrometer metrics |
+| Endpoint                | Description        |
+|-------------------------|--------------------|
+| `GET /actuator/health`  | Application health |
+| `GET /actuator/info`    | Build info         |
+| `GET /actuator/metrics` | Micrometer metrics |
 
 ---
 
 ## Design Notes
 
 ### Leg Decoupling
+
 `AccountPostingLegEntity.postingId` is a plain `Long` column — not a JPA `@ManyToOne`.
 The `leg` package never imports from `posting`.
 **Why:** Prevents accidental cascade operations, avoids N+1 lazy-loading pitfalls, and keeps the
 packages independently deployable. Fetching is always explicit.
 
 ### Pre-insert Legs
+
 All legs are saved as `PENDING` before any external call is made. If a call fails mid-flight,
 every leg already exists in the DB and is immediately retryable without any special recovery path.
 
 ### Retry Lock Design
+
 Two-phase lock — no `SELECT FOR UPDATE`, no `SKIP LOCKED`:
+
 1. `findEligibleIdsForRetry()` — JPQL SELECT (no lock) identifies candidates
 2. `lockEligibleByIds()` — single `@Modifying` JPQL UPDATE sets `retry_locked_until = now + 120s`
 
@@ -388,15 +397,16 @@ The lock is cleared by `PostingRetryProcessorV2` at the end of processing (succe
 so the posting is immediately retryable again. Works on H2, PostgreSQL, and Oracle.
 
 ### Strategy Pattern
+
 Each target system × operation combination is a separate `@Component`:
 
-| Strategy key       | Class                 | Target system call         |
-|--------------------|----------------------|----------------------------|
-| `CBS_POSTING`      | CBSPostingService    | CBS core banking post      |
-| `GL_POSTING`       | GLPostingService     | General ledger post        |
-| `OBPM_POSTING`     | OBPMPostingService   | OBPM post                  |
-| `CBS_ADD_HOLD`     | CBSAddHoldService    | CBS add hold               |
-| `CBS_REMOVE_HOLD`  | CBSRemoveHoldService | CBS remove hold            |
+| Strategy key      | Class                | Target system call    |
+|-------------------|----------------------|-----------------------|
+| `CBS_POSTING`     | CBSPostingService    | CBS core banking post |
+| `GL_POSTING`      | GLPostingService     | General ledger post   |
+| `OBPM_POSTING`    | OBPMPostingService   | OBPM post             |
+| `CBS_ADD_HOLD`    | CBSAddHoldService    | CBS add hold          |
+| `CBS_REMOVE_HOLD` | CBSRemoveHoldService | CBS remove hold       |
 
 `PostingStrategyFactory` builds a `Map<String, PostingStrategy>` at startup keyed by
 `getPostingFlow()`. Add a new target system by implementing `PostingStrategy` — no other
@@ -406,17 +416,21 @@ changes needed.
 > Replace them with real HTTP client calls before go-live.**
 
 ### JSON Payload Columns
+
 `request_payload` and `response_payload` are stored as JSON.
 Annotated with `@JdbcTypeCode(SqlTypes.JSON)` — Hibernate maps to:
+
 - `JSONB` on PostgreSQL
 - `JSON` on H2
 - `CLOB` / native JSON on Oracle
 
 ### Kafka
+
 `PostingEventPublisher` is conditionally created (`@ConditionalOnProperty("app.kafka.enabled", havingValue="true")`).
 The service null-checks the publisher before use — Kafka being disabled never causes a NullPointerException.
 
 ### Archival
+
 `ArchivalServiceImplV2` moves records older than `threshold-days` from active to history tables
 in configurable batches. Each batch runs in its own transaction (`TransactionTemplate`).
 `GET /v2/payment/account-posting/{postingId}` is archive-transparent — it falls back to the

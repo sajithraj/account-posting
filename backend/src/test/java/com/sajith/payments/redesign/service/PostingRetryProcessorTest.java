@@ -1,10 +1,11 @@
 package com.sajith.payments.redesign.service;
 
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sajith.payments.redesign.dto.accountposting.Amount;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
 import com.sajith.payments.redesign.entity.AccountPostingEntity;
-import com.sajith.payments.redesign.entity.enums.CreditDebitIndicator;
 import com.sajith.payments.redesign.entity.enums.LegStatus;
 import com.sajith.payments.redesign.entity.enums.PostingStatus;
 import com.sajith.payments.redesign.repository.AccountPostingRepository;
@@ -12,14 +13,12 @@ import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrat
 import com.sajith.payments.redesign.service.accountposting.strategy.PostingStrategyFactory;
 import com.sajith.payments.redesign.service.accountpostingleg.AccountPostingLegServiceV2;
 import com.sajith.payments.redesign.service.retry.PostingRetryProcessorV2;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -182,17 +181,19 @@ class PostingRetryProcessorTest {
         p.setStatus(PostingStatus.PNDG);
         p.setRequestType(requestType);
         try {
-            AccountPostingRequestV2 req = new AccountPostingRequestV2();
-            req.setSourceReferenceId("SRC");
-            req.setEndToEndReferenceId("e2e-" + id);
+            IncomingPostingRequest req = new IncomingPostingRequest();
+            req.setSourceRefId("SRC");
+            req.setEndToEndRefId("e2e-" + id);
             req.setSourceName("IMX");
             req.setRequestType("IMX_CBS_GL");
-            req.setAmount(new BigDecimal("500.00"));
-            req.setCurrency("USD");
-            req.setCreditDebitIndicator(CreditDebitIndicator.DEBIT);
+            Amount amount = new Amount();
+            amount.setValue("500.00");
+            amount.setCurrency("USD");
+            req.setAmount(amount);
+            req.setCreditDebitIndicator("DEBIT");
             req.setDebtorAccount("ACC-D");
             req.setCreditorAccount("ACC-C");
-            req.setRequestedExecutionDate(LocalDate.now());
+            req.setRequestedExecutionDate(LocalDate.now().toString());
             p.setRequestPayload(objectMapper.writeValueAsString(req));
         } catch (Exception ignored) {
         }

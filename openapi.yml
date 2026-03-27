@@ -82,81 +82,90 @@ paths:
         5. Pre-inserts all legs as `PENDING` before calling any external system
         6. Calls each target system in `order_seq` order via the matching `PostingStrategy`
         7. Updates the posting status to `ACSP` (all legs SUCCESS) or `PNDG` (any leg failed)
-        8. Publishes a `PostingSuccessEvent` to Kafka if `ACSP` and Kafka is enabled
       operationId: createPosting
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AccountPostingRequest'
+              $ref: '#/components/schemas/IncomingPostingRequest'
             examples:
               imx_cbs_gl:
                 summary: IMX — IMX_CBS_GL (CBS → GL, 2 legs)
                 value:
+                  source_name: "IMX"
                   source_reference_id: "SRC-001"
                   end_to_end_reference_id: "E2E-001"
-                  source_name: "IMX"
-                  request_type: "IMX_CBS_GL"
-                  amount: 1500.00
-                  currency: "USD"
                   credit_debit_indicator: "DEBIT"
+                  request_type: "IMX_CBS_GL"
+                  product_code: "FT"
+                  clearing_system: "SWIFT"
+                  requested_execution_date: "2026-03-23"
                   debtor_account: "1324658900"
                   creditor_account: "9875312300"
-                  requested_execution_date: "2026-03-23"
                   remittance_information: "Invoice payment INV-2026-001"
+                  direction: "OUTGOING"
+                  amount:
+                    value: "1500.00"
+                    currency_code: "USD"
               imx_obpm:
                 summary: IMX — IMX_OBPM (OBPM, 1 leg)
                 value:
+                  source_name: "IMX"
                   source_reference_id: "SRC-002"
                   end_to_end_reference_id: "E2E-002"
-                  source_name: "IMX"
-                  request_type: "IMX_OBPM"
-                  amount: 800.00
-                  currency: "USD"
                   credit_debit_indicator: "CREDIT"
+                  request_type: "IMX_OBPM"
+                  product_code: "FT"
+                  clearing_system: "SWIFT"
+                  requested_execution_date: "2026-03-23"
                   debtor_account: "1234567890"
                   creditor_account: "0987654321"
-                  requested_execution_date: "2026-03-23"
+                  amount:
+                    value: "800.00"
+                    currency_code: "USD"
               rms_fed_return:
                 summary: RMS — FED_RETURN (CBS → GL, 2 legs)
                 value:
+                  source_name: "RMS"
                   source_reference_id: "SRC-003"
                   end_to_end_reference_id: "E2E-003"
-                  source_name: "RMS"
-                  request_type: "FED_RETURN"
-                  amount: 500.00
-                  currency: "USD"
                   credit_debit_indicator: "CREDIT"
+                  request_type: "FED_RETURN"
+                  requested_execution_date: "2026-03-23"
                   debtor_account: "1234567890"
                   creditor_account: "0987654321"
-                  requested_execution_date: "2026-03-23"
+                  amount:
+                    value: "500.00"
+                    currency_code: "USD"
               stablecoin_add_hold:
                 summary: STABLECOIN — ADD_ACCOUNT_HOLD (CBS ADD_HOLD, 1 leg)
                 value:
+                  source_name: "STABLECOIN"
                   source_reference_id: "SRC-004"
                   end_to_end_reference_id: "E2E-004"
-                  source_name: "STABLECOIN"
-                  request_type: "ADD_ACCOUNT_HOLD"
-                  amount: 5000.00
-                  currency: "USD"
                   credit_debit_indicator: "DEBIT"
+                  request_type: "ADD_ACCOUNT_HOLD"
+                  requested_execution_date: "2026-03-23"
                   debtor_account: "1234567890"
                   creditor_account: "0987654321"
-                  requested_execution_date: "2026-03-23"
+                  amount:
+                    value: "5000.00"
+                    currency_code: "USD"
               stablecoin_buy_customer_posting:
                 summary: STABLECOIN — BUY_CUSTOMER_POSTING (CBS REMOVE_HOLD, 1 leg)
                 value:
+                  source_name: "STABLECOIN"
                   source_reference_id: "SRC-005"
                   end_to_end_reference_id: "E2E-005"
-                  source_name: "STABLECOIN"
-                  request_type: "BUY_CUSTOMER_POSTING"
-                  amount: 5000.00
-                  currency: "USD"
                   credit_debit_indicator: "DEBIT"
+                  request_type: "BUY_CUSTOMER_POSTING"
+                  requested_execution_date: "2026-03-23"
                   debtor_account: "1234567890"
                   creditor_account: "0987654321"
-                  requested_execution_date: "2026-03-23"
+                  amount:
+                    value: "5000.00"
+                    currency_code: "USD"
       responses:
         '201':
           description: Posting created and processed
@@ -260,47 +269,47 @@ paths:
       parameters:
         - name: status
           in: query
-          description: Filter by posting status
+          description: "Filter by posting status. Valid values: PNDG | ACSP | RJCT"
           schema:
             $ref: '#/components/schemas/PostingStatus'
-        - name: source_name
+        - name: sourceName
           in: query
           description: Filter by originating system name
           schema:
             type: string
             example: IMX
-        - name: request_type
+        - name: requestType
           in: query
           description: Filter by request type
           schema:
             type: string
             example: IMX_CBS_GL
-        - name: source_reference_id
+        - name: sourceReferenceId
           in: query
           description: Filter by source system reference (exact match)
           schema:
             type: string
-        - name: end_to_end_reference_id
+        - name: endToEndReferenceId
           in: query
           description: Filter by end-to-end reference (exact match)
           schema:
             type: string
-        - name: target_system
+        - name: targetSystem
           in: query
           description: Filter by target system (LIKE match on target_systems column)
           schema:
             type: string
             example: CBS
-        - name: from_date
+        - name: fromDate
           in: query
-          description: Filter by requested_execution_date >= from_date (ISO 8601 date)
+          description: Filter by requested_execution_date >= fromDate (ISO 8601 date)
           schema:
             type: string
             format: date
             example: "2026-03-01"
-        - name: to_date
+        - name: toDate
           in: query
-          description: Filter by requested_execution_date <= to_date (ISO 8601 date)
+          description: Filter by requested_execution_date <= toDate (ISO 8601 date)
           schema:
             type: string
             format: date
@@ -322,10 +331,10 @@ paths:
             maximum: 200
         - name: sort
           in: query
-          description: Sort field and direction (e.g. `posting_id,desc`)
+          description: Sort field and direction (e.g. `postingId,desc`)
           schema:
             type: string
-            example: posting_id,desc
+            example: postingId,desc
       responses:
         '200':
           description: Paginated list of postings
@@ -352,39 +361,39 @@ paths:
       parameters:
         - name: status
           in: query
-          description: Filter by posting status
+          description: "Filter by posting status. Valid values: PNDG | ACSP | RJCT"
           schema:
             $ref: '#/components/schemas/PostingStatus'
-        - name: source_name
+        - name: sourceName
           in: query
           schema:
             type: string
             example: IMX
-        - name: request_type
+        - name: requestType
           in: query
           schema:
             type: string
             example: IMX_CBS_GL
-        - name: source_reference_id
+        - name: sourceReferenceId
           in: query
           schema:
             type: string
-        - name: end_to_end_reference_id
+        - name: endToEndReferenceId
           in: query
           schema:
             type: string
-        - name: target_system
+        - name: targetSystem
           in: query
           schema:
             type: string
             example: CBS
-        - name: from_date
+        - name: fromDate
           in: query
           schema:
             type: string
             format: date
             example: "2026-01-01"
-        - name: to_date
+        - name: toDate
           in: query
           schema:
             type: string
@@ -404,7 +413,7 @@ paths:
           in: query
           schema:
             type: string
-            example: posting_id,desc
+            example: postingId,desc
       responses:
         '200':
           description: Paginated list of archived postings
@@ -483,25 +492,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/RetryResponse'
               example:
-                total_legs_retried: 3
+                total_postings: 3
                 success_count: 2
                 failed_count: 1
-                results:
-                  - posting_leg_id: 10
-                    posting_id: 5
-                    previous_status: "FAILED"
-                    new_status: "SUCCESS"
-                    reason: null
-                  - posting_leg_id: 11
-                    posting_id: 5
-                    previous_status: "PENDING"
-                    new_status: "SUCCESS"
-                    reason: null
-                  - posting_leg_id: 12
-                    posting_id: 6
-                    previous_status: "FAILED"
-                    new_status: "FAILED"
-                    reason: "Connection timeout"
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -869,75 +862,125 @@ components:
       description: Direction of the posting from the debtor's perspective
 
     # ── Requests ──────────────────────────────────────────────────────────────
-    AccountPostingRequest:
+    Amount:
       type: object
-      description: Payload for creating a new account posting
-      required:
-        - source_reference_id
-        - end_to_end_reference_id
-        - source_name
-        - request_type
-        - amount
-        - currency
-        - credit_debit_indicator
-        - debtor_account
-        - creditor_account
-        - requested_execution_date
+      description: Transaction amount with currency
       properties:
-        source_reference_id:
+        value:
           type: string
-          maxLength: 100
-          description: Upstream system's own reference for this posting
-          example: "SRC-20260323-001"
-        end_to_end_reference_id:
-          type: string
-          maxLength: 100
-          description: Unique end-to-end identifier. Used for idempotency — duplicate value returns HTTP 422.
-          example: "E2E-20260323-001"
-        source_name:
-          type: string
-          maxLength: 100
-          description: "Name of the originating system. Valid values: IMX | RMS | STABLECOIN"
-          example: "IMX"
-        request_type:
-          type: string
-          maxLength: 50
-          description: Transaction type that determines the routing strategy from `posting_config`.
-          example: "IMX_CBS_GL"
-        amount:
-          type: number
-          format: decimal
-          minimum: 0.0001
-          description: Transaction amount. Must be greater than zero.
-          example: 1500.00
-        currency:
+          description: Transaction amount as a string. Must represent a positive decimal number.
+          example: "1500.00"
+        currency_code:
           type: string
           minLength: 3
           maxLength: 3
           description: ISO 4217 3-letter currency code
           example: "USD"
+
+    IncomingPostingRequest:
+      type: object
+      description: Payload for creating a new account posting
+      required:
+        - source_name
+        - source_reference_id
+        - end_to_end_reference_id
+        - credit_debit_indicator
+        - request_type
+        - requested_execution_date
+        - debtor_account
+        - creditor_account
+        - amount
+      properties:
+        source_name:
+          type: string
+          description: "Name of the originating system. Valid values: IMX | RMS | STABLECOIN"
+          example: "IMX"
+        source_reference_id:
+          type: string
+          description: Upstream system's own reference for this posting
+          example: "SRC-20260323-001"
+        end_to_end_reference_id:
+          type: string
+          description: Unique end-to-end identifier. Used for idempotency — duplicate value returns HTTP 422.
+          example: "E2E-20260323-001"
         credit_debit_indicator:
-          $ref: '#/components/schemas/CreditDebitIndicator'
+          type: string
+          description: "Direction of the posting. Valid values: CREDIT | DEBIT"
+          example: "DEBIT"
+        request_type:
+          type: string
+          description: Transaction type that determines the routing strategy from `posting_config`.
+          example: "IMX_CBS_GL"
+        product_code:
+          type: string
+          description: Product code for the transaction
+          example: "FT"
+        clearing_system:
+          type: string
+          description: Clearing system used for the transaction
+          example: "SWIFT"
+        requested_execution_date:
+          type: string
+          description: Requested value date (ISO 8601 date string)
+          example: "2026-03-23"
         debtor_account:
           type: string
-          maxLength: 50
           description: Account number of the debtor
           example: "1324658900"
         creditor_account:
           type: string
-          maxLength: 50
           description: Account number of the creditor
           example: "9875312300"
-        requested_execution_date:
-          type: string
-          format: date
-          description: Requested value date (ISO 8601 date)
-          example: "2026-03-23"
         remittance_information:
           type: string
-          maxLength: 500
           description: Free-text payment reference (optional)
           example: "Invoice payment INV-2026-001"
+        direction:
+          type: string
+          description: "Direction of the payment flow. E.g. OUTGOING | INCOMING"
+          example: "OUTGOING"
+        amount:
+          $ref: '#/components/schemas/Amount'
+        team_code:
+          type: string
+          description: Team code for routing or ownership identification
+          example: "PAYMENTS"
+        debit_rc:
+          type: string
+          description: Debit RC reference
+          example: "DB-RC-001"
+        credit_rc:
+          type: string
+          description: Credit RC reference
+          example: "CR-RC-001"
+        transaction_code:
+          type: string
+          description: Transaction code for the posting
+          example: "TXN-CODE-01"
+        branch:
+          type: string
+          description: Branch identifier for the posting
+          example: "BRANCH-001"
+        loan_type:
+          type: string
+          description: Loan type associated with the posting
+          example: "PERSONAL"
+        line_desc:
+          type: string
+          description: Line description for the posting entry
+          example: "Customer payment flow"
+        cif:
+          type: string
+          description: Customer Information File number
+          example: "CIF-123456"
+        customer_name:
+          type: string
+          description: Name of the customer associated with the transaction
+          example: "John Doe"
+        hold_id:
+          type: string
+          description: Hold identifier for CBS hold operations
+          example: "HOLD-001"
 
     RetryRequest:
       type: object
@@ -1254,48 +1297,20 @@ components:
 
     RetryResponse:
       type: object
-      description: Summary of a retry operation
+      description: Summary of a retry operation — counts at posting level (not leg level)
       properties:
-        total_legs_retried:
+        total_postings:
           type: integer
-          description: Total number of legs attempted across all postings
+          description: Total number of postings processed in this retry run
           example: 3
         success_count:
           type: integer
-          description: Number of legs that transitioned to SUCCESS
+          description: Number of postings that reached ACSP (all legs SUCCESS)
           example: 2
         failed_count:
           type: integer
-          description: Number of legs that remained or became FAILED
+          description: Number of postings that remained PNDG after retry
           example: 1
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/LegRetryResult'
-
-    LegRetryResult:
-      type: object
-      description: Per-leg result from a retry operation
-      properties:
-        posting_leg_id:
-          type: integer
-          format: int64
-          example: 10
-        posting_id:
-          type: integer
-          format: int64
-          example: 5
-        previous_status:
-          type: string
-          example: "FAILED"
-        new_status:
-          type: string
-          example: "SUCCESS"
-        reason:
-          type: string
-          nullable: true
-          description: Error message if the retry also failed, null on success
-          example: null
 
     PagedAccountPostingResponse:
       type: object

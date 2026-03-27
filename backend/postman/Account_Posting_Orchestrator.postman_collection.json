@@ -2,7 +2,7 @@
   "info": {
     "name": "Account Posting Orchestrator",
     "_postman_id": "apo-collection-v4",
-    "description": "Full API collection for the Account Posting Orchestrator service.\n\nBase URL: http://localhost:8080/api\n\n--- Naming convention ---\nPOST / PUT request bodies  â†’ snake_case keys (Jackson SNAKE_CASE strategy)\nGET query parameters       â†’ camelCase (Spring @ModelAttribute binding)\n\n--- Enums ---\ncredit_debit_indicator: CREDIT | DEBIT\nstatus / leg status:    PENDING | SUCCESS | FAILED\n\n--- Source names & request types (canonical from dev DB) ---\nIMX         â†’ IMX_CBS_GL | IMX_OBPM\nRMS         â†’ FED_RETURN | GL_RETURN | MCA_RETURN\nSTABLECOIN  â†’ BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\n\n--- Target systems ---\nCBS | GL | OBPM\n\n--- Operations ---\nPOSTING | ADD_HOLD | REMOVE_HOLD",
+    "description": "Full API collection for the Account Posting Orchestrator service.\n\nBase URL: http://localhost:8080/api\n\n--- Naming convention ---\nPOST / PUT request bodies  \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 snake_case keys (Jackson SNAKE_CASE strategy)\nGET query parameters       \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 camelCase (Spring @ModelAttribute binding)\n\n--- Enums ---\ncredit_debit_indicator: CREDIT | DEBIT\nstatus / leg status:    PENDING | SUCCESS | FAILED\n\n--- Source names & request types (canonical from dev DB) ---\nIMX         \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 IMX_CBS_GL | IMX_OBPM\nRMS         \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 FED_RETURN | GL_RETURN | MCA_RETURN\nSTABLECOIN  \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING\n\n--- Target systems ---\nCBS | GL | OBPM\n\n--- Operations ---\nPOSTING | ADD_HOLD | REMOVE_HOLD",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -68,7 +68,7 @@
                 "IMX_CBS_GL"
               ]
             },
-            "description": "Returns the ordered legs for IMX_CBS_GL: CBS (order 1) â†’ GL (order 2).\n\nOther valid request types: IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
+            "description": "Returns the ordered legs for IMX_CBS_GL: CBS (order 1) \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL (order 2).\n\nOther valid request types: IMX_OBPM | FED_RETURN | GL_RETURN | MCA_RETURN | BUY_CUSTOMER_POSTING | BUY_CUSTOMER_POSTING | ADD_ACCOUNT_HOLD | CUSTOMER_POSTING"
           }
         },
         {
@@ -175,10 +175,10 @@
     },
     {
       "name": "Account Posting",
-      "description": "Core posting operations  -  create, search, get by ID, and retry.\n\nKey behaviours:\n- POST body fields must be snake_case (Jackson SNAKE_CASE strategy)\n- GET query params are camelCase (Spring ModelAttribute binding)\n- @Valid fires before service  -  validation failure returns HTTP 400 without creating any DB record\n- Duplicate end_to_end_reference_id â†’ HTTP 422\n- reason field: 'Request processed successfully' on full success, else last failed leg's error",
+      "description": "Core posting operations  -  create, search, get by ID, and retry.\n\nKey behaviours:\n- POST body fields must be snake_case (Jackson SNAKE_CASE strategy)\n- GET query params are camelCase (Spring ModelAttribute binding)\n- @Valid fires before service  -  validation failure returns HTTP 400 without creating any DB record\n- Duplicate end_to_end_reference_id \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 HTTP 422\n- reason field: 'Request processed successfully' on full success, else last failed leg's error",
       "item": [
         {
-          "name": "POST Create Posting  -  IMX IMX_CBS_GL (2 legs: CBS â†’ GL)",
+          "name": "POST Create Posting  -  IMX IMX_CBS_GL (2 legs: CBS \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -219,9 +219,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1324658900\",\n  \"creditor_account\": \"9875312300\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"Invoice payment INV-2026-001\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1324658900\",\n  \"creditor_account\": \"9875312300\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"Invoice payment INV-2026-001\"\n}"
             },
-            "description": "Triggers 2 legs: CBS (order 1) â†’ GL (order 2).\nPre-request script auto-generates unique IDs, a random amount, and today's date."
+            "description": "Triggers 2 legs: CBS (order 1) \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL (order 2).\nPre-request script auto-generates unique IDs, a random amount, and today's date."
           }
         },
         {
@@ -266,13 +266,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_OBPM\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"4400112233\",\n  \"creditor_account\": \"5500998877\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"OBPM wire transfer\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_OBPM\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"4400112233\",\n  \"creditor_account\": \"5500998877\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"OBPM wire transfer\"\n}"
             },
             "description": "Triggers 1 leg: OBPM (order 1)."
           }
         },
         {
-          "name": "POST Create Posting  -  RMS FED_RETURN (2 legs: CBS â†’ GL)",
+          "name": "POST Create Posting  -  RMS FED_RETURN (2 legs: CBS \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -313,13 +313,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"FED_RETURN\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1111222233\",\n  \"creditor_account\": \"4444555566\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"FED_RETURN\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1111222233\",\n  \"creditor_account\": \"4444555566\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Triggers 2 legs: CBS (order 1) â†’ GL (order 2)."
+            "description": "Triggers 2 legs: CBS (order 1) \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL (order 2)."
           }
         },
         {
-          "name": "POST Create Posting  -  RMS GL_RETURN (2 legs: GL â†’ GL)",
+          "name": "POST Create Posting  -  RMS GL_RETURN (2 legs: GL \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -360,9 +360,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"GL_RETURN\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"GL_RETURN\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Triggers 2 legs: GL (order 1) â†’ GL (order 2)."
+            "description": "Triggers 2 legs: GL (order 1) \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL (order 2)."
           }
         },
         {
@@ -407,13 +407,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"MCA_RETURN\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"MCA_RETURN\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
             "description": "Triggers 1 leg: OBPM (order 1)."
           }
         },
         {
-          "name": "POST Create Posting  -  STABLECOIN CUSTOMER_POSTING (2 legs: CBS â†’ GL)",
+          "name": "POST Create Posting  -  STABLECOIN CUSTOMER_POSTING (2 legs: CBS \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -454,13 +454,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"CUSTOMER_POSTING\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"Stablecoin customer posting\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"CUSTOMER_POSTING\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\",\n  \"remittance_information\": \"Stablecoin customer posting\"\n}"
             },
-            "description": "Triggers 2 legs: CBS (order 1) â†’ GL (order 2)."
+            "description": "Triggers 2 legs: CBS (order 1) \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL (order 2)."
           }
         },
         {
-          "name": "POST Create Posting  -  STABLECOIN BUY_CUSTOMER_POSTING (2 legs: CBS â†’ GL)",
+          "name": "POST Create Posting  -  STABLECOIN BUY_CUSTOMER_POSTING (2 legs: CBS \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL)",
           "event": [
             {
               "listen": "prerequest",
@@ -501,9 +501,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"7777888899\",\n  \"creditor_account\": \"1010202030\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
-            "description": "Triggers legs: CBS (order 2) â†’ GL (order 3)."
+            "description": "Triggers legs: CBS (order 2) \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 GL (order 3)."
           }
         },
         {
@@ -548,7 +548,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"ADD_ACCOUNT_HOLD\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"ADD_ACCOUNT_HOLD\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
             "description": "Triggers 1 leg: CBS with ADD_HOLD operation (order 1)."
           }
@@ -595,7 +595,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": {{amount}},\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"{{srcRef}}\",\n  \"end_to_end_reference_id\": \"{{e2eRef}}\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"BUY_CUSTOMER_POSTING\",\n  \"amount\": {\"value\": \"{{amount}}\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"{{execDate}}\"\n}"
             },
             "description": "Triggers 1 leg: CBS with REMOVE_HOLD operation (order 1)."
           }
@@ -625,7 +625,7 @@
               "mode": "raw",
               "raw": "{\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\"\n}"
             },
-            "description": "Missing: source_reference_id, amount, currency, credit_debit_indicator, debtor_account, creditor_account, requested_execution_date.\n@Valid fires at controller layer before service is called  -  no DB record created.\nExpected: HTTP 400 VALIDATION_FAILED with errors[] array."
+            "description": "Missing: source_reference_id, amount (with value + currency_code), credit_debit_indicator, debtor_account, creditor_account, requested_execution_date.\nValidation runs in service layer  -  DB record is created with RJCT status.\nExpected: HTTP 400 VALIDATION_FAILED."
           }
         },
         {
@@ -651,7 +651,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"UNKNOWN_SRC\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-23\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"source_name\": \"UNKNOWN_SRC\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"amount\": {\"value\": \"100.00\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-23\"\n}"
             },
             "description": "All required fields present  -  Bean Validation passes.\nFails at AccountPostingRequestValidator.validateEnums().\nExpected: HTTP 400 INVALID_ENUM_VALUE."
           }
@@ -679,9 +679,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_reference_id\": \"SRC-DUP-001\",\n  \"end_to_end_reference_id\": \"E2E-DUP-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-23\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-DUP-001\",\n  \"end_to_end_reference_id\": \"E2E-DUP-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {\"value\": \"100.00\", \"currency_code\": \"USD\"},\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"1234567890\",\n  \"creditor_account\": \"0987654321\",\n  \"requested_execution_date\": \"2026-03-23\"\n}"
             },
-            "description": "Send this request twice with the same end_to_end_reference_id.\nFirst call succeeds (201). Second call â†’ HTTP 422 DUPLICATE_E2E_REF."
+            "description": "Send this request twice with the same end_to_end_reference_id.\nFirst call succeeds (201). Second call \u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122 HTTP 422 DUPLICATE_E2E_REF."
           }
         },
         {
@@ -716,7 +716,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting?status=PENDING&page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?status=PNDG&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -728,7 +728,7 @@
               "query": [
                 {
                   "key": "status",
-                  "value": "PENDING",
+                  "value": "PNDG",
                   "description": "PENDING | SUCCESS | FAILED"
                 },
                 {
@@ -926,7 +926,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceName=IMX&requestType=IMX_CBS_GL&status=PENDING&fromDate=2026-03-01&toDate=2026-03-31&page=0&size=10",
+              "raw": "{{baseUrl}}/v2/payment/account-posting?sourceName=IMX&requestType=IMX_CBS_GL&status=PNDG&fromDate=2026-03-01&toDate=2026-03-31&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -946,7 +946,7 @@
                 },
                 {
                   "key": "status",
-                  "value": "PENDING"
+                  "value": "PNDG"
                 },
                 {
                   "key": "fromDate",
@@ -1090,37 +1090,6 @@
                 "{{legId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "PUT Update Leg (system/retry path)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/leg/{{legId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v2",
-                "payment",
-                "account-posting",
-                "{{postingId}}",
-                "leg",
-                "{{legId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"SUCCESS\",\n  \"reference_id\": \"CBS-TXN-001\",\n  \"reason\": null,\n  \"posted_time\": \"2026-03-23T10:15:30Z\",\n  \"mode\": \"RETRY\"\n}"
-            },
-            "description": "Full update after calling an external system. Sets mode=RETRY and increments attempt_number."
           }
         },
         {

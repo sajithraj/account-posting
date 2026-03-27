@@ -2,12 +2,11 @@ package com.sajith.payments.redesign.controller;
 
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingCreateResponseV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingFullResponseV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingRequestV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingSearchRequestV2;
+import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.retry.RetryRequestV2;
 import com.sajith.payments.redesign.dto.retry.RetryResponseV2;
 import com.sajith.payments.redesign.service.accountposting.AccountPostingServiceV2;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +30,7 @@ public class AccountPostingControllerV2 {
 
     @PostMapping
     public ResponseEntity<AccountPostingCreateResponseV2> create(
-            @Valid @RequestBody AccountPostingRequestV2 request) {
+            @RequestBody IncomingPostingRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
