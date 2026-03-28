@@ -62,6 +62,8 @@ public class OBPMPostingService implements PostingStrategy {
         boolean success = "SUCCESS".equalsIgnoreCase(obpmStatus);
         String finalStatus = success ? "SUCCESS" : "FAILED";
         String referenceId = String.valueOf(obpmResponse.get("transaction_id"));
+        String postedTime = obpmResponse.get("posted_time") != null
+                ? String.valueOf(obpmResponse.get("posted_time")) : null;
 
         // ── Update leg with result ─────────────────────────────────────────
         ExternalCallResultV2 result = new ExternalCallResultV2(
@@ -70,7 +72,8 @@ public class OBPMPostingService implements PostingStrategy {
                 success ? null : "OBPM returned status: " + obpmStatus,
                 requestPayloadJson,
                 responsePayloadJson,
-                isRetry ? LegMode.RETRY : LegMode.NORM
+                isRetry ? LegMode.RETRY : LegMode.NORM,
+                postedTime
         );
         AccountPostingLegResponseV2 updated = legService.updateLeg(postingId, legId,
                 legMapper.toUpdateLegRequest(result));

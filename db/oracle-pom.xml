@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.accountposting</groupId>
+    <artifactId>account-posting-db-oracle</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Account Posting Orchestrator DB Migrations — Oracle</name>
+
+    <properties>
+        <flyway.version>11.15.0</flyway.version>
+        <!-- Oracle 19c EE server + Java 17 client → ojdbc11 -->
+        <ojdbc.version>19.21.0.0</ojdbc.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-oracle</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>${ojdbc.version}</version>
+        </dependency>
+    </dependencies>
+
+    <!-- Usage:
+         mvn flyway:migrate -f oracle-pom.xml -Pdev
+         mvn flyway:migrate -f oracle-pom.xml -Pqa
+         mvn flyway:migrate -f oracle-pom.xml -Puat
+         mvn flyway:migrate -f oracle-pom.xml -Pprod
+    -->
+    <profiles>
+
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
+                <flyway.user>account_posting_user</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
+                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>qa</id>
+            <properties>
+                <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
+                <flyway.user>account_posting_user</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
+                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>uat</id>
+            <properties>
+                <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
+                <flyway.user>account_posting_user</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
+                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>prod</id>
+            <properties>
+                <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
+                <flyway.user>account_posting_user</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
+                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+            </properties>
+        </profile>
+
+    </profiles>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <configuration>
+                    <url>${flyway.url}</url>
+                    <user>${flyway.user}</user>
+                    <password>${flyway.password}</password>
+                    <schemas>
+                        <schema>${flyway.schemas}</schema>
+                    </schemas>
+                    <locations>
+                        <location>${flyway.locations}</location>
+                    </locations>
+                    <outOfOrder>false</outOfOrder>
+                    <validateOnMigrate>true</validateOnMigrate>
+                    <!-- SQL*Plus mode: needed for PL/SQL blocks using / terminator -->
+                    <oracle.sqlplus>true</oracle.sqlplus>
+                    <oracle.sqlplusWarn>true</oracle.sqlplusWarn>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-database-oracle</artifactId>
+                        <version>${flyway.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.oracle.database.jdbc</groupId>
+                        <artifactId>ojdbc11</artifactId>
+                        <version>${ojdbc.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

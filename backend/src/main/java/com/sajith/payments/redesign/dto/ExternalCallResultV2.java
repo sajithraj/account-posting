@@ -14,6 +14,7 @@ public record ExternalCallResultV2(
         String reason,
         String requestPayload,
         String responsePayload,
-        LegMode mode
+        LegMode mode,
+        String postedTime
 ) {
 }

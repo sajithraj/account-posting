@@ -58,8 +58,17 @@ public interface AccountPostingLegMapperV2 {
             String operation,
             String requestPayload);
 
-    @Mapping(target = "postedTime", expression = "java(java.time.Instant.now())")
+    @Mapping(target = "postedTime", expression = "java(parsePostedTime(result.postedTime()))")
     UpdateLegRequestV2 toUpdateLegRequest(ExternalCallResultV2 result);
+
+    default Instant parsePostedTime(String postedTime) {
+        if (postedTime == null || postedTime.isBlank()) return Instant.now();
+        try {
+            return Instant.parse(postedTime);
+        } catch (Exception e) {
+            return Instant.now();
+        }
+    }
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "postingLegId", ignore = true)

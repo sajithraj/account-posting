@@ -62,6 +62,8 @@ public class GLPostingService implements PostingStrategy {
         boolean success = "SUCCESS".equalsIgnoreCase(glStatus);
         String finalStatus = success ? "SUCCESS" : "FAILED";
         String referenceId = String.valueOf(glResponse.get("responder_ref_id"));
+        String postedTime = glResponse.get("posted_time") != null
+                ? String.valueOf(glResponse.get("posted_time")) : null;
 
         // ── Update leg with result ─────────────────────────────────────────
         ExternalCallResultV2 result = new ExternalCallResultV2(
@@ -70,7 +72,8 @@ public class GLPostingService implements PostingStrategy {
                 success ? null : "GL returned status: " + glStatus,
                 requestPayloadJson,
                 responsePayloadJson,
-                isRetry ? LegMode.RETRY : LegMode.NORM
+                isRetry ? LegMode.RETRY : LegMode.NORM,
+                postedTime
         );
         AccountPostingLegResponseV2 updated = legService.updateLeg(postingId, legId,
                 legMapper.toUpdateLegRequest(result));

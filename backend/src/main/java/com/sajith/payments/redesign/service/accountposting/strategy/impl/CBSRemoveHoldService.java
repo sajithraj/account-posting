@@ -61,6 +61,8 @@ public class CBSRemoveHoldService implements PostingStrategy {
         boolean success = "SUCCESS".equalsIgnoreCase(cbsStatus);
         String finalStatus = success ? "SUCCESS" : "FAILED";
         String referenceId = String.valueOf(cbsResponse.get("transaction_index"));
+        String postedTime = cbsResponse.get("posted_time") != null
+                ? String.valueOf(cbsResponse.get("posted_time")) : null;
 
         ExternalCallResultV2 result = new ExternalCallResultV2(
                 LegStatus.valueOf(finalStatus),
@@ -68,7 +70,8 @@ public class CBSRemoveHoldService implements PostingStrategy {
                 success ? null : "CBS_REMOVE_HOLD returned status: " + cbsStatus,
                 requestPayloadJson,
                 responsePayloadJson,
-                isRetry ? LegMode.RETRY : LegMode.NORM
+                isRetry ? LegMode.RETRY : LegMode.NORM,
+                postedTime
         );
         AccountPostingLegResponseV2 updated = legService.updateLeg(postingId, existingLegId,
                 legMapper.toUpdateLegRequest(result));

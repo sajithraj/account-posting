@@ -64,6 +64,8 @@ public class CBSPostingService implements PostingStrategy {
         boolean success = "SUCCESS".equalsIgnoreCase(cbsStatus);
         String finalStatus = success ? "SUCCESS" : "FAILED";
         String referenceId = String.valueOf(cbsResponse.get("transaction_index"));
+        String postedTime = cbsResponse.get("posted_time") != null
+                ? String.valueOf(cbsResponse.get("posted_time")) : null;
 
         // ── Update leg with result ─────────────────────────────────────────
         ExternalCallResultV2 result = new ExternalCallResultV2(
@@ -72,7 +74,8 @@ public class CBSPostingService implements PostingStrategy {
                 success ? null : "CBS returned status: " + cbsStatus,
                 requestPayloadJson,
                 responsePayloadJson,
-                isRetry ? LegMode.RETRY : LegMode.NORM
+                isRetry ? LegMode.RETRY : LegMode.NORM,
+                postedTime
         );
         AccountPostingLegResponseV2 updated = legService.updateLeg(postingId, legId,
                 legMapper.toUpdateLegRequest(result));
