@@ -59,7 +59,7 @@ VALUES ('TEST-SRC-S1', 'TEST-E2E-S1', 'IMX',
         '{"source_reference_id":"TEST-SRC-S1","end_to_end_reference_id":"TEST-E2E-S1","source_name":"IMX","request_type":"IMX_OBPM","amount":1000.00,"currency":"USD","credit_debit_indicator":"CREDIT","debtor_account":"1234567890","creditor_account":"0987654321","requested_execution_date":"2026-01-01"}',
         NOW(), NOW());
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        1,
@@ -89,7 +89,7 @@ VALUES ('TEST-SRC-S2', 'TEST-E2E-S2', 'IMX',
         '{"source_reference_id":"TEST-SRC-S2","end_to_end_reference_id":"TEST-E2E-S2","source_name":"IMX","request_type":"IMX_CBS_GL","amount":2500.00,"currency":"USD","credit_debit_indicator":"DEBIT","debtor_account":"1234567890","creditor_account":"0987654321","requested_execution_date":"2026-01-01"}',
         NOW(), NOW());
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        1,
@@ -105,7 +105,7 @@ SELECT posting_id,
 FROM account_posting
 WHERE end_to_end_reference_id = 'TEST-E2E-S2';
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        2,
@@ -135,7 +135,7 @@ VALUES ('TEST-SRC-S3', 'TEST-E2E-S3', 'IMX',
         '{"source_reference_id":"TEST-SRC-S3","end_to_end_reference_id":"TEST-E2E-S3","source_name":"IMX","request_type":"IMX_CBS_GL","amount":750.00,"currency":"USD","credit_debit_indicator":"CREDIT","debtor_account":"1234567890","creditor_account":"0987654321","requested_execution_date":"2026-01-01"}',
         NOW(), NOW());
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        1,
@@ -151,7 +151,7 @@ SELECT posting_id,
 FROM account_posting
 WHERE end_to_end_reference_id = 'TEST-E2E-S3';
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        2,
@@ -181,7 +181,7 @@ VALUES ('TEST-SRC-S4', 'TEST-E2E-S4', 'STABLECOIN',
         '{"source_reference_id":"TEST-SRC-S4","end_to_end_reference_id":"TEST-E2E-S4","source_name":"STABLECOIN","request_type":"ADD_ACCOUNT_HOLD","amount":5000.00,"currency":"USD","credit_debit_indicator":"DEBIT","debtor_account":"1234567890","creditor_account":"0987654321","requested_execution_date":"2026-01-01"}',
         NOW(), NOW());
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        1,
@@ -211,7 +211,7 @@ VALUES ('TEST-SRC-S5', 'TEST-E2E-S5', 'STABLECOIN',
         '{"source_reference_id":"TEST-SRC-S5","end_to_end_reference_id":"TEST-E2E-S5","source_name":"STABLECOIN","request_type":"BUY_CUSTOMER_POSTING","amount":3200.00,"currency":"USD","credit_debit_indicator":"DEBIT","debtor_account":"1234567890","creditor_account":"0987654321","requested_execution_date":"2026-01-01"}',
         NOW(), NOW());
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        1,
@@ -243,7 +243,7 @@ VALUES ('TEST-SRC-S6', 'TEST-E2E-S6', 'IMX',
         '{"source_reference_id":"TEST-SRC-S6","end_to_end_reference_id":"TEST-E2E-S6","source_name":"IMX","request_type":"IMX_CBS_GL","amount":100.00,"currency":"USD","credit_debit_indicator":"CREDIT","debtor_account":"1234567890","creditor_account":"0987654321","requested_execution_date":"2026-01-01"}',
         NOW(), NOW());
 
-INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, mode, reason,
+INSERT INTO account_posting_leg (posting_id, leg_order, target_system, account, status, operation, leg_mode, reason,
                                  attempt_number, created_at, updated_at)
 SELECT posting_id,
        1,

@@ -26,9 +26,7 @@ CREATE TABLE account_posting
 
     CONSTRAINT uq_ap_e2e_ref        UNIQUE (end_to_end_reference_id),
     CONSTRAINT chk_ap_credit_debit  CHECK (credit_debit_indicator IN ('CREDIT', 'DEBIT')),
-    CONSTRAINT chk_ap_status        CHECK (status IN ('PNDG', 'ACSP', 'RJCT')),
-    CONSTRAINT chk_ap_req_payload   CHECK (request_payload IS JSON),
-    CONSTRAINT chk_ap_res_payload   CHECK (response_payload IS JSON)
+    CONSTRAINT chk_ap_status        CHECK (status IN ('PNDG', 'ACSP', 'RJCT'))
 );
 
 CREATE INDEX idx_ap_status         ON account_posting (status);
@@ -57,9 +55,7 @@ CREATE TABLE account_posting_leg
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL,
 
     CONSTRAINT fk_apl_posting_id    FOREIGN KEY (posting_id) REFERENCES account_posting (posting_id) ON DELETE CASCADE,
-    CONSTRAINT chk_apl_status       CHECK (status IN ('PENDING', 'SUCCESS', 'FAILED')),
-    CONSTRAINT chk_apl_req_payload  CHECK (request_payload IS JSON),
-    CONSTRAINT chk_apl_res_payload  CHECK (response_payload IS JSON)
+    CONSTRAINT chk_apl_status       CHECK (status IN ('PENDING', 'SUCCESS', 'FAILED'))
 );
 
 CREATE INDEX idx_apl_posting_id ON account_posting_leg (posting_id);

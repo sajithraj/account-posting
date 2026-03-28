@@ -64,11 +64,11 @@ public class AccountPostingLegEntity extends BaseEntity {
     @Column(name = "posted_time")
     private Instant postedTime;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "request_payload")
     private String requestPayload;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "response_payload")
     private String responsePayload;
 

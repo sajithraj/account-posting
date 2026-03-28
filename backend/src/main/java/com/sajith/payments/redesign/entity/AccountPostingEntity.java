@@ -75,11 +75,11 @@ public class AccountPostingEntity extends BaseEntity {
     @Builder.Default
     private PostingStatus status = PostingStatus.PNDG;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "request_payload")
     private String requestPayload;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "response_payload")
     private String responsePayload;
 

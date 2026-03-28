@@ -71,11 +71,11 @@ public class AccountPostingHistoryEntity {
     @Column(name = "status", nullable = false, length = 10)
     private PostingStatus status;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "request_payload")
     private String requestPayload;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "response_payload")
     private String responsePayload;
 
