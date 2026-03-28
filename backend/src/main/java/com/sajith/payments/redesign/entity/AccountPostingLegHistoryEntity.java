@@ -68,7 +68,7 @@ public class AccountPostingLegHistoryEntity {
     private String responsePayload;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "mode", nullable = false, length = 10)
+    @Column(name = "leg_mode", nullable = false, length = 10)
     private LegMode mode;
 
     @Column(name = "operation", nullable = false, length = 20)

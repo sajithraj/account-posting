@@ -1,13 +1,3 @@
--- =============================================================================
--- V1__baseline_schema.sql  (Oracle)
--- Full baseline schema — tables, indexes, constraints, seed data, and
--- history tables for archival.  Single consolidated script for all environments.
---
--- Compatibility: Oracle 12c Release 2 (12.2) and above
---   - GENERATED ALWAYS AS IDENTITY requires Oracle 12c+
---   - IS JSON check constraint requires Oracle 12c Release 1+
--- =============================================================================
-
 -- ── account_posting ───────────────────────────────────────────────────────────
 CREATE TABLE account_posting
 (

@@ -73,7 +73,7 @@ public class AccountPostingLegEntity extends BaseEntity {
     private String responsePayload;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "mode", nullable = false, length = 10)
+    @Column(name = "leg_mode", nullable = false, length = 10)
     @Builder.Default
     private LegMode mode = LegMode.NORM;
 

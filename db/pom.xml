@@ -11,99 +11,45 @@
     <name>Account Posting Orchestrator DB Migrations</name>
 
     <properties>
+        <!-- <flyway.version>9.8.1</flyway.version> -->
+        <!-- <flyway.version>10.21.0</flyway.version> -->
         <flyway.version>11.15.0</flyway.version>
-        <postgresql.version>42.7.3</postgresql.version>
+        <ojdbc.version>21.9.0.0</ojdbc.version>
+        <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>${postgresql.version}</version>
-        </dependency>
-    </dependencies>
-
-    <!-- ── Environment profiles ────────────────────────────────────────────────
-         Each profile is fully independent. Migrations are env-specific:
-         scripts are explicitly reviewed and copied into each env folder
-         before promotion — never auto-applied across environments.
-
-         Usage:
-           mvn flyway:migrate -Pdev        (default)
-           mvn flyway:migrate -Pqa
-           mvn flyway:migrate -Puat
-           mvn flyway:migrate -Pprod
-           mvn flyway:migrate -Pdocker
-
-         Override credentials on the command line (recommended for CI/CD):
-           mvn flyway:migrate -Pprod -Dflyway.url=... -Dflyway.password=...
-    ──────────────────────────────────────────────────────────────────────── -->
+    <!-- Usage:
+           mvn flyway:migrate           (dev is default)
+           mvn flyway:info -Pdev
+           mvn flyway:clean -Pdev
+    -->
     <profiles>
-
         <profile>
             <id>dev</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
-                <flyway.user>postgres</flyway.user>
-                <flyway.password>postgres</flyway.password>
+                <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
+                <flyway.user>account_posting_user</flyway.user>
+                <flyway.password>oracle</flyway.password>
                 <flyway.locations>filesystem:src/main/resources/db/migration/dev</flyway.locations>
             </properties>
         </profile>
-
-        <profile>
-            <id>qa</id>
-            <properties>
-                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
-                <flyway.user>postgres</flyway.user>
-                <flyway.password>postgres</flyway.password>
-                <flyway.locations>filesystem:src/main/resources/db/migration/qa</flyway.locations>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>uat</id>
-            <properties>
-                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
-                <flyway.user>postgres</flyway.user>
-                <flyway.password>postgres</flyway.password>
-                <flyway.locations>filesystem:src/main/resources/db/migration/uat</flyway.locations>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>prod</id>
-            <properties>
-                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
-                <flyway.user>postgres</flyway.user>
-                <flyway.password>postgres</flyway.password>
-                <flyway.locations>filesystem:src/main/resources/db/migration/prod</flyway.locations>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>docker</id>
-            <properties>
-                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
-                <flyway.user>postgres</flyway.user>
-                <flyway.password>postgres</flyway.password>
-                <flyway.locations>filesystem:src/main/resources/db/migration/docker</flyway.locations>
-            </properties>
-        </profile>
-
     </profiles>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>local-lib</id>
+            <url>file://${project.basedir}/local-repo</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
     <build>
         <plugins>
@@ -116,27 +62,29 @@
                     <user>${flyway.user}</user>
                     <password>${flyway.password}</password>
                     <schemas>
-                        <schema>public</schema>
+                        <schema>${flyway.schemas}</schema>
                     </schemas>
                     <locations>
                         <location>${flyway.locations}</location>
                     </locations>
                     <outOfOrder>false</outOfOrder>
                     <validateOnMigrate>true</validateOnMigrate>
+                    <cleanDisabled>false</cleanDisabled>
                 </configuration>
                 <dependencies>
                     <dependency>
                         <groupId>org.flywaydb</groupId>
-                        <artifactId>flyway-database-postgresql</artifactId>
+                        <artifactId>flyway-database-oracle</artifactId>
                         <version>${flyway.version}</version>
                     </dependency>
                     <dependency>
-                        <groupId>org.postgresql</groupId>
-                        <artifactId>postgresql</artifactId>
-                        <version>${postgresql.version}</version>
+                        <groupId>com.oracle.database.jdbc</groupId>
+                        <artifactId>ojdbc11</artifactId>
+                        <version>${ojdbc.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>
         </plugins>
     </build>
+
 </project>

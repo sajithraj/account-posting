@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.accountposting</groupId>
+    <artifactId>account-posting-db</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Account Posting Orchestrator DB Migrations — PostgreSQL</name>
+
+    <properties>
+        <flyway.version>11.15.0</flyway.version>
+        <postgresql.version>42.7.3</postgresql.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+    </dependencies>
+
+    <!-- ── PostgreSQL — all environments (backup) ──────────────────────────────
+         Usage:
+           mvn flyway:migrate -f postgres-pom.xml -Pdev        (default → dev_postgres/)
+           mvn flyway:migrate -f postgres-pom.xml -Pqa
+           mvn flyway:migrate -f postgres-pom.xml -Puat
+           mvn flyway:migrate -f postgres-pom.xml -Pprod
+           mvn flyway:migrate -f postgres-pom.xml -Pdocker
+
+         Override credentials on the command line:
+           mvn flyway:migrate -f postgres-pom.xml -Pprod -Dflyway.url=... -Dflyway.password=...
+    ──────────────────────────────────────────────────────────────────────── -->
+    <profiles>
+
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
+                <flyway.user>postgres</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.locations>filesystem:src/main/resources/db/migration/dev_postgres</flyway.locations>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>qa</id>
+            <properties>
+                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
+                <flyway.user>postgres</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.locations>filesystem:src/main/resources/db/migration/qa</flyway.locations>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>uat</id>
+            <properties>
+                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
+                <flyway.user>postgres</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.locations>filesystem:src/main/resources/db/migration/uat</flyway.locations>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>prod</id>
+            <properties>
+                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
+                <flyway.user>postgres</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.locations>filesystem:src/main/resources/db/migration/prod</flyway.locations>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>docker</id>
+            <properties>
+                <flyway.url>jdbc:postgresql://localhost:5432/account_posting_db</flyway.url>
+                <flyway.user>postgres</flyway.user>
+                <flyway.password>postgres</flyway.password>
+                <flyway.locations>filesystem:src/main/resources/db/migration/docker</flyway.locations>
+            </properties>
+        </profile>
+
+    </profiles>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <configuration>
+                    <url>${flyway.url}</url>
+                    <user>${flyway.user}</user>
+                    <password>${flyway.password}</password>
+                    <schemas>
+                        <schema>public</schema>
+                    </schemas>
+                    <locations>
+                        <location>${flyway.locations}</location>
+                    </locations>
+                    <outOfOrder>false</outOfOrder>
+                    <validateOnMigrate>true</validateOnMigrate>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-database-postgresql</artifactId>
+                        <version>${flyway.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                        <version>${postgresql.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

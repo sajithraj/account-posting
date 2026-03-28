@@ -19,12 +19,24 @@
     </properties>
 
     <!-- Usage:
+         mvn flyway:migrate -f oracle-pom.xml -Pdocker   (local Docker Oracle XE 21c)
          mvn flyway:migrate -f oracle-pom.xml -Pdev
          mvn flyway:migrate -f oracle-pom.xml -Pqa
          mvn flyway:migrate -f oracle-pom.xml -Puat
          mvn flyway:migrate -f oracle-pom.xml -Pprod
     -->
     <profiles>
+
+        <!-- Docker Oracle XE 21c — for local testing only -->
+        <profile>
+            <id>docker</id>
+            <properties>
+                <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
+                <flyway.user>account_posting_user</flyway.user>
+                <flyway.password>oracle</flyway.password>
+                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+            </properties>
+        </profile>
 
         <profile>
             <id>dev</id>
