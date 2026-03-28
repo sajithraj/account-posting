@@ -29,8 +29,8 @@ CREATE TABLE account_posting
     retry_locked_until       TIMESTAMP WITH TIME ZONE,
     target_systems           VARCHAR2(500),
     reason                   VARCHAR2(1000),
-    created_at               TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_at               TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
+    created_at               TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL,
+    updated_at               TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL,
 
     CONSTRAINT uq_ap_e2e_ref UNIQUE (end_to_end_reference_id),
     CONSTRAINT chk_ap_credit_debit CHECK (credit_debit_indicator IN ('CREDIT', 'DEBIT')),
@@ -62,8 +62,8 @@ CREATE TABLE account_posting_leg
     response_payload CLOB,
     mode             VARCHAR2(10)             DEFAULT 'NORM' NOT NULL,
     operation        VARCHAR2(20)             DEFAULT 'POSTING' NOT NULL,
-    created_at       TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL,
+    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL,
 
     CONSTRAINT fk_apl_posting_id FOREIGN KEY (posting_id) REFERENCES account_posting (posting_id) ON DELETE CASCADE,
     CONSTRAINT chk_apl_status CHECK (status IN ('PENDING', 'SUCCESS', 'FAILED')),
@@ -83,8 +83,8 @@ CREATE TABLE posting_config
     target_system VARCHAR2(100) NOT NULL,
     operation     VARCHAR2(100) NOT NULL,
     order_seq     NUMBER(10)    NOT NULL,
-    created_at    TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_at    TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
+    created_at    TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL,
+    updated_at    TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL,
 
     CONSTRAINT uq_pc_request_type_order UNIQUE (request_type, order_seq)
 );
@@ -154,7 +154,7 @@ CREATE TABLE account_posting_history
     reason                   VARCHAR2(1000),
     created_at               TIMESTAMP WITH TIME ZONE                      NOT NULL,
     updated_at               TIMESTAMP WITH TIME ZONE                      NOT NULL,
-    archived_at              TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
+    archived_at              TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL
 );
 
 CREATE INDEX idx_aph_status ON account_posting_history (status);
@@ -183,7 +183,7 @@ CREATE TABLE account_posting_leg_history
     operation        VARCHAR2(20)             NOT NULL,
     created_at       TIMESTAMP WITH TIME ZONE                      NOT NULL,
     updated_at       TIMESTAMP WITH TIME ZONE                      NOT NULL,
-    archived_at      TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
+    archived_at      TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL
 );
 
 CREATE INDEX idx_aplh_posting_id ON account_posting_leg_history (posting_id);

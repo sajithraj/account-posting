@@ -14,25 +14,9 @@
         <flyway.version>11.15.0</flyway.version>
         <!-- Oracle 19c EE server + Java 17 client → ojdbc11 -->
         <ojdbc.version>19.21.0.0</ojdbc.version>
+        <!-- Same across all environments -->
+        <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
     </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-oracle</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc11</artifactId>
-            <version>${ojdbc.version}</version>
-        </dependency>
-    </dependencies>
 
     <!-- Usage:
          mvn flyway:migrate -f oracle-pom.xml -Pdev
@@ -51,8 +35,7 @@
                 <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
                 <flyway.user>account_posting_user</flyway.user>
                 <flyway.password>postgres</flyway.password>
-                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
-                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+                <flyway.locations>filesystem:src/main/resources/db/migration/dev</flyway.locations>
             </properties>
         </profile>
 
@@ -62,8 +45,7 @@
                 <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
                 <flyway.user>account_posting_user</flyway.user>
                 <flyway.password>postgres</flyway.password>
-                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
-                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+                <flyway.locations>filesystem:src/main/resources/db/migration/qa</flyway.locations>
             </properties>
         </profile>
 
@@ -73,8 +55,7 @@
                 <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
                 <flyway.user>account_posting_user</flyway.user>
                 <flyway.password>postgres</flyway.password>
-                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
-                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+                <flyway.locations>filesystem:src/main/resources/db/migration/uat</flyway.locations>
             </properties>
         </profile>
 
@@ -84,8 +65,7 @@
                 <flyway.url>jdbc:oracle:thin:@localhost:1521/XEPDB1</flyway.url>
                 <flyway.user>account_posting_user</flyway.user>
                 <flyway.password>postgres</flyway.password>
-                <flyway.schemas>ACCOUNT_POSTING_USER</flyway.schemas>
-                <flyway.locations>filesystem:src/main/resources/db/migration/oracle</flyway.locations>
+                <flyway.locations>filesystem:src/main/resources/db/migration/prod</flyway.locations>
             </properties>
         </profile>
 
@@ -109,9 +89,7 @@
                     </locations>
                     <outOfOrder>false</outOfOrder>
                     <validateOnMigrate>true</validateOnMigrate>
-                    <!-- SQL*Plus mode: needed for PL/SQL blocks using / terminator -->
-                    <oracle.sqlplus>true</oracle.sqlplus>
-                    <oracle.sqlplusWarn>true</oracle.sqlplusWarn>
+                    <outputQueryResults>true</outputQueryResults>
                 </configuration>
                 <dependencies>
                     <dependency>
