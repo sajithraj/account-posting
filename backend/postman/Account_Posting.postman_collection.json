@@ -47,7 +47,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "pm.test('Save postingId', () => {",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.source_reference_id).to.exist;",
@@ -92,7 +92,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
                 ],
                 "type": "text/javascript"
               }
@@ -132,7 +132,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
                 ],
                 "type": "text/javascript"
               }
@@ -172,7 +172,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "pm.test('Save postingId', () => {",
                   "    const body = pm.response.json();",
                   "    if (body.posting_id) pm.collectionVariables.set('postingId', body.posting_id);",
@@ -216,7 +216,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
                 ],
                 "type": "text/javascript"
               }

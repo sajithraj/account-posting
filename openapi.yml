@@ -122,7 +122,7 @@ paths:
                     value: "5000.00"
                     currency_code: "USD"
       responses:
-        '201':
+        '200':
           description: Posting created and processed
           content:
             application/json:
