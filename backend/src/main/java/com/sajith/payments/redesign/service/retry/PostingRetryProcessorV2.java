@@ -54,7 +54,7 @@ public class PostingRetryProcessorV2 {
         List<AccountPostingLegResponseV2> pendingLegs = legService.listNonSuccessLegs(postingId);
         log.info("Non-SUCCESS legs to retry for postingId :: {} count :: {} legs :: {} .",
                 postingId, pendingLegs.size(),
-                pendingLegs.stream().map(l -> l.getTargetSystem() + "#" + l.getLegOrder() + "=" + l.getStatus()).toList());
+                pendingLegs.stream().map(l -> l.getTargetSystem() + "#" + l.getTransactionOrder() + "=" + l.getStatus()).toList());
 
         if (pendingLegs.isEmpty()) {
             log.info("No legs available to retry for posting id :: {} .", postingId);
@@ -63,17 +63,17 @@ public class PostingRetryProcessorV2 {
 
         String lastFailReason = null;
         for (AccountPostingLegResponseV2 leg : pendingLegs) {
-            log.info("Retrying leg for posting id :: {} posting leg id :: {} legOrder :: {} target system :: {} .", postingId, leg.getPostingLegId(), leg.getLegOrder(), leg.getTargetSystem());
+            log.info("Retrying transaction for posting id :: {} transaction id :: {} order :: {} target system :: {} .", postingId, leg.getTransactionId(), leg.getTransactionOrder(), leg.getTargetSystem());
             try {
                 PostingStrategy strategy = strategyFactory.resolve(leg.getTargetSystem() + "_" + leg.getOperation());
-                LegResponseV2 legResult = strategy.process(postingId, leg.getLegOrder(), originalRequest, true, leg.getPostingLegId());
-                log.info("Leg retry completed for posting leg id :: {} status from {} to {} .", leg.getPostingLegId(), leg.getStatus(), legResult.getStatus());
+                LegResponseV2 legResult = strategy.process(postingId, leg.getTransactionOrder(), originalRequest, true, leg.getTransactionId());
+                log.info("Transaction retry completed for transaction id :: {} status from {} to {} .", leg.getTransactionId(), leg.getStatus(), legResult.getStatus());
                 if (!"SUCCESS".equals(legResult.getStatus()) && legResult.getReason() != null && !legResult.getReason().isBlank()) {
                     lastFailReason = legResult.getReason();
                 }
             } catch (Exception ex) {
-                log.error("Leg retry failed with exception for posting id :: {} posting leg id :: {} target system :: {}. Error message :: {} .",
-                        postingId, leg.getPostingLegId(), leg.getTargetSystem(), ex.getMessage(), ex);
+                log.error("Transaction retry failed with exception for posting id :: {} transaction id :: {} target system :: {}. Error message :: {} .",
+                        postingId, leg.getTransactionId(), leg.getTargetSystem(), ex.getMessage(), ex);
                 lastFailReason = ex.getMessage();
             }
         }

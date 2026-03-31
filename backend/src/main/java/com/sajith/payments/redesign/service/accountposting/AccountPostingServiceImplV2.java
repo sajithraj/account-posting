@@ -2,8 +2,11 @@ package com.sajith.payments.redesign.service.accountposting;
 
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingCreateResponseV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingFullResponseV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingSearchRequestV2;
 import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
+import com.sajith.payments.redesign.dto.search.PostingSearchRequestV2;
+import com.sajith.payments.redesign.dto.search.PostingSearchResponseV2;
+import com.sajith.payments.redesign.dto.search.SearchOrderBy;
+import com.sajith.payments.redesign.dto.search.SearchPagination;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegRequestV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegCreateResponseV2;
@@ -20,7 +23,6 @@ import com.sajith.payments.redesign.exception.ResourceNotFoundException;
 import com.sajith.payments.redesign.mapper.AccountPostingLegMapperV2;
 import com.sajith.payments.redesign.mapper.AccountPostingMapperV2;
 import com.sajith.payments.redesign.repository.AccountPostingHistoryRepository;
-import com.sajith.payments.redesign.repository.AccountPostingHistorySpecification;
 import com.sajith.payments.redesign.repository.AccountPostingLegHistoryRepository;
 import com.sajith.payments.redesign.repository.AccountPostingRepository;
 import com.sajith.payments.redesign.repository.AccountPostingSpecification;
@@ -36,7 +38,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -82,7 +86,7 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
             MDC.remove("e2eRef");
             MDC.remove("requestType");
             MDC.remove("postingId");
-            MDC.remove("PostingLegId");
+            MDC.remove("TransactionId");
         }
     }
 
@@ -144,18 +148,18 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
             AccountPostingLegRequestV2 legReq = legMapper.toCreateLegRequest(request, config.getOrderSeq(), config.getTargetSystem(), LegMode.NORM, config.getOperation(), null);
             AccountPostingLegResponseV2 pre = legService.addLeg(posting.getPostingId(), legReq);
             preInsertedLegs.add(pre);
-            log.info("Legs has been persisted before processing for target system :: {} operation :: {} order to execute :: {}. Generated posting leg id  :: {} .", pre.getTargetSystem(), pre.getOperation(), pre.getLegOrder(), pre.getPostingLegId());
+            log.info("Transaction persisted before processing for target system :: {} operation :: {} order :: {}. Transaction id :: {} .", pre.getTargetSystem(), pre.getOperation(), pre.getTransactionOrder(), pre.getTransactionId());
         }
 
         List<LegResponseV2> legResponses = new ArrayList<>();
         boolean allSuccess = true;
 
         for (AccountPostingLegResponseV2 pre : preInsertedLegs) {
-            MDC.put("PostingLegId", String.valueOf(pre.getPostingLegId()));
+            MDC.put("TransactionId", String.valueOf(pre.getTransactionId()));
             try {
-                log.info("Fetching leg details to process for target system :: {} operation :: {} .", pre.getTargetSystem(), pre.getOperation());
+                log.info("Fetching transaction details to process for target system :: {} operation :: {} .", pre.getTargetSystem(), pre.getOperation());
                 PostingStrategy strategy = strategyFactory.resolve(pre.getTargetSystem() + "_" + pre.getOperation());
-                LegResponseV2 legResponse = strategy.process(posting.getPostingId(), pre.getLegOrder(), request, false, pre.getPostingLegId());
+                LegResponseV2 legResponse = strategy.process(posting.getPostingId(), pre.getTransactionOrder(), request, false, pre.getTransactionId());
                 legResponses.add(legResponse);
                 log.info("Leg processing completed for target system :: {} operation :: {} amd leg status {} .", pre.getTargetSystem(), pre.getOperation(), legResponse.getStatus());
                 if (!"SUCCESS".equalsIgnoreCase(legResponse.getStatus())) {
@@ -165,7 +169,7 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
                 log.error("Failed while processing leg execution for target system :: {} operation :: {}. Error message :: {} .", pre.getTargetSystem(), pre.getOperation(), ex.getMessage());
                 allSuccess = false;
             }
-            MDC.remove("PostingLegId");
+            MDC.remove("TransactionId");
         }
 
         PostingStatus finalStatus = allSuccess ? PostingStatus.ACSP : PostingStatus.PNDG;
@@ -194,17 +198,47 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AccountPostingFullResponseV2> search(AccountPostingSearchRequestV2 criteria, Pageable pageable) {
-        log.info("Request received for posting search based on the criteria. Request received :: {} .", appUtility.toObjectToString(criteria));
-        Page<AccountPostingFullResponseV2> result = repository
-                .findAll(AccountPostingSpecification.from(criteria), pageable)
+    public PostingSearchResponseV2 search(PostingSearchRequestV2 request) {
+        log.info("Request received for posting search. Criteria :: {} .", appUtility.toObjectToString(request));
+
+        SearchPagination pg = request.getPagination() != null ? request.getPagination() : new SearchPagination();
+        int offset = Math.max(pg.getOffset(), 1);
+        int limit = Math.max(pg.getLimit(), 1);
+        int pageNumber = (offset - 1) / limit;
+
+        Pageable pageable = PageRequest.of(pageNumber, limit, buildSort(request.getOrderBy()));
+
+        Page<AccountPostingFullResponseV2> page = repository
+                .findAll(AccountPostingSpecification.from(request), pageable)
                 .map(posting -> {
                     AccountPostingFullResponseV2 resp = mapper.toResponse(posting);
                     resp.setResponses(fetchLegs(posting.getPostingId()));
                     return resp;
                 });
-        log.info("Response to send based on search criteria received. Total elements :: {} totalPages :: {} .", result.getTotalElements(), result.getTotalPages());
-        return result;
+
+        log.info("Search completed. Total items :: {} .", page.getTotalElements());
+        return PostingSearchResponseV2.builder()
+                .items(page.getContent())
+                .totalItems(page.getTotalElements())
+                .offset(offset)
+                .limit(limit)
+                .build();
+    }
+
+    private Sort buildSort(List<SearchOrderBy> orderBy) {
+        if (orderBy == null || orderBy.isEmpty()) {
+            return Sort.by(Sort.Direction.DESC, "postingId");
+        }
+        List<Sort.Order> orders = orderBy.stream()
+                .map(o -> {
+                    String field = AccountPostingSpecification.resolveFieldName(o.getProperty());
+                    if (field == null) field = "postingId";
+                    Sort.Direction dir = "DESC".equalsIgnoreCase(o.getSortOrder())
+                            ? Sort.Direction.DESC : Sort.Direction.ASC;
+                    return new Sort.Order(dir, field);
+                })
+                .toList();
+        return Sort.by(orders);
     }
 
     @Override
@@ -230,22 +264,6 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Page<AccountPostingFullResponseV2> searchHistory(AccountPostingSearchRequestV2 criteria, Pageable pageable) {
-        log.info("Request received for posting search from history table based on the criteria. Request received :: {} .", appUtility.toObjectToString(criteria));
-        log.info("SEARCH HISTORY REQUEST | {}", appUtility.toObjectToString(criteria));
-        Page<AccountPostingFullResponseV2> result = historyRepository
-                .findAll(AccountPostingHistorySpecification.from(criteria), pageable)
-                .map(h -> {
-                    AccountPostingFullResponseV2 resp = mapper.toResponseFromHistory(h);
-                    resp.setResponses(fetchHistoryLegs(h.getPostingId()));
-                    return resp;
-                });
-        log.info("Response to send based on search criteria received for history table. Total elements :: {} totalPages :: {} .", result.getTotalElements(), result.getTotalPages());
-        return result;
-    }
-
-    @Override
     public RetryResponseV2 retry(RetryRequestV2 request) {
         log.info("Request received for retry posting :: {} . ", appUtility.toObjectToString(request));
         MDC.put("operation", "RETRY");
@@ -258,7 +276,7 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
             MDC.remove("e2eRef");
             MDC.remove("requestType");
             MDC.remove("postingId");
-            MDC.remove("PostingLegId");
+            MDC.remove("TransactionId");
         }
     }
 
@@ -333,7 +351,7 @@ public class AccountPostingServiceImplV2 implements AccountPostingServiceV2 {
     }
 
     private List<LegResponseV2> fetchHistoryLegs(Long postingId) {
-        return legHistoryRepository.findByPostingIdOrderByLegOrder(postingId).stream()
+        return legHistoryRepository.findByPostingIdOrderByTransactionOrder(postingId).stream()
                 .map(legMapper::toResponseFromHistory)
                 .map(mapper::toLegResponse)
                 .toList();

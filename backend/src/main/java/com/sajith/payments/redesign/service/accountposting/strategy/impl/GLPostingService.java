@@ -38,25 +38,25 @@ public class GLPostingService implements PostingStrategy {
     }
 
     @Override
-    public LegResponseV2 process(Long postingId, int legOrder, IncomingPostingRequest request,
-                                 boolean isRetry, Long existingLegId) {
+    public LegResponseV2 process(Long postingId, int transactionOrder, IncomingPostingRequest request,
+                                 boolean isRetry, Long existingTxnId) {
         log.info("GL {} | postingId={} flow={}", isRetry ? "RETRY" : "CREATE", postingId, getPostingFlow());
 
         // ── Build GL request ───────────────────────────────────────────────
         Map<String, Object> glRequest = externalApiHelper.buildGlRequest(request);
         String requestPayloadJson = appUtility.toObjectToString(glRequest);
-        log.info("GL REQUEST | postingId={} leg={} {}", postingId, legOrder, requestPayloadJson);
+        log.info("GL REQUEST | postingId={} txnOrder={} {}", postingId, transactionOrder, requestPayloadJson);
 
-        if (existingLegId == null) {
+        if (existingTxnId == null) {
             throw new IllegalArgumentException(
-                    "GL | postingId=" + postingId + " leg=" + legOrder + " - existingLegId must be pre-inserted before strategy execution");
+                    "GL | postingId=" + postingId + " txnOrder=" + transactionOrder + " - existingTxnId must be pre-inserted before strategy execution");
         }
-        Long legId = existingLegId;
+        Long legId = existingTxnId;
 
         // ── Invoke GL ──────────────────────────────────────────────────────
         Map<String, Object> glResponse = externalApiHelper.callGl(glRequest);
         String responsePayloadJson = appUtility.toObjectToString(glResponse);
-        log.info("GL RESPONSE | postingId={} leg={} {}", postingId, legOrder, responsePayloadJson);
+        log.info("GL RESPONSE | postingId={} txnOrder={} {}", postingId, transactionOrder, responsePayloadJson);
 
         String glStatus = String.valueOf(glResponse.get("status"));
         boolean success = "SUCCESS".equalsIgnoreCase(glStatus);

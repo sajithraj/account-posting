@@ -15,14 +15,14 @@ import java.time.Instant;
 @Data
 public class AccountPostingLegResponseV2 {
 
-    @JsonProperty("posting_leg_id")
-    private Long postingLegId;
+    @JsonProperty("transaction_id")
+    private Long transactionId;
 
     @JsonProperty("posting_id")
     private Long postingId;
 
-    @JsonProperty("leg_order")
-    private Integer legOrder;
+    @JsonProperty("transaction_order")
+    private Integer transactionOrder;
 
     @JsonProperty("target_system")
     private String targetSystem;
@@ -65,4 +65,10 @@ public class AccountPostingLegResponseV2 {
     @JsonSerialize(using = InstantSerializer.class)
     @JsonDeserialize(using = InstantDeserializer.class)
     private Instant updatedAt;
+
+    @JsonProperty("created_by")
+    private String createdBy;
+
+    @JsonProperty("updated_by")
+    private String updatedBy;
 }

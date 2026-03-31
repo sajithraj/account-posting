@@ -138,12 +138,25 @@ interface PanelProps {
 }
 
 function SystemPanel({name, color, filterKey, range}: PanelProps) {
-    const baseParams = {[filterKey]: name, size: 1, page: 0, ...range};
+    const propertyName = filterKey === 'targetSystem' ? 'target_system' : 'source_name';
+    const baseConditions = [
+        {property: propertyName, operator: filterKey === 'targetSystem' ? 'CONTAINS' : 'EQUALS', values: [name]},
+        ...(range.fromDate ? [{
+            property: 'requested_execution_date',
+            operator: 'GREATER_THAN',
+            values: [range.fromDate as string]
+        }] : []),
+        ...(range.toDate ? [{
+            property: 'requested_execution_date',
+            operator: 'LESS_THAN',
+            values: [range.toDate as string]
+        }] : []),
+    ];
 
-    const total = useStatusCount({...baseParams});
-    const pending = useStatusCount({...baseParams, status: 'PNDG'});
-    const success = useStatusCount({...baseParams, status: 'ACSP'});
-    const failed = useStatusCount({...baseParams, status: 'RJCT'});
+    const total = useStatusCount(baseConditions);
+    const pending = useStatusCount([...baseConditions, {property: 'status', operator: 'EQUALS', values: ['PNDG']}]);
+    const success = useStatusCount([...baseConditions, {property: 'status', operator: 'EQUALS', values: ['ACSP']}]);
+    const failed = useStatusCount([...baseConditions, {property: 'status', operator: 'EQUALS', values: ['RJCT']}]);
 
     return (
         <div style={s.panel}>
@@ -160,15 +173,15 @@ function SystemPanel({name, color, filterKey, range}: PanelProps) {
     );
 }
 
-// ── Hook: fetch only totalElements for one status ──────────────────────────────
+// ── Hook: fetch total_items for a set of conditions ───────────────────────────
 
-function useStatusCount(params: Record<string, unknown>): number | undefined {
+function useStatusCount(conditions: { property: string; operator: string; values: string[] }[]): number | undefined {
     const {data} = useQuery({
-        queryKey: ['dashboard-count', params],
-        queryFn: () => postingApi.search(params as never),
+        queryKey: ['dashboard-count', conditions],
+        queryFn: () => postingApi.search({conditions, pagination: {offset: 1, limit: 1}}),
         staleTime: 30_000,
     });
-    return data?.totalElements;
+    return data?.totalItems;
 }
 
 // ── Counter tile ───────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import {Fragment, useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useNavigate} from 'react-router-dom';
 import {getErrorMessage, postingApi} from '../api/postingApi';
-import type {PostingSearchParams, PostingStatus} from '../types/posting';
+import type {PostingFilterDraft, PostingSearchRequest, PostingStatus, SearchCondition} from '../types/posting';
 import StatusBadge from '../components/StatusBadge';
 import LegTable from '../components/LegTable';
 
@@ -11,13 +11,13 @@ export default function PostingListPage() {
     const queryClient = useQueryClient();
 
     const [pageSize, setPageSize] = useState(10);
-    const [params, setParams] = useState<PostingSearchParams>({page: 0, size: 10});
-    const [draft, setDraft] = useState<PostingSearchParams>({});
+    const [searchRequest, setSearchRequest] = useState<PostingSearchRequest>({pagination: {offset: 1, limit: 10}});
+    const [draft, setDraft] = useState<PostingFilterDraft>({});
     const [selected, setSelected] = useState<Set<number>>(new Set());
 
     const {data, isLoading, isError} = useQuery({
-        queryKey: ['postings', params],
-        queryFn: () => postingApi.search(params),
+        queryKey: ['postings', searchRequest],
+        queryFn: () => postingApi.search(searchRequest),
     });
 
     const retryAllMutation = useMutation({
@@ -38,24 +38,52 @@ export default function PostingListPage() {
         onError: (err: unknown) => alert(`Retry failed: ${getErrorMessage(err)}`),
     });
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        setParams({...draft, page: 0, size: pageSize});
+    const buildConditions = (f: PostingFilterDraft): SearchCondition[] => {
+        const conds: SearchCondition[] = [];
+        if (f.endToEndReferenceId) conds.push({
+            property: 'end_to_end_reference_id',
+            operator: 'EQUALS',
+            values: [f.endToEndReferenceId]
+        });
+        if (f.sourceReferenceId) conds.push({
+            property: 'source_reference_id',
+            operator: 'EQUALS',
+            values: [f.sourceReferenceId]
+        });
+        if (f.sourceName) conds.push({property: 'source_name', operator: 'EQUALS', values: [f.sourceName]});
+        if (f.targetSystem) conds.push({property: 'target_system', operator: 'CONTAINS', values: [f.targetSystem]});
+        if (f.status) conds.push({property: 'status', operator: 'EQUALS', values: [f.status]});
+        if (f.requestType) conds.push({property: 'request_type', operator: 'EQUALS', values: [f.requestType]});
+        if (f.fromDate && f.toDate) {
+            conds.push({property: 'requested_execution_date', operator: 'BETWEEN', values: [f.fromDate, f.toDate]});
+        } else if (f.fromDate) {
+            conds.push({property: 'requested_execution_date', operator: 'GREATER_THAN', values: [f.fromDate]});
+        } else if (f.toDate) {
+            conds.push({property: 'requested_execution_date', operator: 'LESS_THAN', values: [f.toDate]});
+        }
+        return conds;
     };
 
-    const currentPage = params.page ?? 0;
-    const totalPages = data?.totalPages ?? 0;
-    const totalElements = data?.totalElements ?? 0;
-    const from = totalElements === 0 ? 0 : currentPage * pageSize + 1;
-    const to = Math.min((currentPage + 1) * pageSize, totalElements);
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        setSearchRequest({conditions: buildConditions(draft), pagination: {offset: 1, limit: pageSize}});
+    };
 
-    const pendingIds = (data?.content ?? [])
+    const totalItems = data?.totalItems ?? 0;
+    const currentOffset = data?.offset ?? 1;
+    const currentLimit = data?.limit ?? pageSize;
+    const totalPages = Math.ceil(totalItems / currentLimit);
+    const currentPage = Math.floor((currentOffset - 1) / currentLimit);
+    const from = totalItems === 0 ? 0 : currentOffset;
+    const to = Math.min(currentOffset + currentLimit - 1, totalItems);
+
+    const pendingIds = (data?.items ?? [])
         .filter(p => p.postingStatus === 'PNDG')
         .map(p => p.postingId);
     const hasPending = pendingIds.length > 0;
 
     const selectedPendingIds = [...selected].filter(id =>
-        (data?.content ?? []).some(p => p.postingId === id && p.postingStatus === 'PNDG'),
+        (data?.items ?? []).some(p => p.postingId === id && p.postingStatus === 'PNDG'),
     );
     const hasSelectedPending = selectedPendingIds.length > 0;
 
@@ -82,7 +110,7 @@ export default function PostingListPage() {
 
     const toggleAll = () => {
         if (!data) return;
-        const allIds = data.content.map(p => p.postingId);
+        const allIds = data.items.map(p => p.postingId);
         const allSelected = allIds.every(id => selected.has(id));
         if (allSelected) {
             setSelected(new Set());
@@ -104,7 +132,7 @@ export default function PostingListPage() {
                         }}
                         onClick={() => {
                             setDraft({});
-                            setParams({page: 0, size: pageSize});
+                            setSearchRequest({pagination: {offset: 1, limit: pageSize}});
                         }}
                         disabled={Object.values(draft).every(v => v === undefined || v === '')}
                     >
@@ -231,7 +259,7 @@ export default function PostingListPage() {
                             <th style={{...s.th, width: 32}}>
                                 <input
                                     type="checkbox"
-                                    checked={data.content.length > 0 && data.content.every(p => selected.has(p.postingId))}
+                                    checked={data.items.length > 0 && data.items.every(p => selected.has(p.postingId))}
                                     onChange={toggleAll}
                                 />
                             </th>
@@ -249,7 +277,7 @@ export default function PostingListPage() {
                         </tr>
                         </thead>
                         <tbody>
-                        {data.content.map(p => {
+                        {data.items.map(p => {
                             const expanded = expandedIds.has(p.postingId);
                             return (
                                 <Fragment key={p.postingId}>
@@ -319,22 +347,28 @@ export default function PostingListPage() {
                             onChange={e => {
                                 const sz = Number(e.target.value);
                                 setPageSize(sz);
-                                setParams(p => ({...p, size: sz, page: 0}));
+                                setSearchRequest(r => ({...r, pagination: {offset: 1, limit: sz}}));
                             }}
                         >
                             {[10, 20, 50].map(sz => <option key={sz} value={sz}>{sz}</option>)}
                         </select>
-                        <span style={s.paginationLabel}>{from}–{to} of {totalElements}</span>
+                        <span style={s.paginationLabel}>{from}–{to} of {totalItems}</span>
                         <button
                             style={s.pageBtn}
                             disabled={currentPage === 0}
-                            onClick={() => setParams(p => ({...p, page: currentPage - 1}))}
+                            onClick={() => setSearchRequest(r => ({
+                                ...r,
+                                pagination: {offset: Math.max(1, currentOffset - currentLimit), limit: currentLimit},
+                            }))}
                         >‹
                         </button>
                         <button
                             style={s.pageBtn}
                             disabled={currentPage + 1 >= totalPages}
-                            onClick={() => setParams(p => ({...p, page: currentPage + 1}))}
+                            onClick={() => setSearchRequest(r => ({
+                                ...r,
+                                pagination: {offset: currentOffset + currentLimit, limit: currentLimit},
+                            }))}
                         >›
                         </button>
                     </div>

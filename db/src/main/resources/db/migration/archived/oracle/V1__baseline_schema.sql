@@ -7,11 +7,11 @@ CREATE TABLE account_posting
     source_name              VARCHAR2(100)            NOT NULL,
     request_type             VARCHAR2(50)             NOT NULL,
     amount                   NUMBER(19, 4)            NOT NULL,
-    currency                 CHAR(3)                                       NOT NULL,
+    currency                 CHAR(3)                                                          NOT NULL,
     credit_debit_indicator   VARCHAR2(6)              NOT NULL,
     debtor_account           VARCHAR2(50)             NOT NULL,
     creditor_account         VARCHAR2(50)             NOT NULL,
-    requested_execution_date DATE                                          NOT NULL,
+    requested_execution_date DATE                                                             NOT NULL,
     remittance_information   VARCHAR2(500),
     status                   VARCHAR2(10)             DEFAULT 'PNDG' NOT NULL,
     request_payload          CLOB,
@@ -130,11 +130,11 @@ CREATE TABLE account_posting_history
     source_name              VARCHAR2(100)            NOT NULL,
     request_type             VARCHAR2(50)             NOT NULL,
     amount                   NUMBER(19, 4)            NOT NULL,
-    currency                 CHAR(3)                                       NOT NULL,
+    currency                 CHAR(3)                                                          NOT NULL,
     credit_debit_indicator   VARCHAR2(6)              NOT NULL,
     debtor_account           VARCHAR2(50)             NOT NULL,
     creditor_account         VARCHAR2(50)             NOT NULL,
-    requested_execution_date DATE                                          NOT NULL,
+    requested_execution_date DATE                                                             NOT NULL,
     remittance_information   VARCHAR2(500),
     status                   VARCHAR2(10)             NOT NULL,
     request_payload          CLOB,
@@ -142,8 +142,8 @@ CREATE TABLE account_posting_history
     retry_locked_until       TIMESTAMP WITH TIME ZONE,
     target_systems           VARCHAR2(500),
     reason                   VARCHAR2(1000),
-    created_at               TIMESTAMP WITH TIME ZONE                      NOT NULL,
-    updated_at               TIMESTAMP WITH TIME ZONE                      NOT NULL,
+    created_at               TIMESTAMP WITH TIME ZONE                                         NOT NULL,
+    updated_at               TIMESTAMP WITH TIME ZONE                                         NOT NULL,
     archived_at              TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL
 );
 
@@ -171,8 +171,8 @@ CREATE TABLE account_posting_leg_history
     response_payload CLOB,
     mode             VARCHAR2(10)             NOT NULL,
     operation        VARCHAR2(20)             NOT NULL,
-    created_at       TIMESTAMP WITH TIME ZONE                      NOT NULL,
-    updated_at       TIMESTAMP WITH TIME ZONE                      NOT NULL,
+    created_at       TIMESTAMP WITH TIME ZONE                                         NOT NULL,
+    updated_at       TIMESTAMP WITH TIME ZONE                                         NOT NULL,
     archived_at      TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP AT TIME ZONE 'UTC' NOT NULL
 );
 

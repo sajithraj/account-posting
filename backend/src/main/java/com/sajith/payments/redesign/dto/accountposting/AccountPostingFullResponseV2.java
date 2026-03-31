@@ -88,6 +88,12 @@ public class AccountPostingFullResponseV2 {
     @JsonDeserialize(using = InstantDeserializer.class)
     private Instant updatedAt;
 
+    @JsonProperty("created_by")
+    private String createdBy;
+
+    @JsonProperty("updated_by")
+    private String updatedBy;
+
     @JsonProperty("responses")
     private List<LegResponseV2> responses;
 }

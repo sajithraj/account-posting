@@ -2,6 +2,7 @@ package com.sajith.payments.redesign.dto.accountpostingleg;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sajith.payments.redesign.entity.enums.LegStatus;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -14,4 +15,8 @@ public class ManualUpdateRequestV2 {
 
     @JsonProperty("reason")
     private String reason;
+
+    @NotBlank(message = "requested_by is required")
+    @JsonProperty("requested_by")
+    private String requestedBy;
 }

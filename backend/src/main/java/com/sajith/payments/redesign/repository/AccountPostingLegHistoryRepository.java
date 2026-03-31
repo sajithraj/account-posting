@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface AccountPostingLegHistoryRepository extends JpaRepository<AccountPostingLegHistoryEntity, Long> {
 
-    List<AccountPostingLegHistoryEntity> findByPostingIdOrderByLegOrder(Long postingId);
+    List<AccountPostingLegHistoryEntity> findByPostingIdOrderByTransactionOrder(Long postingId);
 }

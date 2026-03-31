@@ -16,6 +16,4 @@ public interface PostingConfigServiceV2 {
     PostingConfigResponseV2 update(Long configId, PostingConfigRequestV2 request);
 
     void delete(Long configId);
-
-    void flushCache();
 }

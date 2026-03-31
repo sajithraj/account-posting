@@ -2,6 +2,7 @@ package com.sajith.payments.redesign.service.accountpostingleg;
 
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegRequestV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.AccountPostingLegResponseV2;
+import com.sajith.payments.redesign.dto.accountpostingleg.ManualUpdateRequestV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.UpdateLegRequestV2;
 import com.sajith.payments.redesign.entity.AccountPostingLegEntity;
 import com.sajith.payments.redesign.entity.enums.LegMode;
@@ -35,8 +36,8 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
         log.info("Request received to add leg for posting id :: {}. Received request :: {} .", postingId, appUtility.toObjectToString(request));
         AccountPostingLegEntity leg = mapper.toEntity(request);
         leg.setPostingId(postingId);
-        log.info("Persisting leg data for postingId :: {} target system :: {} leg order :: {} operation :: {} mode :: {} status :: {}",
-                postingId, leg.getTargetSystem(), leg.getLegOrder(),
+        log.info("Persisting leg data for postingId :: {} target system :: {} transaction order :: {} operation :: {} mode :: {} status :: {}",
+                postingId, leg.getTargetSystem(), leg.getTransactionOrder(),
                 leg.getOperation(), leg.getMode(), leg.getStatus());
         AccountPostingLegEntity saved = repository.save(leg);
         AccountPostingLegResponseV2 addLegResponse = mapper.toResponse(saved);
@@ -48,7 +49,7 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
     @Transactional(readOnly = true)
     public List<AccountPostingLegResponseV2> listLegs(Long postingId) {
         log.info("Request received to fetch legs for posting id :: {} .", postingId);
-        List<AccountPostingLegResponseV2> legs = repository.findByPostingIdOrderByLegOrder(postingId)
+        List<AccountPostingLegResponseV2> legs = repository.findByPostingIdOrderByTransactionOrder(postingId)
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -85,16 +86,20 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
 
     @Override
     @Transactional
-    public AccountPostingLegResponseV2 manualUpdateLeg(Long postingId, Long postingLegId, LegStatus newStatus, String reason) {
-        log.info("Request received to update leg manually for posting id :: {} and posting leg id :: {} . Update details - new status :: {} and reason :: {} .", postingId, postingLegId, newStatus, reason);
-        AccountPostingLegEntity leg = getLegByPostingIdAndPostingLegIdOrThrow(postingId, postingLegId);
+    public AccountPostingLegResponseV2 manualUpdateLeg(Long postingId, Long transactionId, ManualUpdateRequestV2 request) {
+        LegStatus newStatus = request.getStatus();
+        String reason = request.getReason();
+        String requestedBy = request.getRequestedBy();
+        log.info("Request received to update leg manually for posting id :: {} and posting leg id :: {} . Update details - new status :: {} and reason :: {} .", postingId, transactionId, newStatus, reason);
+        AccountPostingLegEntity leg = getLegByPostingIdAndPostingLegIdOrThrow(postingId, transactionId);
         LegStatus previousStatus = leg.getStatus();
         leg.setStatus(newStatus);
         leg.setMode(LegMode.MANUAL);
         if (reason != null && !reason.isBlank()) {
             leg.setReason(reason);
         }
-        log.info("Persisting manual leg update for posting leg id :: {} posting id :: {} . Status updated from :: {}  to status :: {} .", postingLegId, postingId, previousStatus, newStatus);
+        leg.setUpdatedBy(requestedBy != null && !requestedBy.isBlank() ? requestedBy : "SYSTEM");
+        log.info("Persisting manual leg update for posting leg id :: {} posting id :: {} . Status updated from :: {}  to status :: {} .", transactionId, postingId, previousStatus, newStatus);
         AccountPostingLegEntity updated = repository.save(leg);
 
         // Promote posting to SUCCESS when every leg is now SUCCESS
@@ -104,6 +109,7 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
                 postingRepository.findById(postingId).ifPresent(posting -> {
                     posting.setStatus(PostingStatus.ACSP);
                     posting.setReason("Request processed successfully");
+                    posting.setUpdatedBy(requestedBy != null && !requestedBy.isBlank() ? requestedBy : "SYSTEM");
                     postingRepository.save(posting);
                     log.info("All legs SUCCESS - promoted postingId={} to ACSP", postingId);
                 });
@@ -111,7 +117,7 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
         }
 
         AccountPostingLegResponseV2 manualUpdateResponse = mapper.toResponse(updated);
-        log.info("Manual leg updated completed successfully for posting leg id :: {} posting id :: {}. Updated leg details :: {} .", postingId, postingLegId, appUtility.toObjectToString(manualUpdateResponse));
+        log.info("Manual leg updated completed successfully for posting leg id :: {} posting id :: {}. Updated leg details :: {} .", postingId, transactionId, appUtility.toObjectToString(manualUpdateResponse));
         return manualUpdateResponse;
     }
 
@@ -124,9 +130,9 @@ public class AccountPostingLegServiceImplV2 implements AccountPostingLegServiceV
                 .toList();
     }
 
-    private AccountPostingLegEntity getLegByPostingIdAndPostingLegIdOrThrow(Long postingId, Long postingLegId) {
-        return repository.findByPostingLegIdAndPostingId(postingLegId, postingId)
+    private AccountPostingLegEntity getLegByPostingIdAndPostingLegIdOrThrow(Long postingId, Long transactionId) {
+        return repository.findByTransactionIdAndPostingId(transactionId, postingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "AccountPostingLegEntity", postingLegId + " under posting " + postingId));
+                        "AccountPostingLegEntity", transactionId + " under posting " + postingId));
     }
 }

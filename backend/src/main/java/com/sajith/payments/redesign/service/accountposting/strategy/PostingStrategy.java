@@ -14,14 +14,14 @@ public interface PostingStrategy {
     String getPostingFlow();
 
     /**
-     * Submits to the target system and persists the leg result.
+     * Submits to the target system and persists the transaction result.
      *
-     * @param postingId     parent posting ID
-     * @param legOrder      order sequence from the config (used to set legOrder on the leg)
-     * @param request       original posting request
-     * @param isRetry       when true, updates the existing leg instead of inserting a new one
-     * @param existingLegId must be non-null when isRetry=true; identifies the leg to update
+     * @param postingId       parent posting ID
+     * @param transactionOrder order sequence from the config
+     * @param request          original posting request
+     * @param isRetry          when true, updates the existing transaction instead of inserting a new one
+     * @param existingTxnId    must be non-null when isRetry=true; identifies the transaction to update
      */
-    LegResponseV2 process(Long postingId, int legOrder, IncomingPostingRequest request,
-                          boolean isRetry, Long existingLegId);
+    LegResponseV2 process(Long postingId, int transactionOrder, IncomingPostingRequest request,
+                          boolean isRetry, Long existingTxnId);
 }

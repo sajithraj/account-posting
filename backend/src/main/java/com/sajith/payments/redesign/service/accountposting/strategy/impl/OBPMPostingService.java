@@ -38,25 +38,25 @@ public class OBPMPostingService implements PostingStrategy {
     }
 
     @Override
-    public LegResponseV2 process(Long postingId, int legOrder, IncomingPostingRequest request,
-                                 boolean isRetry, Long existingLegId) {
+    public LegResponseV2 process(Long postingId, int transactionOrder, IncomingPostingRequest request,
+                                 boolean isRetry, Long existingTxnId) {
         log.info("OBPM {} | postingId={} flow={}", isRetry ? "RETRY" : "CREATE", postingId, getPostingFlow());
 
         // ── Build OBPM request ─────────────────────────────────────────────
         Map<String, Object> obpmRequest = externalApiHelper.buildObpmRequest(request);
         String requestPayloadJson = appUtility.toObjectToString(obpmRequest);
-        log.info("OBPM REQUEST | postingId={} leg={} {}", postingId, legOrder, requestPayloadJson);
+        log.info("OBPM REQUEST | postingId={} txnOrder={} {}", postingId, transactionOrder, requestPayloadJson);
 
-        if (existingLegId == null) {
+        if (existingTxnId == null) {
             throw new IllegalArgumentException(
-                    "OBPM | postingId=" + postingId + " leg=" + legOrder + " - existingLegId must be pre-inserted before strategy execution");
+                    "OBPM | postingId=" + postingId + " txnOrder=" + transactionOrder + " - existingTxnId must be pre-inserted before strategy execution");
         }
-        Long legId = existingLegId;
+        Long legId = existingTxnId;
 
         // ── Invoke OBPM ────────────────────────────────────────────────────
         Map<String, Object> obpmResponse = externalApiHelper.callObpm(obpmRequest);
         String responsePayloadJson = appUtility.toObjectToString(obpmResponse);
-        log.info("OBPM RESPONSE | postingId={} leg={} {}", postingId, legOrder, responsePayloadJson);
+        log.info("OBPM RESPONSE | postingId={} txnOrder={} {}", postingId, transactionOrder, responsePayloadJson);
 
         String obpmStatus = String.valueOf(obpmResponse.get("status"));
         boolean success = "SUCCESS".equalsIgnoreCase(obpmStatus);

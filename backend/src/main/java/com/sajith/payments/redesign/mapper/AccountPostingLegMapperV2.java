@@ -12,6 +12,7 @@ import com.sajith.payments.redesign.entity.AccountPostingLegHistoryEntity;
 import com.sajith.payments.redesign.entity.enums.LegMode;
 import com.sajith.payments.redesign.entity.enums.LegStatus;
 import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -24,13 +25,16 @@ import java.util.List;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AccountPostingLegMapperV2 {
 
-    @Mapping(target = "postingLegId", ignore = true)
+    @BeanMapping(builder = @Builder(disableBuilder = true))
+    @Mapping(target = "transactionId", ignore = true)
     @Mapping(target = "postingId", ignore = true)
     @Mapping(target = "attemptNumber", constant = "1")
     @Mapping(target = "responsePayload", ignore = true)
     @Mapping(target = "status", expression = "java(resolveStatus(request))")
     @Mapping(target = "mode", expression = "java(resolveMode(request))")
     @Mapping(target = "operation", expression = "java(resolveOperation(request))")
+    @Mapping(target = "createdBy", constant = "SYSTEM")
+    @Mapping(target = "updatedBy", constant = "SYSTEM")
     AccountPostingLegEntity toEntity(AccountPostingLegRequestV2 request);
 
     AccountPostingLegResponseV2 toResponse(AccountPostingLegEntity leg);
@@ -45,14 +49,14 @@ public interface AccountPostingLegMapperV2 {
     AccountPostingLegHistoryEntity toLegHistory(AccountPostingLegEntity src, Instant archivedAt);
 
     @Mapping(target = "account", source = "request.debtorAccount")
-    @Mapping(target = "legOrder", source = "legOrder")
+    @Mapping(target = "transactionOrder", source = "transactionOrder")
     @Mapping(target = "targetSystem", source = "targetSystem")
     @Mapping(target = "mode", source = "mode")
     @Mapping(target = "operation", source = "operation")
     @Mapping(target = "requestPayload", source = "requestPayload")
     AccountPostingLegRequestV2 toCreateLegRequest(
             IncomingPostingRequest request,
-            Integer legOrder,
+            Integer transactionOrder,
             String targetSystem,
             LegMode mode,
             String operation,
@@ -71,9 +75,9 @@ public interface AccountPostingLegMapperV2 {
     }
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "postingLegId", ignore = true)
+    @Mapping(target = "transactionId", ignore = true)
     @Mapping(target = "postingId", ignore = true)
-    @Mapping(target = "legOrder", ignore = true)
+    @Mapping(target = "transactionOrder", ignore = true)
     @Mapping(target = "targetSystem", ignore = true)
     @Mapping(target = "account", ignore = true)
     @Mapping(target = "attemptNumber", ignore = true)

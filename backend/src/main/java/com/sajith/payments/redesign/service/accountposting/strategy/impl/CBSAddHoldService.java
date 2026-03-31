@@ -39,23 +39,23 @@ public class CBSAddHoldService implements PostingStrategy {
     }
 
     @Override
-    public LegResponseV2 process(Long postingId, int legOrder, IncomingPostingRequest request,
-                                 boolean isRetry, Long existingLegId) {
+    public LegResponseV2 process(Long postingId, int transactionOrder, IncomingPostingRequest request,
+                                 boolean isRetry, Long existingTxnId) {
         log.info("CBS_ADD_HOLD {} | postingId={} flow={}", isRetry ? "RETRY" : "CREATE", postingId, getPostingFlow());
 
         String transactionIndex = UUID.randomUUID().toString();
         Map<String, Object> cbsRequest = externalApiHelper.buildCbsAddHoldRequest(request, transactionIndex);
         String requestPayloadJson = appUtility.toObjectToString(cbsRequest);
-        log.info("CBS_ADD_HOLD REQUEST | postingId={} leg={} {}", postingId, legOrder, requestPayloadJson);
+        log.info("CBS_ADD_HOLD REQUEST | postingId={} txnOrder={} {}", postingId, transactionOrder, requestPayloadJson);
 
-        if (existingLegId == null) {
+        if (existingTxnId == null) {
             throw new IllegalArgumentException(
-                    "CBS_ADD_HOLD | postingId=" + postingId + " leg=" + legOrder + " - existingLegId must be pre-inserted before strategy execution");
+                    "CBS_ADD_HOLD | postingId=" + postingId + " txnOrder=" + transactionOrder + " - existingTxnId must be pre-inserted before strategy execution");
         }
 
         Map<String, Object> cbsResponse = externalApiHelper.callCbsAddHold(cbsRequest, transactionIndex);
         String responsePayloadJson = appUtility.toObjectToString(cbsResponse);
-        log.info("CBS_ADD_HOLD RESPONSE | postingId={} leg={} {}", postingId, legOrder, responsePayloadJson);
+        log.info("CBS_ADD_HOLD RESPONSE | postingId={} txnOrder={} {}", postingId, transactionOrder, responsePayloadJson);
 
         String cbsStatus = String.valueOf(cbsResponse.get("status"));
         boolean success = "SUCCESS".equalsIgnoreCase(cbsStatus);
@@ -73,9 +73,9 @@ public class CBSAddHoldService implements PostingStrategy {
                 isRetry ? LegMode.RETRY : LegMode.NORM,
                 postedTime
         );
-        AccountPostingLegResponseV2 updated = legService.updateLeg(postingId, existingLegId,
+        AccountPostingLegResponseV2 updated = legService.updateLeg(postingId, existingTxnId,
                 legMapper.toUpdateLegRequest(result));
-        log.info("CBS_ADD_HOLD | leg#{} finalStatus={}", existingLegId, updated.getStatus());
+        log.info("CBS_ADD_HOLD | txn#{} finalStatus={}", existingTxnId, updated.getStatus());
 
         return postingMapper.toLegResponse(updated);
     }

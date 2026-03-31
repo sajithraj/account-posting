@@ -9,6 +9,8 @@ import com.sajith.payments.redesign.entity.AccountPostingEntity;
 import com.sajith.payments.redesign.entity.AccountPostingHistoryEntity;
 import com.sajith.payments.redesign.entity.enums.CreditDebitIndicator;
 import com.sajith.payments.redesign.entity.enums.PostingStatus;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -22,6 +24,7 @@ import java.time.Instant;
 )
 public interface AccountPostingMapperV2 {
 
+    @BeanMapping(builder = @Builder(disableBuilder = true))
     @Mapping(target = "postingId", ignore = true)
     @Mapping(target = "status", expression = "java(PostingStatus.PNDG)")
     @Mapping(target = "requestPayload", ignore = true)
@@ -33,6 +36,8 @@ public interface AccountPostingMapperV2 {
     @Mapping(target = "currency", expression = "java(request.getAmount().getCurrency())")
     @Mapping(target = "creditDebitIndicator", expression = "java(CreditDebitIndicator.valueOf(request.getCreditDebitIndicator().toUpperCase()))")
     @Mapping(target = "requestedExecutionDate", expression = "java(java.time.LocalDate.parse(request.getRequestedExecutionDate()))")
+    @Mapping(target = "createdBy", constant = "SYSTEM")
+    @Mapping(target = "updatedBy", constant = "SYSTEM")
     AccountPostingEntity toEntity(IncomingPostingRequest request);
 
     @Mapping(source = "status", target = "postingStatus")
@@ -40,10 +45,10 @@ public interface AccountPostingMapperV2 {
     @Mapping(target = "responses", ignore = true)
     AccountPostingFullResponseV2 toResponse(AccountPostingEntity posting);
 
-    @Mapping(source = "postingLegId", target = "postingLegId")
+    @Mapping(source = "transactionId", target = "transactionId")
     @Mapping(source = "targetSystem", target = "name")
     @Mapping(source = "operation", target = "type")
-    @Mapping(source = "legOrder", target = "legOrder")
+    @Mapping(source = "transactionOrder", target = "transactionOrder")
     @Mapping(source = "status", target = "status")
     @Mapping(source = "mode", target = "mode")
     LegResponseV2 toLegResponse(AccountPostingLegResponseV2 legResponse);

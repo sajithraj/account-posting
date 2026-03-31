@@ -21,7 +21,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 @Entity
-@Table(name = "account_posting_leg")
+@Table(name = "account_posting_transaction")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,14 +31,14 @@ public class AccountPostingLegEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "posting_leg_id")
-    private Long postingLegId;
+    @Column(name = "transaction_id")
+    private Long transactionId;
 
     @Column(name = "posting_id", nullable = false)
     private Long postingId;
 
-    @Column(name = "leg_order", nullable = false)
-    private Integer legOrder;
+    @Column(name = "transaction_order", nullable = false)
+    private Integer transactionOrder;
 
     @Column(name = "target_system", nullable = false, length = 100)
     private String targetSystem;
@@ -73,7 +73,7 @@ public class AccountPostingLegEntity extends BaseEntity {
     private String responsePayload;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "leg_mode", nullable = false, length = 10)
+    @Column(name = "transaction_mode", nullable = false, length = 10)
     @Builder.Default
     private LegMode mode = LegMode.NORM;
 

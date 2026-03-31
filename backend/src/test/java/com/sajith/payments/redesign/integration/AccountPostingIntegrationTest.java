@@ -2,13 +2,17 @@ package com.sajith.payments.redesign.integration;
 
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingCreateResponseV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingFullResponseV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingSearchRequestV2;
 import com.sajith.payments.redesign.dto.accountposting.Amount;
 import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegCreateResponseV2;
 import com.sajith.payments.redesign.dto.accountpostingleg.LegResponseV2;
 import com.sajith.payments.redesign.dto.retry.RetryRequestV2;
 import com.sajith.payments.redesign.dto.retry.RetryResponseV2;
+import com.sajith.payments.redesign.dto.search.PostingSearchRequestV2;
+import com.sajith.payments.redesign.dto.search.PostingSearchResponseV2;
+import com.sajith.payments.redesign.dto.search.SearchCondition;
+import com.sajith.payments.redesign.dto.search.SearchOrderBy;
+import com.sajith.payments.redesign.dto.search.SearchPagination;
 import com.sajith.payments.redesign.entity.AccountPostingEntity;
 import com.sajith.payments.redesign.entity.AccountPostingLegEntity;
 import com.sajith.payments.redesign.entity.PostingConfig;
@@ -29,10 +33,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -173,6 +174,8 @@ class AccountPostingIntegrationTest {
         c.setTargetSystem(targetSystem);
         c.setOperation("POSTING");
         c.setOrderSeq(orderSeq);
+        c.setCreatedBy("SYSTEM");
+        c.setUpdatedBy("SYSTEM");
         return c;
     }
 
@@ -258,7 +261,7 @@ class AccountPostingIntegrationTest {
     }
 
     private List<AccountPostingLegEntity> getLegs(Long postingId) {
-        return legRepo.findByPostingIdOrderByLegOrder(postingId);
+        return legRepo.findByPostingIdOrderByTransactionOrder(postingId);
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -297,7 +300,7 @@ class AccountPostingIntegrationTest {
             assertThat(legs).hasSize(1);
             assertThat(legs.get(0).getTargetSystem()).isEqualTo("OBPM");
             assertThat(legs.get(0).getStatus()).isEqualTo(LegStatus.SUCCESS);
-            assertThat(legs.get(0).getLegOrder()).isEqualTo(1);
+            assertThat(legs.get(0).getTransactionOrder()).isEqualTo(1);
             assertThat(legs.get(0).getMode()).isEqualTo(LegMode.NORM);
             assertThat(legs.get(0).getAttemptNumber()).isEqualTo(1);
             assertThat(legs.get(0).getPostedTime()).isNotNull();
@@ -397,7 +400,7 @@ class AccountPostingIntegrationTest {
             AccountPostingLegEntity cbsLeg = legs.get(0);
             assertThat(cbsLeg.getTargetSystem()).isEqualTo("CBS");
             assertThat(cbsLeg.getStatus()).isEqualTo(LegStatus.SUCCESS);
-            assertThat(cbsLeg.getLegOrder()).isEqualTo(1);
+            assertThat(cbsLeg.getTransactionOrder()).isEqualTo(1);
             assertThat(cbsLeg.getMode()).isEqualTo(LegMode.NORM);
             assertThat(cbsLeg.getAttemptNumber()).isEqualTo(1);
             assertThat(cbsLeg.getReferenceId()).isNotBlank();
@@ -406,7 +409,7 @@ class AccountPostingIntegrationTest {
             AccountPostingLegEntity glLeg = legs.get(1);
             assertThat(glLeg.getTargetSystem()).isEqualTo("GL");
             assertThat(glLeg.getStatus()).isEqualTo(LegStatus.SUCCESS);
-            assertThat(glLeg.getLegOrder()).isEqualTo(2);
+            assertThat(glLeg.getTransactionOrder()).isEqualTo(2);
             assertThat(glLeg.getReferenceId()).isNotBlank();
         }
 
@@ -483,7 +486,7 @@ class AccountPostingIntegrationTest {
             assertThat(legs).hasSize(3);
             assertThat(legs).extracting(AccountPostingLegEntity::getTargetSystem)
                     .containsExactly("CBS", "OBPM", "GL");
-            assertThat(legs).extracting(AccountPostingLegEntity::getLegOrder)
+            assertThat(legs).extracting(AccountPostingLegEntity::getTransactionOrder)
                     .containsExactly(1, 2, 3);
             assertThat(legs).extracting(AccountPostingLegEntity::getStatus)
                     .containsOnly(LegStatus.SUCCESS);
@@ -1020,6 +1023,25 @@ class AccountPostingIntegrationTest {
     @DisplayName("Search scenarios")
     class SearchScenarios {
 
+        private PostingSearchRequestV2 byCondition(String property, String operator, String value) {
+            PostingSearchRequestV2 req = new PostingSearchRequestV2();
+            req.setConditions(List.of(new SearchCondition(property, operator, List.of(value))));
+            return req;
+        }
+
+        private PostingSearchRequestV2 withPagination(int offset, int limit, String sortProp, String sortOrder) {
+            PostingSearchRequestV2 req = new PostingSearchRequestV2();
+            SearchPagination pg = new SearchPagination();
+            pg.setOffset(offset);
+            pg.setLimit(limit);
+            req.setPagination(pg);
+            SearchOrderBy ob = new SearchOrderBy();
+            ob.setProperty(sortProp);
+            ob.setSortOrder(sortOrder);
+            req.setOrderBy(List.of(ob));
+            return req;
+        }
+
         @Test
         @DisplayName("Search by status=SUCCESS returns only SUCCESS postings")
         void search_byStatusSuccess_returnsOnlySuccessPostings() {
@@ -1031,13 +1053,10 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "ADD_ACCOUNT_HOLD")); // PENDING (CBS only)
             reset(strategyFactory);
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setStatus(PostingStatus.ACSP);
+            PostingSearchResponseV2 result = service.search(byCondition("status", "EQUALS", "ACSP"));
 
-            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
-
-            assertThat(result.getTotalElements()).isEqualTo(2);
-            assertThat(result.getContent())
+            assertThat(result.getTotalItems()).isEqualTo(2);
+            assertThat(result.getItems())
                     .extracting(AccountPostingFullResponseV2::getPostingStatus)
                     .containsOnly(PostingStatus.ACSP);
         }
@@ -1052,13 +1071,10 @@ class AccountPostingIntegrationTest {
             service.create(req("RMS", "FED_RETURN"));   // PENDING
             reset(strategyFactory);
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setStatus(PostingStatus.PNDG);
+            PostingSearchResponseV2 result = service.search(byCondition("status", "EQUALS", "PNDG"));
 
-            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
-
-            assertThat(result.getTotalElements()).isEqualTo(2);
-            assertThat(result.getContent())
+            assertThat(result.getTotalItems()).isEqualTo(2);
+            assertThat(result.getItems())
                     .extracting(AccountPostingFullResponseV2::getPostingStatus)
                     .containsOnly(PostingStatus.PNDG);
         }
@@ -1072,13 +1088,10 @@ class AccountPostingIntegrationTest {
             service.create(req("RMS", "MCA_RETURN"));
             service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING"));
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setSourceName("RMS");
+            PostingSearchResponseV2 result = service.search(byCondition("source_name", "EQUALS", "RMS"));
 
-            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
-
-            assertThat(result.getTotalElements()).isEqualTo(2);
-            assertThat(result.getContent())
+            assertThat(result.getTotalItems()).isEqualTo(2);
+            assertThat(result.getItems())
                     .extracting(AccountPostingFullResponseV2::getSourceName)
                     .containsOnly("RMS");
         }
@@ -1092,13 +1105,10 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_OBPM"));
             service.create(req("RMS", "FED_RETURN"));
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setRequestType("IMX_CBS_GL");
+            PostingSearchResponseV2 result = service.search(byCondition("request_type", "EQUALS", "IMX_CBS_GL"));
 
-            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
-
-            assertThat(result.getTotalElements()).isEqualTo(3);
-            assertThat(result.getContent())
+            assertThat(result.getTotalItems()).isEqualTo(3);
+            assertThat(result.getItems())
                     .extracting(AccountPostingFullResponseV2::getRequestType)
                     .containsOnly("IMX_CBS_GL");
         }
@@ -1111,13 +1121,10 @@ class AccountPostingIntegrationTest {
             service.create(req("RMS", "MCA_RETURN"));          // CBS
             service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING")); // OBPM_GL
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setTargetSystem("CBS");   // matches CBS_GL and CBS
+            PostingSearchResponseV2 result = service.search(byCondition("target_system", "CONTAINS", "CBS"));
 
-            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
-
-            assertThat(result.getTotalElements()).isEqualTo(2);
-            assertThat(result.getContent())
+            assertThat(result.getTotalItems()).isEqualTo(2);
+            assertThat(result.getItems())
                     .extracting(AccountPostingFullResponseV2::getTargetSystems)
                     .allMatch(ts -> ts != null && ts.contains("CBS"));
         }
@@ -1132,15 +1139,17 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_CBS_GL"));   // IMX PENDING
             reset(strategyFactory);
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setSourceName("IMX");
-            criteria.setStatus(PostingStatus.ACSP);
+            PostingSearchRequestV2 searchReq = new PostingSearchRequestV2();
+            searchReq.setConditions(List.of(
+                    new SearchCondition("source_name", "EQUALS", List.of("IMX")),
+                    new SearchCondition("status", "EQUALS", List.of("ACSP"))
+            ));
 
-            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
+            PostingSearchResponseV2 result = service.search(searchReq);
 
-            assertThat(result.getTotalElements()).isEqualTo(1);
-            assertThat(result.getContent().get(0).getSourceName()).isEqualTo("IMX");
-            assertThat(result.getContent().get(0).getPostingStatus()).isEqualTo(PostingStatus.ACSP);
+            assertThat(result.getTotalItems()).isEqualTo(1);
+            assertThat(result.getItems().get(0).getSourceName()).isEqualTo("IMX");
+            assertThat(result.getItems().get(0).getPostingStatus()).isEqualTo(PostingStatus.ACSP);
         }
 
         @Test
@@ -1152,15 +1161,12 @@ class AccountPostingIntegrationTest {
             service.create(req("STABLECOIN", "BUY_CUSTOMER_POSTING"));
             service.create(req("IMX", "CUSTOMER_POSTING"));
 
-            Pageable page1 = PageRequest.of(0, 3, Sort.by("postingId").ascending());
-            Pageable page2 = PageRequest.of(1, 3, Sort.by("postingId").ascending());
+            PostingSearchResponseV2 resultPage1 = service.search(withPagination(1, 3, "posting_id", "ASC"));
+            PostingSearchResponseV2 resultPage2 = service.search(withPagination(4, 3, "posting_id", "ASC"));
 
-            Page<AccountPostingFullResponseV2> resultPage1 = service.search(new AccountPostingSearchRequestV2(), page1);
-            Page<AccountPostingFullResponseV2> resultPage2 = service.search(new AccountPostingSearchRequestV2(), page2);
-
-            assertThat(resultPage1.getTotalElements()).isEqualTo(5);
-            assertThat(resultPage1.getContent()).hasSize(3);
-            assertThat(resultPage2.getContent()).hasSize(2);
+            assertThat(resultPage1.getTotalItems()).isEqualTo(5);
+            assertThat(resultPage1.getItems()).hasSize(3);
+            assertThat(resultPage2.getItems()).hasSize(2);
         }
 
         @Test
@@ -1169,14 +1175,10 @@ class AccountPostingIntegrationTest {
             service.create(req("IMX", "IMX_CBS_GL"));        // 2 legs
             service.create(req("IMX", "CUSTOMER_POSTING"));  // 3 legs
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setSourceName("IMX");
+            PostingSearchResponseV2 result = service.search(byCondition("source_name", "EQUALS", "IMX"));
 
-            Page<AccountPostingFullResponseV2> result = service.search(
-                    criteria, PageRequest.of(0, 10, Sort.by("postingId")));
-
-            assertThat(result.getTotalElements()).isEqualTo(2);
-            result.getContent().forEach(posting -> {
+            assertThat(result.getTotalItems()).isEqualTo(2);
+            result.getItems().forEach(posting -> {
                 assertThat(posting.getResponses()).isNotEmpty();
                 posting.getResponses().forEach(leg ->
                         assertThat(leg.getStatus()).isEqualTo("SUCCESS")
@@ -1192,13 +1194,11 @@ class AccountPostingIntegrationTest {
             service.create(req1);
             service.create(req2);
 
-            AccountPostingSearchRequestV2 criteria = new AccountPostingSearchRequestV2();
-            criteria.setEndToEndReferenceId(req1.getEndToEndRefId());
+            PostingSearchResponseV2 result = service.search(
+                    byCondition("end_to_end_reference_id", "EQUALS", req1.getEndToEndRefId()));
 
-            Page<AccountPostingFullResponseV2> result = service.search(criteria, Pageable.unpaged());
-
-            assertThat(result.getTotalElements()).isEqualTo(1);
-            assertThat(result.getContent().get(0).getEndToEndReferenceId())
+            assertThat(result.getTotalItems()).isEqualTo(1);
+            assertThat(result.getItems().get(0).getEndToEndReferenceId())
                     .isEqualTo(req1.getEndToEndRefId());
         }
     }
@@ -1236,7 +1236,7 @@ class AccountPostingIntegrationTest {
 
             assertThat(resp.getResponses()).hasSize(2);
             assertThat(resp.getResponses())
-                    .extracting(LegResponseV2::getLegOrder)
+                    .extracting(LegResponseV2::getTransactionOrder)
                     .containsExactly(1, 2);
             assertThat(resp.getResponses())
                     .extracting(LegResponseV2::getName)

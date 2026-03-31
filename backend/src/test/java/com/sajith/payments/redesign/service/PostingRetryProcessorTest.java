@@ -203,8 +203,8 @@ class PostingRetryProcessorTest {
     private AccountPostingLegResponseV2 buildLegResponse(Long legId, int order,
                                                          String targetSystem, LegStatus status) {
         AccountPostingLegResponseV2 r = new AccountPostingLegResponseV2();
-        r.setPostingLegId(legId);
-        r.setLegOrder(order);
+        r.setTransactionId(legId);
+        r.setTransactionOrder(order);
         r.setTargetSystem(targetSystem);
         r.setOperation("POSTING");
         r.setStatus(status);
@@ -214,7 +214,7 @@ class PostingRetryProcessorTest {
 
     private AccountPostingLegResponseV2 buildLegResponseSuccess(Long legId) {
         AccountPostingLegResponseV2 r = new AccountPostingLegResponseV2();
-        r.setPostingLegId(legId);
+        r.setTransactionId(legId);
         r.setStatus(LegStatus.SUCCESS);
         r.setAttemptNumber(2);
         return r;
@@ -222,7 +222,7 @@ class PostingRetryProcessorTest {
 
     private AccountPostingLegResponseV2 buildLegResponseFailed(Long legId) {
         AccountPostingLegResponseV2 r = new AccountPostingLegResponseV2();
-        r.setPostingLegId(legId);
+        r.setTransactionId(legId);
         r.setStatus(LegStatus.FAILED);
         r.setAttemptNumber(2);
         return r;

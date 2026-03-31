@@ -11,7 +11,6 @@ import com.sajith.payments.redesign.repository.PostingConfigRepository;
 import com.sajith.payments.redesign.utils.AppUtility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,6 @@ public class PostingConfigServiceImplV2 implements PostingConfigServiceV2 {
 
     private final PostingConfigRepository repository;
     private final PostingConfigMapperV2 mapper;
-    private final CacheManager cacheManager;
     private final AppUtility appUtility;
 
     @Override
@@ -62,7 +60,11 @@ public class PostingConfigServiceImplV2 implements PostingConfigServiceV2 {
             throw new BusinessException("DUPLICATE_CONFIG_ORDER",
                     "order_seq " + request.getOrderSeq() + " already exists for request_type " + request.getRequestType());
         }
-        PostingConfigResponseV2 response = mapper.toResponse(repository.save(mapper.toEntity(request)));
+        PostingConfig entity = mapper.toEntity(request);
+        String auditor = requestedBy(request.getRequestedBy());
+        entity.setCreatedBy(auditor);
+        entity.setUpdatedBy(auditor);
+        PostingConfigResponseV2 response = mapper.toResponse(repository.save(entity));
         log.info("Response to send for create config :: {} .", appUtility.toObjectToString(response));
         return response;
     }
@@ -83,6 +85,7 @@ public class PostingConfigServiceImplV2 implements PostingConfigServiceV2 {
         config.setTargetSystem(request.getTargetSystem());
         config.setOperation(request.getOperation());
         config.setOrderSeq(request.getOrderSeq());
+        config.setUpdatedBy(requestedBy(request.getRequestedBy()));
         PostingConfigResponseV2 response = mapper.toResponse(repository.save(config));
         log.info("Response to send for update config for config id {} . Config details :: {} .", configId, appUtility.toObjectToString(response));
         return response;
@@ -100,13 +103,8 @@ public class PostingConfigServiceImplV2 implements PostingConfigServiceV2 {
         log.info("Successfully deleted the config for config id :: {} .", configId);
     }
 
-    @Override
-    public void flushCache() {
-        var cache = cacheManager.getCache(CacheConfig.CONFIG_BY_REQUEST_TYPE);
-        if (cache != null) {
-            cache.clear();
-            log.info("Flushed cache :: {} .", CacheConfig.CONFIG_BY_REQUEST_TYPE);
-        }
+    private String requestedBy(String value) {
+        return (value != null && !value.isBlank()) ? value : "SYSTEM";
     }
 
 }

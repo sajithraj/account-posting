@@ -14,23 +14,17 @@ import java.util.Optional;
 @Repository
 public interface AccountPostingLegRepository extends JpaRepository<AccountPostingLegEntity, Long> {
 
-    List<AccountPostingLegEntity> findByPostingIdOrderByLegOrder(Long postingId);
+    List<AccountPostingLegEntity> findByPostingIdOrderByTransactionOrder(Long postingId);
 
-    Optional<AccountPostingLegEntity> findByPostingLegIdAndPostingId(Long postingLegId, Long postingId);
+    Optional<AccountPostingLegEntity> findByTransactionIdAndPostingId(Long transactionId, Long postingId);
 
-    /**
-     * Fetches all legs for the given postingIds.
-     */
     List<AccountPostingLegEntity> findByPostingIdIn(Collection<Long> postingIds);
 
-    /**
-     * Returns all non-SUCCESS legs for a posting ordered by legOrder.
-     */
     @Query("""
             SELECT l FROM AccountPostingLegEntity l
             WHERE l.postingId = :postingId
               AND l.status <> :status
-            ORDER BY l.legOrder
+            ORDER BY l.transactionOrder
             """)
     List<AccountPostingLegEntity> findNonSuccessByPostingId(
             @Param("postingId") Long postingId,

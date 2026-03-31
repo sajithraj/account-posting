@@ -13,11 +13,11 @@ import java.time.Instant;
 @Data
 public class LegResponseV2 {
 
-    @JsonProperty("posting_leg_id")
-    private Long postingLegId;
+    @JsonProperty("transaction_id")
+    private Long transactionId;
 
-    @JsonProperty("leg_order")
-    private Integer legOrder;
+    @JsonProperty("transaction_order")
+    private Integer transactionOrder;
 
     @JsonProperty("name")
     private String name;

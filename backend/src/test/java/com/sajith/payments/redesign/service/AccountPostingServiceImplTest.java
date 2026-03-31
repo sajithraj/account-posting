@@ -76,7 +76,7 @@ class AccountPostingServiceImplTest {
         lenient().when(legMapper.toCreateLegRequest(any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> {
                     AccountPostingLegRequestV2 r = new AccountPostingLegRequestV2();
-                    r.setLegOrder(inv.getArgument(1));
+                    r.setTransactionOrder(inv.getArgument(1));
                     r.setTargetSystem(inv.getArgument(2));
                     r.setOperation(inv.getArgument(4));
                     return r;
@@ -112,10 +112,10 @@ class AccountPostingServiceImplTest {
         when(legService.addLeg(anyLong(), any())).thenAnswer(inv -> {
             AccountPostingLegRequestV2 r = inv.getArgument(1);
             AccountPostingLegResponseV2 resp = new AccountPostingLegResponseV2();
-            resp.setPostingLegId((long) (Math.random() * 1000 + 1));
+            resp.setTransactionId((long) (Math.random() * 1000 + 1));
             resp.setTargetSystem(r.getTargetSystem());
             resp.setOperation(r.getOperation());
-            resp.setLegOrder(r.getLegOrder());
+            resp.setTransactionOrder(r.getTransactionOrder());
             return resp;
         });
         when(strategyFactory.resolve("CBS_POSTING")).thenReturn(strategy1);
@@ -203,10 +203,10 @@ class AccountPostingServiceImplTest {
         when(legService.addLeg(anyLong(), any())).thenAnswer(inv -> {
             AccountPostingLegRequestV2 r = inv.getArgument(1);
             AccountPostingLegResponseV2 resp = new AccountPostingLegResponseV2();
-            resp.setPostingLegId((long) (Math.random() * 1000 + 1));
+            resp.setTransactionId((long) (Math.random() * 1000 + 1));
             resp.setTargetSystem(r.getTargetSystem());
             resp.setOperation(r.getOperation());
-            resp.setLegOrder(r.getLegOrder());
+            resp.setTransactionOrder(r.getTransactionOrder());
             return resp;
         });
         when(strategyFactory.resolve("CBS_POSTING")).thenReturn(strategy1);
@@ -244,10 +244,10 @@ class AccountPostingServiceImplTest {
         when(legService.addLeg(anyLong(), any())).thenAnswer(inv -> {
             AccountPostingLegRequestV2 r = inv.getArgument(1);
             AccountPostingLegResponseV2 resp = new AccountPostingLegResponseV2();
-            resp.setPostingLegId((long) (Math.random() * 1000 + 1));
+            resp.setTransactionId((long) (Math.random() * 1000 + 1));
             resp.setTargetSystem(r.getTargetSystem());
             resp.setOperation(r.getOperation());
-            resp.setLegOrder(r.getLegOrder());
+            resp.setTransactionOrder(r.getTransactionOrder());
             return resp;
         });
         when(strategyFactory.resolve("CBS_POSTING")).thenReturn(strategy1);

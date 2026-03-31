@@ -54,10 +54,4 @@ public class PostingConfigControllerV2 {
         postingConfigService.delete(configId);
         return ResponseEntity.noContent().build();
     }
-
-    @PostMapping("/cache/flush")
-    public ResponseEntity<Void> flushCache() {
-        postingConfigService.flushCache();
-        return ResponseEntity.noContent().build();
-    }
 }

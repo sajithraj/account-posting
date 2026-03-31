@@ -29,4 +29,8 @@ public class PostingConfigRequestV2 {
     @Positive(message = "orderSeq must be a positive integer")
     @JsonProperty("order_seq")
     private Integer orderSeq;
+
+    @NotBlank(message = "requested_by is required")
+    @JsonProperty("requested_by")
+    private String requestedBy;
 }

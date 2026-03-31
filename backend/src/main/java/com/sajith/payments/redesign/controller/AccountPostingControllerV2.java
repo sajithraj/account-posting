@@ -2,19 +2,17 @@ package com.sajith.payments.redesign.controller;
 
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingCreateResponseV2;
 import com.sajith.payments.redesign.dto.accountposting.AccountPostingFullResponseV2;
-import com.sajith.payments.redesign.dto.accountposting.AccountPostingSearchRequestV2;
 import com.sajith.payments.redesign.dto.accountposting.IncomingPostingRequest;
 import com.sajith.payments.redesign.dto.retry.RetryRequestV2;
 import com.sajith.payments.redesign.dto.retry.RetryResponseV2;
+import com.sajith.payments.redesign.dto.search.PostingSearchRequestV2;
+import com.sajith.payments.redesign.dto.search.PostingSearchResponseV2;
 import com.sajith.payments.redesign.service.accountposting.AccountPostingServiceV2;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,11 +32,10 @@ public class AccountPostingControllerV2 {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
-    @GetMapping
-    public ResponseEntity<Page<AccountPostingFullResponseV2>> search(
-            @ModelAttribute AccountPostingSearchRequestV2 criteria,
-            @PageableDefault(size = 20, sort = "postingId") Pageable pageable) {
-        return ResponseEntity.ok(service.search(criteria, pageable));
+    @PostMapping("/search")
+    public ResponseEntity<PostingSearchResponseV2> search(
+            @RequestBody(required = false) PostingSearchRequestV2 request) {
+        return ResponseEntity.ok(service.search(request != null ? request : new PostingSearchRequestV2()));
     }
 
     @GetMapping("/{postingId}")
@@ -47,15 +44,8 @@ public class AccountPostingControllerV2 {
     }
 
     @PostMapping("/retry")
-    public ResponseEntity<RetryResponseV2> retry(@RequestBody(required = false) RetryRequestV2 request) {
-        RetryRequestV2 retryRequest = request != null ? request : new RetryRequestV2();
-        return ResponseEntity.ok(service.retry(retryRequest));
+    public ResponseEntity<RetryResponseV2> retry(@Valid @RequestBody RetryRequestV2 request) {
+        return ResponseEntity.ok(service.retry(request));
     }
 
-    @GetMapping("/history")
-    public ResponseEntity<Page<AccountPostingFullResponseV2>> searchHistory(
-            @ModelAttribute AccountPostingSearchRequestV2 criteria,
-            @PageableDefault(size = 20, sort = "postingId") Pageable pageable) {
-        return ResponseEntity.ok(service.searchHistory(criteria, pageable));
-    }
 }

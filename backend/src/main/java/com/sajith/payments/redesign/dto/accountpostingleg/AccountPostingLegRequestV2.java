@@ -14,8 +14,8 @@ import java.time.Instant;
 @Data
 public class AccountPostingLegRequestV2 {
 
-    @JsonProperty("leg_order")
-    private Integer legOrder;
+    @JsonProperty("transaction_order")
+    private Integer transactionOrder;
 
     @JsonProperty("target_system")
     private String targetSystem;

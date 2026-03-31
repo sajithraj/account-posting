@@ -23,4 +23,10 @@ public class PostingConfigResponseV2 {
 
     @JsonProperty("order_seq")
     private Integer orderSeq;
+
+    @JsonProperty("created_by")
+    private String createdBy;
+
+    @JsonProperty("updated_by")
+    private String updatedBy;
 }

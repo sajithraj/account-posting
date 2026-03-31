@@ -3,12 +3,12 @@
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
                               https://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <mirrors>
-    <!-- Redirect Flyway's Nexus to Maven Central so ojdbc11 resolves correctly -->
-    <mirror>
-      <id>flyway-repo-to-central</id>
-      <mirrorOf>flyway-repo</mirrorOf>
-      <url>https://repo.maven.apache.org/maven2</url>
-    </mirror>
-  </mirrors>
+    <mirrors>
+        <!-- Redirect Flyway's Nexus to Maven Central so ojdbc11 resolves correctly -->
+        <mirror>
+            <id>flyway-repo-to-central</id>
+            <mirrorOf>flyway-repo</mirrorOf>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </mirror>
+    </mirrors>
 </settings>

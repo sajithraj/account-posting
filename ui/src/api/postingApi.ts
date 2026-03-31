@@ -2,10 +2,10 @@ import axios, {AxiosError} from 'axios';
 import type {
     AccountPostingRequest,
     AccountPostingResponse,
-    PageResponse,
     PostingConfigRequest,
     PostingConfigResponse,
-    PostingSearchParams,
+    PostingSearchRequest,
+    PostingSearchResponse,
 } from '../types/posting';
 
 // ── key-case helpers ──────────────────────────────────────────────────────────
@@ -66,8 +66,8 @@ export const postingApi = {
         return res.data;
     },
 
-    search: async (params: PostingSearchParams): Promise<PageResponse<AccountPostingResponse>> => {
-        const res = await http.get<PageResponse<AccountPostingResponse>>(BASE, {params});
+    search: async (request: PostingSearchRequest): Promise<PostingSearchResponse<AccountPostingResponse>> => {
+        const res = await http.post<PostingSearchResponse<AccountPostingResponse>>(`${BASE}/search`, request);
         return res.data;
     },
 
@@ -77,7 +77,7 @@ export const postingApi = {
     },
 
     retry: async (postingIds?: number[]): Promise<unknown> => {
-        const res = await http.post<unknown>(`${BASE}/retry`, {postingIds});
+        const res = await http.post<unknown>(`${BASE}/retry`, {postingIds, requestedBy: 'OPS-USER'});
         return res.data;
     },
 
@@ -105,10 +105,6 @@ export const postingApi = {
         await http.delete(`${BASE}/config/${configId}`);
     },
 
-    flushConfigCache: async (): Promise<void> => {
-        await http.post(`${BASE}/config/cache/flush`);
-    },
-
     updateLegStatus: async (
         postingId: number,
         postingLegId: number,
@@ -117,7 +113,7 @@ export const postingApi = {
     ): Promise<unknown> => {
         const res = await http.patch<unknown>(
             `${BASE}/${postingId}/leg/${postingLegId}`,
-            {status, ...(reason ? {reason} : {})},
+            {status, requestedBy: 'OPS-USER', ...(reason ? {reason} : {})},
         );
         return res.data;
     },

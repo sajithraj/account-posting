@@ -94,6 +94,12 @@ public class AccountPostingHistoryEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "created_by", nullable = false, updatable = false, length = 100)
+    private String createdBy;
+
+    @Column(name = "updated_by", nullable = false, length = 100)
+    private String updatedBy;
+
     @Column(name = "archived_at", nullable = false, updatable = false)
     private Instant archivedAt;
 }

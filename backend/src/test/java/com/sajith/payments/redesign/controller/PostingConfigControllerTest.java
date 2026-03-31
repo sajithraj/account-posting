@@ -3,6 +3,7 @@ package com.sajith.payments.redesign.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sajith.payments.redesign.dto.config.PostingConfigRequestV2;
 import com.sajith.payments.redesign.dto.config.PostingConfigResponseV2;
+import com.sajith.payments.redesign.config.SecurityConfig;
 import com.sajith.payments.redesign.exception.GlobalExceptionHandler;
 import com.sajith.payments.redesign.exception.ResourceNotFoundException;
 import com.sajith.payments.redesign.service.config.PostingConfigServiceV2;
@@ -10,8 +11,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,7 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PostingConfigControllerV2.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfig.class})
+@MockBean(JpaMetamodelMappingContext.class)
 class PostingConfigControllerTest {
 
     @Autowired
@@ -48,6 +52,7 @@ class PostingConfigControllerTest {
         req.setTargetSystem("CBS");
         req.setOperation("POSTING");
         req.setOrderSeq(1);
+        req.setRequestedBy("OPS-USER");
         return req;
     }
 
@@ -159,7 +164,7 @@ class PostingConfigControllerTest {
                     .andExpect(jsonPath("$.name").value("VALIDATION_FAILED"))
                     .andExpect(jsonPath("$.errors[*].field",
                             hasItems("sourceName", "requestType", "targetSystem",
-                                    "operation", "orderSeq")));
+                                    "operation", "orderSeq", "requestedBy")));
         }
 
         @Test
@@ -314,28 +319,4 @@ class PostingConfigControllerTest {
         }
     }
 
-    // ── POST /v2/payment/account-posting/config/cache/flush ────────────────────
-
-    @Nested
-    class FlushCache {
-
-        @Test
-        void returns204_onSuccess() throws Exception {
-            doNothing().when(postingConfigService).flushCache();
-
-            mockMvc.perform(post("/v2/payment/account-posting/config/cache/flush"))
-                    .andExpect(status().isNoContent());
-
-            verify(postingConfigService).flushCache();
-        }
-
-        @Test
-        void returns500_whenServiceThrows() throws Exception {
-            doThrow(new RuntimeException("Cache error")).when(postingConfigService).flushCache();
-
-            mockMvc.perform(post("/v2/payment/account-posting/config/cache/flush"))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(jsonPath("$.name").value("INTERNAL_ERROR"));
-        }
-    }
 }

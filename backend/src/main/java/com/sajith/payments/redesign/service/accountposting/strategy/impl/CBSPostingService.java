@@ -39,26 +39,26 @@ public class CBSPostingService implements PostingStrategy {
     }
 
     @Override
-    public LegResponseV2 process(Long postingId, int legOrder, IncomingPostingRequest request,
-                                 boolean isRetry, Long existingLegId) {
+    public LegResponseV2 process(Long postingId, int transactionOrder, IncomingPostingRequest request,
+                                 boolean isRetry, Long existingTxnId) {
         log.info("CBS {} | postingId={} flow={}", isRetry ? "RETRY" : "CREATE", postingId, getPostingFlow());
 
         // ── Build CBS request ──────────────────────────────────────────────
         String transactionIndex = UUID.randomUUID().toString();
         Map<String, Object> cbsRequest = externalApiHelper.buildCbsRequest(request, transactionIndex);
         String requestPayloadJson = appUtility.toObjectToString(cbsRequest);
-        log.info("CBS REQUEST | postingId={} leg={} {}", postingId, legOrder, requestPayloadJson);
+        log.info("CBS REQUEST | postingId={} txnOrder={} {}", postingId, transactionOrder, requestPayloadJson);
 
-        if (existingLegId == null) {
+        if (existingTxnId == null) {
             throw new IllegalArgumentException(
-                    "CBS | postingId=" + postingId + " leg=" + legOrder + " - existingLegId must be pre-inserted before strategy execution");
+                    "CBS | postingId=" + postingId + " txnOrder=" + transactionOrder + " - existingTxnId must be pre-inserted before strategy execution");
         }
-        Long legId = existingLegId;
+        Long legId = existingTxnId;
 
         // ── Invoke CBS ─────────────────────────────────────────────────────
         Map<String, Object> cbsResponse = externalApiHelper.callCbs(cbsRequest, transactionIndex);
         String responsePayloadJson = appUtility.toObjectToString(cbsResponse);
-        log.info("CBS RESPONSE | postingId={} leg={} {}", postingId, legOrder, responsePayloadJson);
+        log.info("CBS RESPONSE | postingId={} txnOrder={} {}", postingId, transactionOrder, responsePayloadJson);
 
         String cbsStatus = String.valueOf(cbsResponse.get("status"));
         boolean success = "SUCCESS".equalsIgnoreCase(cbsStatus);

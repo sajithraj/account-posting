@@ -37,30 +37,30 @@ CREATE INDEX idx_ap_src_ref ON account_posting (source_reference_id);
 CREATE INDEX idx_ap_requested_date ON account_posting (requested_execution_date);
 CREATE INDEX idx_ap_request_type ON account_posting (request_type);
 
--- ── account_posting_leg ───────────────────────────────────────────────────────
-CREATE TABLE account_posting_leg
+-- ── account_posting_transaction ──────────────────────────────────────────────
+CREATE TABLE account_posting_transaction
 (
-    posting_leg_id   BIGSERIAL PRIMARY KEY,
-    posting_id       BIGINT       NOT NULL REFERENCES account_posting (posting_id),
-    leg_order        INT          NOT NULL,
-    target_system    VARCHAR(100) NOT NULL,
-    account          VARCHAR(50)  NOT NULL,
-    status           VARCHAR(10)  NOT NULL DEFAULT 'PENDING'
+    transaction_id    BIGSERIAL PRIMARY KEY,
+    posting_id        BIGINT       NOT NULL REFERENCES account_posting (posting_id),
+    transaction_order INT          NOT NULL,
+    target_system     VARCHAR(100) NOT NULL,
+    account           VARCHAR(50)  NOT NULL,
+    status            VARCHAR(10)  NOT NULL DEFAULT 'PENDING'
         CHECK (status IN ('PENDING', 'SUCCESS', 'FAILED')),
-    reference_id     VARCHAR(100),
-    reason           VARCHAR(500),
-    attempt_number   INT          NOT NULL DEFAULT 1,
-    posted_time      TIMESTAMPTZ,
-    request_payload  JSONB,
-    response_payload JSONB,
-    mode             VARCHAR(10)  NOT NULL DEFAULT 'NORM',
-    operation        VARCHAR(20)  NOT NULL DEFAULT 'POSTING',
-    created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    reference_id      VARCHAR(100),
+    reason            VARCHAR(500),
+    attempt_number    INT          NOT NULL DEFAULT 1,
+    posted_time       TIMESTAMPTZ,
+    request_payload   JSONB,
+    response_payload  JSONB,
+    transaction_mode  VARCHAR(10)  NOT NULL DEFAULT 'NORM',
+    operation         VARCHAR(20)  NOT NULL DEFAULT 'POSTING',
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_apl_posting_id ON account_posting_leg (posting_id);
-CREATE INDEX idx_apl_status ON account_posting_leg (status);
+CREATE INDEX idx_apt_posting_id ON account_posting_transaction (posting_id);
+CREATE INDEX idx_apt_status ON account_posting_transaction (status);
 
 -- ── account_posting_history ───────────────────────────────────────────────────
 CREATE TABLE account_posting_history
@@ -95,31 +95,31 @@ CREATE INDEX idx_aph_request_type ON account_posting_history (request_type);
 CREATE INDEX idx_aph_created_at ON account_posting_history (created_at);
 CREATE INDEX idx_aph_archived_at ON account_posting_history (archived_at);
 
--- ── account_posting_leg_history ───────────────────────────────────────────────
-CREATE TABLE account_posting_leg_history
+-- ── account_posting_transaction_history ──────────────────────────────────────
+CREATE TABLE account_posting_transaction_history
 (
-    posting_leg_id   BIGINT       NOT NULL PRIMARY KEY,
-    posting_id       BIGINT       NOT NULL,
-    leg_order        INT          NOT NULL,
-    target_system    VARCHAR(100) NOT NULL,
-    account          VARCHAR(50)  NOT NULL,
-    status           VARCHAR(10)  NOT NULL,
-    reference_id     VARCHAR(100),
-    reason           VARCHAR(500),
-    attempt_number   INT          NOT NULL,
-    posted_time      TIMESTAMPTZ,
-    request_payload  JSONB,
-    response_payload JSONB,
-    mode             VARCHAR(10)  NOT NULL,
-    operation        VARCHAR(20)  NOT NULL,
-    created_at       TIMESTAMPTZ  NOT NULL,
-    updated_at       TIMESTAMPTZ  NOT NULL,
-    archived_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    transaction_id    BIGINT       NOT NULL PRIMARY KEY,
+    posting_id        BIGINT       NOT NULL,
+    transaction_order INT          NOT NULL,
+    target_system     VARCHAR(100) NOT NULL,
+    account           VARCHAR(50)  NOT NULL,
+    status            VARCHAR(10)  NOT NULL,
+    reference_id      VARCHAR(100),
+    reason            VARCHAR(500),
+    attempt_number    INT          NOT NULL,
+    posted_time       TIMESTAMPTZ,
+    request_payload   JSONB,
+    response_payload  JSONB,
+    transaction_mode  VARCHAR(10)  NOT NULL,
+    operation         VARCHAR(20)  NOT NULL,
+    created_at        TIMESTAMPTZ  NOT NULL,
+    updated_at        TIMESTAMPTZ  NOT NULL,
+    archived_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_aplh_posting_id ON account_posting_leg_history (posting_id);
-CREATE INDEX idx_aplh_status ON account_posting_leg_history (status);
-CREATE INDEX idx_aplh_archived_at ON account_posting_leg_history (archived_at);
+CREATE INDEX idx_apth_posting_id ON account_posting_transaction_history (posting_id);
+CREATE INDEX idx_apth_status ON account_posting_transaction_history (status);
+CREATE INDEX idx_apth_archived_at ON account_posting_transaction_history (archived_at);
 
 -- ── posting_config ────────────────────────────────────────────────────────────
 CREATE TABLE posting_config

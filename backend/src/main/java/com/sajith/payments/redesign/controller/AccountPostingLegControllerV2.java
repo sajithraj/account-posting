@@ -16,29 +16,29 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v2/payment/account-posting/{postingId}/leg")
+@RequestMapping("/v2/payment/account-posting/{postingId}/transaction")
 @RequiredArgsConstructor
 public class AccountPostingLegControllerV2 {
 
     private final AccountPostingLegServiceV2 service;
 
     @GetMapping
-    public ResponseEntity<List<AccountPostingLegResponseV2>> listLegs(@PathVariable Long postingId) {
+    public ResponseEntity<List<AccountPostingLegResponseV2>> listTransactions(@PathVariable Long postingId) {
         return ResponseEntity.ok(service.listLegs(postingId));
     }
 
-    @GetMapping("/{postingLegId}")
-    public ResponseEntity<AccountPostingLegResponseV2> getLeg(
+    @GetMapping("/{transactionId}")
+    public ResponseEntity<AccountPostingLegResponseV2> getTransaction(
             @PathVariable Long postingId,
-            @PathVariable Long postingLegId) {
-        return ResponseEntity.ok(service.getLeg(postingId, postingLegId));
+            @PathVariable Long transactionId) {
+        return ResponseEntity.ok(service.getLeg(postingId, transactionId));
     }
 
-    @PatchMapping("/{postingLegId}")
-    public ResponseEntity<AccountPostingLegResponseV2> manualUpdateLeg(
+    @PatchMapping("/{transactionId}")
+    public ResponseEntity<AccountPostingLegResponseV2> manualUpdateTransaction(
             @PathVariable Long postingId,
-            @PathVariable Long postingLegId,
+            @PathVariable Long transactionId,
             @Valid @RequestBody ManualUpdateRequestV2 request) {
-        return ResponseEntity.ok(service.manualUpdateLeg(postingId, postingLegId, request.getStatus(), request.getReason()));
+        return ResponseEntity.ok(service.manualUpdateLeg(postingId, transactionId, request));
     }
 }

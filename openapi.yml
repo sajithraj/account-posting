@@ -3,44 +3,7 @@ openapi: 3.0.3
 info:
   title: Account Posting Orchestrator API
   version: 2.0.0
-  description: |
-    Accepts posting requests from upstream systems, delivers them to a core banking
-    orchestrator, tracks every response leg, and provides retry capability.
-
-    ## Naming Convention
-    All JSON request bodies, response payloads, and query parameters use **snake_case**
-    field names (Jackson `SNAKE_CASE` property naming strategy applied globally).
-
-    ## Error Envelope
-    All error responses share the same structure — see the `ErrorResponse` schema.
-
-    ## Enums
-    | Enum | Values |
-    |------|--------|
-    | `credit_debit_indicator` | `CREDIT` \| `DEBIT` |
-    | `posting_status` | `PNDG` (pending) \| `ACSP` (accepted/success) \| `RJCT` (rejected) |
-    | `leg_status` | `PENDING` \| `SUCCESS` \| `FAILED` |
-    | `leg_mode` | `NORM` \| `RETRY` \| `MANUAL` |
-
-    ## Source Names → Request Types (canonical from dev DB)
-    | source_name | request_type | target legs |
-    |-------------|-------------|------------|
-    | `IMX` | `IMX_CBS_GL` | CBS POSTING (order 1) → GL POSTING (order 2) |
-    | `IMX` | `IMX_OBPM` | OBPM POSTING (order 1) |
-    | `RMS` | `FED_RETURN` | CBS POSTING (order 1) → GL POSTING (order 2) |
-    | `RMS` | `GL_RETURN` | GL POSTING (order 1) → GL POSTING (order 2) |
-    | `RMS` | `MCA_RETURN` | OBPM POSTING (order 1) |
-    | `STABLECOIN` | `CUSTOMER_POSTING` | CBS POSTING (order 1) → GL POSTING (order 2) |
-    | `STABLECOIN` | `BUY_CUSTOMER_POSTING` | CBS POSTING (order 2) → GL POSTING (order 3) |
-    | `STABLECOIN` | `BUY_CUSTOMER_POSTING` | CBS REMOVE_HOLD (order 1) |
-    | `STABLECOIN` | `ADD_ACCOUNT_HOLD` | CBS ADD_HOLD (order 1) |
-
-    ## Target Systems & Operations
-    | target_system | operations |
-    |--------------|-----------|
-    | `CBS` | `POSTING`, `ADD_HOLD`, `REMOVE_HOLD` |
-    | `GL` | `POSTING` |
-    | `OBPM` | `POSTING` |
+  description: Accepts posting requests, routes them to core banking systems, tracks each transaction, and supports retry.
 
 servers:
   - url: http://localhost:8080
@@ -57,8 +20,8 @@ servers:
 tags:
   - name: Account Posting
     description: Core posting lifecycle — create, search, retrieve, retry, and history
-  - name: Posting Legs
-    description: Manage individual legs of a posting
+  - name: Posting Transactions
+    description: Manage individual transactions of a posting
   - name: Posting Config
     description: Routing configuration — maps source_name + request_type to ordered target systems
 
@@ -73,15 +36,7 @@ paths:
     post:
       tags: [ Account Posting ]
       summary: Create a posting
-      description: |
-        Submits a new posting request. The service:
-        1. Checks idempotency on `end_to_end_reference_id` — duplicate returns HTTP 422
-        2. Persists the posting with status `PNDG`
-        3. Validates the payload (bean validation + enum validation) — failure marks posting `RJCT`
-        4. Resolves the routing config for `request_type` from `posting_config`
-        5. Pre-inserts all legs as `PENDING` before calling any external system
-        6. Calls each target system in `order_seq` order via the matching `PostingStrategy`
-        7. Updates the posting status to `ACSP` (all legs SUCCESS) or `PNDG` (any leg failed)
+      description: Submits a new posting, validates it, routes to target systems in order, and returns the outcome.
       operationId: createPosting
       requestBody:
         required: true
@@ -194,14 +149,7 @@ paths:
                     status: "SUCCESS"
                     reason: null
         '400':
-          description: |
-            Validation failure or malformed request.
-
-            | `name` | Cause |
-            |--------|-------|
-            | `VALIDATION_FAILED` | Bean validation — missing/blank/invalid fields; includes `errors[]` array |
-            | `INVALID_ENUM_VALUE` | `source_name` or `request_type` not in the allowed enum set |
-            | `INVALID_REQUEST_BODY` | Unparseable JSON body |
+          description: Validation failure or malformed request.
           content:
             application/json:
               schema:
@@ -228,13 +176,7 @@ paths:
                     message: "INVALID_ENUM_VALUE: sourceName 'UNKNOWN_SRC' is not valid"
                     errors: null
         '422':
-          description: |
-            Business rule violation.
-
-            | `name` | Cause |
-            |--------|-------|
-            | `DUPLICATE_E2E_REF` | `end_to_end_reference_id` already exists |
-            | `NO_CONFIG_FOUND` | No `posting_config` entry for the given `request_type` |
+          description: Business rule violation — duplicate e2e reference or no routing config found.
           content:
             application/json:
               schema:
@@ -260,11 +202,7 @@ paths:
     get:
       tags: [ Account Posting ]
       summary: Search postings (active table)
-      description: |
-        Paginated search of the active `account_posting` table with optional filters.
-        All parameters are optional and composable. Returns an empty page if no results.
-
-        Use `GET /v2/payment/account-posting/history` to query archived records.
+      description: Paginated search of active postings with optional filters; use /history for archived records.
       operationId: searchPostings
       parameters:
         - name: status
@@ -349,14 +287,7 @@ paths:
     get:
       tags: [ Account Posting ]
       summary: Search postings (history / archive table)
-      description: |
-        Paginated search of the `account_posting_history` table (records moved there by the
-        archival job after the configured retention period).
-
-        Accepts the same filter parameters as `GET /v2/payment/account-posting`.
-        `GET /v2/payment/account-posting/{postingId}` is transparent — it checks the active
-        table first and falls back to history automatically. Use this endpoint only when you
-        need to explicitly query historical data in bulk.
+      description: Paginated search of archived postings; same filters as the active search endpoint.
       operationId: searchPostingsHistory
       parameters:
         - name: status
@@ -428,10 +359,7 @@ paths:
     get:
       tags: [ Account Posting ]
       summary: Get posting by ID
-      description: |
-        Returns a single posting with all its legs.
-        Checks the active table first; if not found, transparently falls back to the history
-        table. Callers do not need to know which table holds the record.
+      description: Returns a single posting with all its transactions; checks active table first, then history.
       operationId: getPostingById
       parameters:
         - $ref: '#/components/parameters/PostingId'
@@ -450,25 +378,8 @@ paths:
   /v2/payment/account-posting/retry:
     post:
       tags: [ Account Posting ]
-      summary: Retry non-SUCCESS legs on PNDG postings
-      description: |
-        Re-processes failed or pending legs on `PNDG` postings.
-
-        **Flow:**
-        1. Resolve candidate IDs — if `posting_ids` omitted, `findEligibleIdsForRetry` selects
-           all `PNDG` postings where `retry_locked_until` is null or expired
-        2. Lock atomically — single `@Modifying` JPQL UPDATE sets `retry_locked_until = NOW() + 120s`
-        3. Dispatch one `CompletableFuture` per locked posting to the `retryExecutor` thread pool
-        4. Each `PostingRetryProcessorV2` runs in its own transaction:
-           - Fetches non-SUCCESS legs ordered by `leg_order`
-           - Resolves strategy by `{target_system}_{operation}` key
-           - Calls the external system stub; updates leg to SUCCESS or FAILED
-           - Re-evaluates all legs: posts → `ACSP` if all SUCCESS, else `PNDG`
-           - **Always clears `retry_locked_until`** — posting immediately retryable again
-        5. Aggregates results and returns
-
-        **Strategies resolved during retry:**
-        `CBS_POSTING` | `GL_POSTING` | `OBPM_POSTING` | `CBS_ADD_HOLD` | `CBS_REMOVE_HOLD`
+      summary: Retry non-SUCCESS transactions on PNDG postings
+      description: Re-processes failed or pending transactions on PNDG postings; omit posting_ids to retry all eligible.
       operationId: retryPostings
       requestBody:
         required: false
@@ -498,85 +409,84 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  # ── Posting Legs ────────────────────────────────────────────────────────────
+  # ── Posting Transactions ─────────────────────────────────────────────────────
 
-  /v2/payment/account-posting/{posting_id}/leg:
+  /v2/payment/account-posting/{posting_id}/transaction:
     get:
-      tags: [ Posting Legs ]
-      summary: List legs for a posting
-      description: Returns all legs for a given posting ordered by `leg_order`.
-      operationId: listLegs
+      tags: [ Posting Transactions ]
+      summary: List transactions for a posting
+      description: Returns all transactions for a posting ordered by transaction sequence.
+      operationId: listTransactions
       parameters:
         - $ref: '#/components/parameters/PostingId'
       responses:
         '200':
-          description: List of legs
+          description: List of transactions
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/AccountPostingLegResponse'
+                  $ref: '#/components/schemas/AccountPostingTransactionResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v2/payment/account-posting/{posting_id}/leg/{posting_leg_id}:
+  /v2/payment/account-posting/{posting_id}/transaction/{transaction_id}:
     get:
-      tags: [ Posting Legs ]
-      summary: Get a single leg
-      operationId: getLeg
+      tags: [ Posting Transactions ]
+      summary: Get a single transaction
+      operationId: getTransaction
       parameters:
         - $ref: '#/components/parameters/PostingId'
-        - $ref: '#/components/parameters/PostingLegId'
+        - $ref: '#/components/parameters/TransactionId'
       responses:
         '200':
-          description: Leg found
+          description: Transaction found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountPostingLegResponse'
+                $ref: '#/components/schemas/AccountPostingTransactionResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 
     patch:
-      tags: [ Posting Legs ]
+      tags: [ Posting Transactions ]
       summary: Manual status update (UI)
-      description: |
-        Sets the leg status directly from the UI. Sets `mode = MANUAL`.
-        Does **not** increment `attempt_number` or call any external system.
-        An optional `reason` can be provided to record the override explanation.
-      operationId: manualUpdateLeg
+      description: Sets the transaction status manually from the UI; sets mode=MANUAL, does not call any external system.
+      operationId: manualUpdateTransaction
       parameters:
         - $ref: '#/components/parameters/PostingId'
-        - $ref: '#/components/parameters/PostingLegId'
+        - $ref: '#/components/parameters/TransactionId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ManualUpdateLegRequest'
+              $ref: '#/components/schemas/ManualUpdateTransactionRequest'
             examples:
               mark_success:
-                summary: Manually mark leg as SUCCESS
+                summary: Manually mark transaction as SUCCESS
                 value:
                   status: "SUCCESS"
                   reason: "Confirmed by ops team"
+                  requested_by: "ops-user-01"
               mark_failed:
-                summary: Manually mark leg as FAILED
+                summary: Manually mark transaction as FAILED
                 value:
                   status: "FAILED"
                   reason: "Rejected by CBS — duplicate transaction"
+                  requested_by: "ops-user-01"
       responses:
         '200':
-          description: Leg status updated manually
+          description: Transaction status updated manually
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountPostingLegResponse'
+                $ref: '#/components/schemas/AccountPostingTransactionResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
         '404':
@@ -607,9 +517,7 @@ paths:
     post:
       tags: [ Posting Config ]
       summary: Create a config entry
-      description: |
-        Adds a new routing rule. Duplicate `(request_type, order_seq)` → HTTP 422.
-        Call `POST /v2/payment/account-posting/config/cache/flush` after bulk changes.
+      description: Adds a new routing rule; duplicate (request_type, order_seq) returns HTTP 422.
       operationId: createConfig
       requestBody:
         required: true
@@ -646,28 +554,11 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v2/payment/account-posting/config/cache/flush:
-    post:
-      tags: [ Posting Config ]
-      summary: Flush the config cache
-      description: |
-        Evicts the in-memory Caffeine cache (`configsByRequestType`, 500 max, 1h TTL)
-        so the next request reloads from the database.
-        Call this after bulk SQL inserts/updates or after a Flyway migration that modifies `posting_config`.
-      operationId: flushConfigCache
-      responses:
-        '204':
-          description: Cache flushed successfully
-        '500':
-          $ref: '#/components/responses/InternalError'
-
   /v2/payment/account-posting/config/{request_type}:
     get:
       tags: [ Posting Config ]
       summary: Get config entries by request type
-      description: |
-        Returns the ordered legs (target_system + operation) for a given `request_type`.
-        Result is cached — stale after config changes until `cache/flush` is called.
+      description: Returns ordered transactions (target_system + operation) for a given request_type; result is cached.
       operationId: getConfigByRequestType
       parameters:
         - name: request_type
@@ -768,11 +659,11 @@ components:
         format: int64
         example: 1
 
-    PostingLegId:
-      name: posting_leg_id
+    TransactionId:
+      name: transaction_id
       in: path
       required: true
-      description: Unique posting leg identifier
+      description: Unique transaction identifier
       schema:
         type: integer
         format: int64
@@ -836,25 +727,17 @@ components:
     PostingStatus:
       type: string
       enum: [ PNDG, ACSP, RJCT ]
-      description: |
-        Lifecycle status of an account posting:
-        - `PNDG` — pending (initial state; also set when one or more legs fail)
-        - `ACSP` — accepted / all legs succeeded
-        - `RJCT` — rejected (validation failure or no routing config found)
+      description: "Posting lifecycle status: PNDG=pending, ACSP=all transactions succeeded, RJCT=rejected."
 
-    LegStatus:
+    TransactionStatus:
       type: string
       enum: [ PENDING, SUCCESS, FAILED ]
-      description: Lifecycle status of a posting leg
+      description: Transaction execution status.
 
-    LegMode:
+    TransactionMode:
       type: string
       enum: [ NORM, RETRY, MANUAL ]
-      description: |
-        How the leg was last processed:
-        - `NORM` — initial posting call
-        - `RETRY` — re-executed via the retry flow
-        - `MANUAL` — status set manually from the UI
+      description: "How the transaction was last processed: NORM=initial, RETRY=re-executed, MANUAL=UI override."
 
     CreditDebitIndicator:
       type: string
@@ -984,9 +867,7 @@ components:
 
     RetryRequest:
       type: object
-      description: |
-        Specifies which postings to retry. Omit `posting_ids` (or send an empty object)
-        to retry all eligible `PNDG` postings (those not currently locked).
+      description: Specifies which postings to retry; omit posting_ids to retry all eligible PNDG postings.
       properties:
         posting_ids:
           type: array
@@ -996,19 +877,24 @@ components:
           description: Specific posting IDs to retry. If absent or empty, all eligible PNDG postings are targeted.
           example: [ 1, 2, 3 ]
 
-    ManualUpdateLegRequest:
+    ManualUpdateTransactionRequest:
       type: object
-      description: Payload for manually overriding a leg status from the UI. Sets `mode = MANUAL`.
+      description: Manually overrides a transaction status from the UI; sets mode=MANUAL.
       required:
         - status
+        - requested_by
       properties:
         status:
-          $ref: '#/components/schemas/LegStatus'
+          $ref: '#/components/schemas/TransactionStatus'
         reason:
           type: string
           maxLength: 500
-          description: Optional explanation for the manual override
-          example: "Confirmed by ops team — CBS reference verified manually"
+          description: Optional override explanation
+          example: "Confirmed by ops team"
+        requested_by:
+          type: string
+          description: User or system initiating the manual override
+          example: "ops-user-01"
 
     PostingConfigRequest:
       type: object
@@ -1045,7 +931,7 @@ components:
     # ── Responses ─────────────────────────────────────────────────────────────
     AccountPostingCreateResponse:
       type: object
-      description: Response returned immediately after a posting is created and processed
+      description: Immediate response after a posting is created and processed.
       properties:
         source_reference_id:
           type: string
@@ -1062,13 +948,13 @@ components:
           example: "2026-03-23T10:15:30Z"
         responses:
           type: array
-          description: Result from each leg processed during this call
+          description: Result from each transaction processed during this call
           items:
-            $ref: '#/components/schemas/LegCreateResponse'
+            $ref: '#/components/schemas/TransactionCreateResponse'
 
-    LegCreateResponse:
+    TransactionCreateResponse:
       type: object
-      description: Summary result of a single leg during the initial create flow
+      description: Summary result of a single transaction during the initial create flow.
       properties:
         name:
           type: string
@@ -1100,7 +986,7 @@ components:
 
     AccountPostingResponse:
       type: object
-      description: Full posting detail including all legs
+      description: Full posting detail including all transactions.
       properties:
         posting_id:
           type: integer
@@ -1146,15 +1032,12 @@ components:
           $ref: '#/components/schemas/PostingStatus'
         target_systems:
           type: string
-          description: Concatenated target system keys in execution order (e.g. `CBS_GL`)
+          description: Concatenated target system keys in execution order (e.g. CBS_GL).
           example: "CBS_GL"
         reason:
           type: string
           nullable: true
-          description: |
-            Processing outcome:
-            - `"Request processed successfully"` — all legs succeeded
-            - Error message of the last failed leg — if any leg failed
+          description: Processing outcome message; success message or last failed transaction error.
           example: "Request processed successfully"
         processed_at:
           type: string
@@ -1171,19 +1054,19 @@ components:
           example: "2026-03-23T10:15:30Z"
         responses:
           type: array
-          description: Leg results
+          description: Transaction results
           items:
-            $ref: '#/components/schemas/LegResponse'
+            $ref: '#/components/schemas/TransactionResponse'
 
-    LegResponse:
+    TransactionResponse:
       type: object
-      description: Leg summary as embedded in AccountPostingResponse
+      description: Transaction summary embedded in AccountPostingResponse.
       properties:
-        posting_leg_id:
+        transaction_id:
           type: integer
           format: int64
           example: 1
-        leg_order:
+        transaction_order:
           type: integer
           example: 1
         name:
@@ -1216,11 +1099,11 @@ components:
           type: string
           example: "NORM"
 
-    AccountPostingLegResponse:
+    AccountPostingTransactionResponse:
       type: object
-      description: Full leg detail returned by the leg endpoints
+      description: Full transaction detail returned by the transaction endpoints.
       properties:
-        posting_leg_id:
+        transaction_id:
           type: integer
           format: int64
           example: 1
@@ -1228,7 +1111,7 @@ components:
           type: integer
           format: int64
           example: 1
-        leg_order:
+        transaction_order:
           type: integer
           example: 1
         target_system:
@@ -1238,7 +1121,7 @@ components:
           type: string
           example: "1324658900"
         status:
-          $ref: '#/components/schemas/LegStatus'
+          $ref: '#/components/schemas/TransactionStatus'
         reference_id:
           type: string
           nullable: true
@@ -1249,7 +1132,7 @@ components:
           example: null
         attempt_number:
           type: integer
-          description: How many times this leg has been attempted (starts at 1)
+          description: Number of execution attempts for this transaction (starts at 1).
           example: 1
         posted_time:
           type: string
@@ -1257,7 +1140,7 @@ components:
           nullable: true
           example: "2026-03-23T10:15:30Z"
         mode:
-          $ref: '#/components/schemas/LegMode'
+          $ref: '#/components/schemas/TransactionMode'
         operation:
           type: string
           description: "Operation type: POSTING | ADD_HOLD | REMOVE_HOLD"
@@ -1297,24 +1180,24 @@ components:
 
     RetryResponse:
       type: object
-      description: Summary of a retry operation — counts at posting level (not leg level)
+      description: Summary of a retry operation at posting level.
       properties:
         total_postings:
           type: integer
-          description: Total number of postings processed in this retry run
+          description: Total postings processed in this retry run
           example: 3
         success_count:
           type: integer
-          description: Number of postings that reached ACSP (all legs SUCCESS)
+          description: Postings that reached ACSP (all transactions succeeded)
           example: 2
         failed_count:
           type: integer
-          description: Number of postings that remained PNDG after retry
+          description: Postings that remained PNDG after retry
           example: 1
 
     PagedAccountPostingResponse:
       type: object
-      description: Spring Data paginated response wrapping a list of AccountPostingResponse
+      description: Paginated list of postings.
       properties:
         content:
           type: array
@@ -1325,7 +1208,7 @@ components:
         total_elements:
           type: integer
           format: int64
-          description: Total number of records matching the filter
+          description: Total records matching the filter
           example: 42
         total_pages:
           type: integer
@@ -1355,7 +1238,7 @@ components:
 
     Pageable:
       type: object
-      description: Spring Data pageable metadata
+      description: Spring Data pageable metadata.
       properties:
         page_number:
           type: integer
@@ -1385,20 +1268,7 @@ components:
 
     ErrorResponse:
       type: object
-      description: |
-        Uniform error envelope returned for all 4xx and 5xx responses.
-
-        | HTTP | `name` | Description |
-        |------|--------|-------------|
-        | 400 | `VALIDATION_FAILED` | Bean validation — `errors[]` array populated |
-        | 400 | `INVALID_ENUM_VALUE` | Unknown `source_name` or `request_type` |
-        | 400 | `INVALID_REQUEST_BODY` | Unparseable JSON body |
-        | 404 | `NOT_FOUND` | Entity not found by ID |
-        | 422 | `DUPLICATE_E2E_REF` | Duplicate `end_to_end_reference_id` |
-        | 422 | `NO_CONFIG_FOUND` | No routing config for the given `request_type` |
-        | 422 | `DUPLICATE_CONFIG_ORDER` | Duplicate `(request_type, order_seq)` in config |
-        | 422 | `DATA_INTEGRITY_VIOLATION` | Other DB constraint violation |
-        | 500 | `INTERNAL_ERROR` | Unhandled exception |
+      description: Uniform error envelope returned for all 4xx and 5xx responses.
       properties:
         id:
           type: string

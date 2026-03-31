@@ -50,7 +50,40 @@ export interface AccountPostingResponse {
     responses?: LegResponse[];
 }
 
-export interface PostingSearchParams {
+// ── Governance-compliant search types ────────────────────────────────────────
+
+export interface SearchCondition {
+    property: string;
+    operator: string;
+    values: string[];
+}
+
+export interface SearchOrderBy {
+    property: string;
+    sortOrder: string;
+}
+
+export interface SearchPagination {
+    offset: number;
+    limit: number;
+}
+
+export interface PostingSearchRequest {
+    projectedProperties?: string[];
+    conditions?: SearchCondition[];
+    orderBy?: SearchOrderBy[];
+    pagination?: SearchPagination;
+}
+
+export interface PostingSearchResponse<T> {
+    items: T[];
+    totalItems: number;
+    offset: number;
+    limit: number;
+}
+
+// UI-internal filter draft (flat, for form inputs)
+export interface PostingFilterDraft {
     status?: PostingStatus;
     endToEndReferenceId?: string;
     sourceReferenceId?: string;
@@ -59,16 +92,6 @@ export interface PostingSearchParams {
     targetSystem?: string;
     fromDate?: string;
     toDate?: string;
-    page?: number;
-    size?: number;
-}
-
-export interface PageResponse<T> {
-    content: T[];
-    totalElements: number;
-    totalPages: number;
-    number: number;
-    size: number;
 }
 
 export interface PostingConfigResponse {
