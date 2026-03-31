@@ -6,31 +6,9 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8080",
-      "type": "string"
-    },
-    {
-      "key": "postingId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "e2eRef",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "srcRef",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "pendingPostingId",
-      "value": "",
-      "type": "string"
-    }
+    {"key": "baseUrl", "value": "http://localhost:8080", "type": "string"},
+    {"key": "postingId", "value": "", "type": "string"},
+    {"key": "pendingPostingId", "value": "", "type": "string"}
   ],
   "item": [
     {
@@ -43,7 +21,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-IMX-CBS-GL-001\",\n  \"end_to_end_ref_id\": \"E2E-IMX-CBS-GL-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {\n    \"value\": \"1000.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-001\",\n  \"creditor_account\": \"ACC-CREDITOR-001\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-IMX-CBS-GL-001\",\n  \"end_to_end_reference_id\": \"E2E-IMX-CBS-GL-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {\n    \"value\": \"1000.00\",\n    \"currency_code\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-001\",\n  \"creditor_account\": \"ACC-CREDITOR-001\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -57,11 +35,9 @@
               "script": {
                 "exec": [
                   "const ts = Date.now();",
-                  "pm.collectionVariables.set('e2eRef', 'E2E-IMX-CBS-GL-' + ts);",
-                  "pm.collectionVariables.set('srcRef', 'SRC-IMX-CBS-GL-' + ts);",
                   "const body = JSON.parse(pm.request.body.raw);",
-                  "body.end_to_end_ref_id = pm.collectionVariables.get('e2eRef');",
-                  "body.source_ref_id = pm.collectionVariables.get('srcRef');",
+                  "body.end_to_end_reference_id = 'E2E-IMX-CBS-GL-' + ts;",
+                  "body.source_reference_id = 'SRC-IMX-CBS-GL-' + ts;",
                   "pm.request.body.raw = JSON.stringify(body);"
                 ],
                 "type": "text/javascript"
@@ -72,7 +48,7 @@
               "script": {
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Has source_reference_id', () => {",
+                  "pm.test('Save postingId', () => {",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.source_reference_id).to.exist;",
                   "    pm.expect(body.posting_status).to.exist;",
@@ -90,7 +66,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-IMX-OBPM-001\",\n  \"end_to_end_ref_id\": \"E2E-IMX-OBPM-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_OBPM\",\n  \"amount\": {\n    \"value\": \"500.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"ACC-DEBTOR-002\",\n  \"creditor_account\": \"ACC-CREDITOR-002\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-IMX-OBPM-001\",\n  \"end_to_end_reference_id\": \"E2E-IMX-OBPM-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_OBPM\",\n  \"amount\": {\n    \"value\": \"500.00\",\n    \"currency_code\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"ACC-DEBTOR-002\",\n  \"creditor_account\": \"ACC-CREDITOR-002\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -105,8 +81,8 @@
                 "exec": [
                   "const ts = Date.now();",
                   "const body = JSON.parse(pm.request.body.raw);",
-                  "body.end_to_end_ref_id = 'E2E-IMX-OBPM-' + ts;",
-                  "body.source_ref_id = 'SRC-IMX-OBPM-' + ts;",
+                  "body.end_to_end_reference_id = 'E2E-IMX-OBPM-' + ts;",
+                  "body.source_reference_id = 'SRC-IMX-OBPM-' + ts;",
                   "pm.request.body.raw = JSON.stringify(body);"
                 ],
                 "type": "text/javascript"
@@ -116,11 +92,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Has posting_status', () => {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body.posting_status).to.exist;",
-                  "});"
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
                 ],
                 "type": "text/javascript"
               }
@@ -134,7 +106,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-RMS-FED-001\",\n  \"end_to_end_ref_id\": \"E2E-RMS-FED-001\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"RMS_FED_RETURN\",\n  \"amount\": {\n    \"value\": \"750.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-003\",\n  \"creditor_account\": \"ACC-CREDITOR-003\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-RMS-FED-001\",\n  \"end_to_end_reference_id\": \"E2E-RMS-FED-001\",\n  \"source_name\": \"RMS\",\n  \"request_type\": \"RMS_FED_RETURN\",\n  \"amount\": {\n    \"value\": \"750.00\",\n    \"currency_code\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-003\",\n  \"creditor_account\": \"ACC-CREDITOR-003\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -149,8 +121,8 @@
                 "exec": [
                   "const ts = Date.now();",
                   "const body = JSON.parse(pm.request.body.raw);",
-                  "body.end_to_end_ref_id = 'E2E-RMS-FED-' + ts;",
-                  "body.source_ref_id = 'SRC-RMS-FED-' + ts;",
+                  "body.end_to_end_reference_id = 'E2E-RMS-FED-' + ts;",
+                  "body.source_reference_id = 'SRC-RMS-FED-' + ts;",
                   "pm.request.body.raw = JSON.stringify(body);"
                 ],
                 "type": "text/javascript"
@@ -174,7 +146,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-STC-CBS-GL-001\",\n  \"end_to_end_ref_id\": \"E2E-STC-CBS-GL-001\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"STABLECOIN_CBS_GL\",\n  \"amount\": {\n    \"value\": \"2000.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-004\",\n  \"creditor_account\": \"ACC-CREDITOR-004\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-STC-CBS-GL-001\",\n  \"end_to_end_reference_id\": \"E2E-STC-CBS-GL-001\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"STABLECOIN_CBS_GL\",\n  \"amount\": {\n    \"value\": \"2000.00\",\n    \"currency_code\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-004\",\n  \"creditor_account\": \"ACC-CREDITOR-004\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -189,8 +161,8 @@
                 "exec": [
                   "const ts = Date.now();",
                   "const body = JSON.parse(pm.request.body.raw);",
-                  "body.end_to_end_ref_id = 'E2E-STC-CBS-GL-' + ts;",
-                  "body.source_ref_id = 'SRC-STC-CBS-GL-' + ts;",
+                  "body.end_to_end_reference_id = 'E2E-STC-CBS-GL-' + ts;",
+                  "body.source_reference_id = 'SRC-STC-CBS-GL-' + ts;",
                   "pm.request.body.raw = JSON.stringify(body);"
                 ],
                 "type": "text/javascript"
@@ -218,7 +190,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-STC-HOLD-001\",\n  \"end_to_end_ref_id\": \"E2E-STC-HOLD-001\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"STABLECOIN_CBS_GL_HOLD\",\n  \"amount\": {\n    \"value\": \"3000.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"ACC-DEBTOR-005\",\n  \"creditor_account\": \"ACC-CREDITOR-005\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-STC-HOLD-001\",\n  \"end_to_end_reference_id\": \"E2E-STC-HOLD-001\",\n  \"source_name\": \"STABLECOIN\",\n  \"request_type\": \"STABLECOIN_CBS_GL_HOLD\",\n  \"amount\": {\n    \"value\": \"3000.00\",\n    \"currency_code\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"ACC-DEBTOR-005\",\n  \"creditor_account\": \"ACC-CREDITOR-005\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -233,8 +205,8 @@
                 "exec": [
                   "const ts = Date.now();",
                   "const body = JSON.parse(pm.request.body.raw);",
-                  "body.end_to_end_ref_id = 'E2E-STC-HOLD-' + ts;",
-                  "body.source_ref_id = 'SRC-STC-HOLD-' + ts;",
+                  "body.end_to_end_reference_id = 'E2E-STC-HOLD-' + ts;",
+                  "body.source_reference_id = 'SRC-STC-HOLD-' + ts;",
                   "pm.request.body.raw = JSON.stringify(body);"
                 ],
                 "type": "text/javascript"
@@ -261,10 +233,7 @@
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
+            "body": {"mode": "raw", "raw": "{}"},
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/search",
               "host": ["{{baseUrl}}"],
@@ -301,7 +270,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_name\": \"IMX\"\n}"
+              "raw": "{\n  \"conditions\": [\n    {\"property\": \"source_name\", \"operator\": \"EQUALS\", \"values\": [\"IMX\"]}\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/search",
@@ -317,9 +286,7 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "pm.test('All results are IMX', () => {",
                   "    const body = pm.response.json();",
-                  "    body.items.forEach(item => {",
-                  "        pm.expect(item.source_name).to.eql('IMX');",
-                  "    });",
+                  "    body.items.forEach(item => pm.expect(item.source_name).to.eql('IMX'));",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -328,13 +295,13 @@
           ]
         },
         {
-          "name": "Search by Request Type (IMX_CBS_GL)",
+          "name": "Search by Status (ACSP)",
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"request_type\": \"IMX_CBS_GL\"\n}"
+              "raw": "{\n  \"conditions\": [\n    {\"property\": \"status\", \"operator\": \"EQUALS\", \"values\": [\"ACSP\"]}\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/search",
@@ -355,40 +322,13 @@
           ]
         },
         {
-          "name": "Search by Posting Status (ACSP)",
+          "name": "Search by Status (PNDG)",
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"posting_status\": \"ACSP\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/search",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "payment", "account-posting", "search"]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Search by Posting Status (PNDG)",
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"posting_status\": \"PNDG\"\n}"
+              "raw": "{\n  \"conditions\": [\n    {\"property\": \"status\", \"operator\": \"EQUALS\", \"values\": [\"PNDG\"]}\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/search",
@@ -415,13 +355,94 @@
           ]
         },
         {
-          "name": "Search with Pagination (limit=5, offset=1)",
+          "name": "Search by Request Type (IMX_CBS_GL)",
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"limit\": 5,\n  \"offset\": 1\n}"
+              "raw": "{\n  \"conditions\": [\n    {\"property\": \"request_type\", \"operator\": \"EQUALS\", \"values\": [\"IMX_CBS_GL\"]}\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/payment/account-posting/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "payment", "account-posting", "search"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Multiple Statuses (IN)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conditions\": [\n    {\"property\": \"status\", \"operator\": \"IN\", \"values\": [\"PNDG\", \"ACSP\"]}\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/payment/account-posting/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "payment", "account-posting", "search"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search by Date Range (BETWEEN)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conditions\": [\n    {\"property\": \"requested_execution_date\", \"operator\": \"BETWEEN\", \"values\": [\"2026-01-01\", \"2026-12-31\"]}\n  ],\n  \"order_by\": [\n    {\"property\": \"postingId\", \"sort_order\": \"DESC\"}\n  ],\n  \"pagination\": {\n    \"offset\": 1,\n    \"limit\": 20\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/payment/account-posting/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "payment", "account-posting", "search"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search with Pagination (offset=1 limit=5)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagination\": {\n    \"offset\": 1,\n    \"limit\": 5\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/search",
@@ -446,40 +467,13 @@
           ]
         },
         {
-          "name": "Search with Date Range",
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"from_date\": \"2026-01-01\",\n  \"to_date\": \"2026-12-31\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/search",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "payment", "account-posting", "search"]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
           "name": "Search No Results (future date)",
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"from_date\": \"2099-01-01\",\n  \"to_date\": \"2099-12-31\"\n}"
+              "raw": "{\n  \"conditions\": [\n    {\"property\": \"requested_execution_date\", \"operator\": \"BETWEEN\", \"values\": [\"2099-01-01\", \"2099-12-31\"]}\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting/search",
@@ -596,97 +590,7 @@
       ]
     },
     {
-      "name": "04 - History Search",
-      "item": [
-        {
-          "name": "Search History All",
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/history/search",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "payment", "account-posting", "history", "search"]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Has items array', () => {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body.items).to.be.an('array');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Search History by Posting ID",
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"posting_id\": {{postingId}}\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/history/search",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "payment", "account-posting", "history", "search"]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Search History by Source Name",
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"source_name\": \"IMX\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting/history/search",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "payment", "account-posting", "history", "search"]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "05 - Retry",
+      "name": "04 - Retry",
       "item": [
         {
           "name": "Retry All Pending Postings",
@@ -788,7 +692,7 @@
       ]
     },
     {
-      "name": "06 - Error Cases",
+      "name": "05 - Error Cases",
       "item": [
         {
           "name": "Create Duplicate E2E Reference (400)",
@@ -797,7 +701,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-DUPE-001\",\n  \"end_to_end_ref_id\": \"E2E-IMX-CBS-GL-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {\n    \"value\": \"100.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-001\",\n  \"creditor_account\": \"ACC-CREDITOR-001\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-DUPE-001\",\n  \"end_to_end_reference_id\": \"E2E-IMX-CBS-GL-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {\n    \"value\": \"100.00\",\n    \"currency_code\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-001\",\n  \"creditor_account\": \"ACC-CREDITOR-001\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -828,7 +732,7 @@
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-NO-CFG-001\",\n  \"end_to_end_ref_id\": \"E2E-NO-CFG-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"UNKNOWN_REQUEST_TYPE\",\n  \"amount\": {\n    \"value\": \"100.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-001\",\n  \"creditor_account\": \"ACC-CREDITOR-001\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
+              "raw": "{\n  \"source_reference_id\": \"SRC-NO-CFG-001\",\n  \"end_to_end_reference_id\": \"E2E-NO-CFG-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"UNKNOWN_REQUEST_TYPE\",\n  \"amount\": {\n    \"value\": \"100.00\",\n    \"currency_code\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-001\",\n  \"creditor_account\": \"ACC-CREDITOR-001\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/payment/account-posting",
@@ -843,8 +747,8 @@
                 "exec": [
                   "const ts = Date.now();",
                   "const body = JSON.parse(pm.request.body.raw);",
-                  "body.end_to_end_ref_id = 'E2E-NO-CFG-' + ts;",
-                  "body.source_ref_id = 'SRC-NO-CFG-' + ts;",
+                  "body.end_to_end_reference_id = 'E2E-NO-CFG-' + ts;",
+                  "body.source_reference_id = 'SRC-NO-CFG-' + ts;",
                   "pm.request.body.raw = JSON.stringify(body);"
                 ],
                 "type": "text/javascript"
@@ -890,48 +794,6 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(body.name).to.eql('VALIDATION_FAILED');",
                   "    pm.expect(body.errors).to.be.an('array').with.length.above(0);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create Invalid source_name (400)",
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"source_ref_id\": \"SRC-BAD-SRC-001\",\n  \"end_to_end_ref_id\": \"E2E-BAD-SRC-001\",\n  \"source_name\": \"INVALID_SOURCE\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": {\n    \"value\": \"100.00\",\n    \"currency\": \"USD\"\n  },\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"ACC-DEBTOR-001\",\n  \"creditor_account\": \"ACC-CREDITOR-001\",\n  \"requested_execution_date\": \"2026-03-31\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v2/payment/account-posting",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "payment", "account-posting"]
-            }
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "const ts = Date.now();",
-                  "const body = JSON.parse(pm.request.body.raw);",
-                  "body.end_to_end_ref_id = 'E2E-BAD-SRC-' + ts;",
-                  "body.source_ref_id = 'SRC-BAD-SRC-' + ts;",
-                  "pm.request.body.raw = JSON.stringify(body);"
-                ],
-                "type": "text/javascript"
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 400 or 422', () => {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([400, 422]);",
                   "});"
                 ],
                 "type": "text/javascript"

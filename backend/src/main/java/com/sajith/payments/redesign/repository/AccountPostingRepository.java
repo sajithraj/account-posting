@@ -51,11 +51,14 @@ public interface AccountPostingRepository
             @Param("lockUntil") Instant lockUntil);
 
     /**
-     * Returns the oldest postings which are all ready for archival
+     * Returns the oldest postings which are ready for archival.
+     * Only terminal-status postings (ACSP, RJCT) are archived — PNDG postings are excluded.
      */
     @Query("""
             SELECT p FROM AccountPostingEntity p
             WHERE p.createdAt < :threshold
+              AND p.status IN (com.sajith.payments.redesign.entity.enums.PostingStatus.ACSP,
+                               com.sajith.payments.redesign.entity.enums.PostingStatus.RJCT)
             ORDER BY p.createdAt ASC
             """)
     List<AccountPostingEntity> findEligibleForArchival(

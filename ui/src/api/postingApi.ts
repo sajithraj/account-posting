@@ -112,7 +112,7 @@ export const postingApi = {
         reason?: string,
     ): Promise<unknown> => {
         const res = await http.patch<unknown>(
-            `${BASE}/${postingId}/leg/${postingLegId}`,
+            `${BASE}/${postingId}/transaction/${postingLegId}`,
             {status, requestedBy: 'OPS-USER', ...(reason ? {reason} : {})},
         );
         return res.data;
