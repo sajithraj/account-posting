@@ -1,0 +1,335 @@
+{
+  "info": {
+    "name": "Posting Transactions",
+    "_postman_id": "posting-transactions-collection",
+    "description": "Transaction leg operations for account postings",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "postingId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "transactionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - List Transactions for Posting",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Returns array', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.be.an('array');",
+              "});",
+              "pm.test('Save first transaction_id', () => {",
+              "    const body = pm.response.json();",
+              "    if (body.length > 0) {",
+              "        pm.collectionVariables.set('transactionId', body[0].transaction_id);",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - List Transactions for Non-Existent Posting",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/99999/transaction",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "99999", "transaction"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 with empty array', () => {",
+              "    pm.response.to.have.status(200);",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.be.an('array').that.is.empty;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Get Single Transaction",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction/{{transactionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction", "{{transactionId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Has transaction fields', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.transaction_id).to.exist;",
+              "    pm.expect(body.transaction_order).to.exist;",
+              "    pm.expect(body.target_system).to.exist;",
+              "    pm.expect(body.status).to.exist;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Get Transaction Not Found (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction/99999",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction", "99999"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));",
+              "pm.test('Error name NOT_FOUND', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.name).to.eql('NOT_FOUND');",
+              "    pm.expect(body.message).to.include('99999');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Get Transaction Wrong Posting ID (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/99999/transaction/{{transactionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "99999", "transaction", "{{transactionId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));",
+              "pm.test('Error name NOT_FOUND', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.name).to.eql('NOT_FOUND');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Manual Update Transaction to SUCCESS",
+      "request": {
+        "method": "PATCH",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"SUCCESS\",\n  \"reason\": \"Manually confirmed by ops\",\n  \"requested_by\": \"OPS-USER\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction/{{transactionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction", "{{transactionId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Mode is MANUAL', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.mode).to.eql('MANUAL');",
+              "});",
+              "pm.test('Status is SUCCESS', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.status).to.eql('SUCCESS');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Manual Update Transaction to FAILED",
+      "request": {
+        "method": "PATCH",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"FAILED\",\n  \"reason\": \"Manually marked failed — CBS did not respond\",\n  \"requested_by\": \"OPS-USER\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction/{{transactionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction", "{{transactionId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Mode is MANUAL', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.mode).to.eql('MANUAL');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Manual Update Missing status (400)",
+      "request": {
+        "method": "PATCH",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requested_by\": \"OPS-USER\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction/{{transactionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction", "{{transactionId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation error on status', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.name).to.eql('VALIDATION_FAILED');",
+              "    const statusError = body.errors.find(e => e.field === 'status');",
+              "    pm.expect(statusError).to.exist;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Manual Update Missing requested_by (400)",
+      "request": {
+        "method": "PATCH",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"SUCCESS\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction/{{transactionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction", "{{transactionId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation error on requestedBy', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.name).to.eql('VALIDATION_FAILED');",
+              "    const reqByError = body.errors.find(e => e.field === 'requestedBy');",
+              "    pm.expect(reqByError).to.exist;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Manual Update Transaction Not Found (404)",
+      "request": {
+        "method": "PATCH",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"SUCCESS\",\n  \"requested_by\": \"OPS-USER\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/{{postingId}}/transaction/99999",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "{{postingId}}", "transaction", "99999"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));",
+              "pm.test('Error name NOT_FOUND', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.name).to.eql('NOT_FOUND');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}
