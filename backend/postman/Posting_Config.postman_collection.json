@@ -6,16 +6,8 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8080",
-      "type": "string"
-    },
-    {
-      "key": "configId",
-      "value": "",
-      "type": "string"
-    }
+    {"key": "baseUrl", "value": "http://localhost:8080", "type": "string"},
+    {"key": "newConfigId", "value": "", "type": "string"}
   ],
   "item": [
     {
@@ -62,9 +54,10 @@
           "script": {
             "exec": [
               "pm.test('Status 200', () => pm.response.to.have.status(200));",
-              "pm.test('Correct request type', () => {",
+              "pm.test('Returns array with correct request type', () => {",
               "    const body = pm.response.json();",
-              "    pm.expect(body.request_type).to.eql('IMX_CBS_GL');",
+              "    pm.expect(body).to.be.an('array');",
+              "    body.forEach(cfg => pm.expect(cfg.request_type).to.eql('IMX_CBS_GL'));",
               "});"
             ],
             "type": "text/javascript"
@@ -88,11 +81,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Status 200', () => pm.response.to.have.status(200));",
-              "pm.test('Correct request type', () => {",
-              "    const body = pm.response.json();",
-              "    pm.expect(body.request_type).to.eql('IMX_OBPM');",
-              "});"
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
             ],
             "type": "text/javascript"
           }
@@ -123,7 +112,7 @@
       ]
     },
     {
-      "name": "05 - Get Config Not Found (404)",
+      "name": "05 - Get Config by Request Type (empty result)",
       "request": {
         "method": "GET",
         "header": [],
@@ -138,10 +127,10 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Status 404', () => pm.response.to.have.status(404));",
-              "pm.test('Error name NOT_FOUND', () => {",
+              "pm.test('Status 200 empty array', () => {",
+              "    pm.response.to.have.status(200);",
               "    const body = pm.response.json();",
-              "    pm.expect(body.name).to.eql('NOT_FOUND');",
+              "    pm.expect(body).to.be.an('array').that.is.empty;",
               "});"
             ],
             "type": "text/javascript"
@@ -150,13 +139,13 @@
       ]
     },
     {
-      "name": "06 - Create Config",
+      "name": "06 - Create Config (CBS row)",
       "request": {
         "method": "POST",
         "header": [{"key": "Content-Type", "value": "application/json"}],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_NEW_TYPE\",\n  \"legs\": [\n    {\n      \"target_system\": \"CBS\",\n      \"operation\": \"POSTING\",\n      \"order_seq\": 1\n    },\n    {\n      \"target_system\": \"GL\",\n      \"operation\": \"POSTING\",\n      \"order_seq\": 2\n    }\n  ]\n}"
+          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_TEST_TYPE\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1,\n  \"requested_by\": \"OPS-USER\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/v2/payment/account-posting/config",
@@ -170,10 +159,14 @@
           "script": {
             "exec": [
               "pm.test('Status 201', () => pm.response.to.have.status(201));",
-              "pm.test('Has config_id', () => {",
+              "pm.test('Has correct fields', () => {",
               "    const body = pm.response.json();",
               "    pm.expect(body.config_id).to.exist;",
-              "    pm.collectionVariables.set('configId', body.config_id);",
+              "    pm.expect(body.source_name).to.eql('IMX');",
+              "    pm.expect(body.request_type).to.eql('IMX_TEST_TYPE');",
+              "    pm.expect(body.target_system).to.eql('CBS');",
+              "    pm.expect(body.order_seq).to.eql(1);",
+              "    pm.collectionVariables.set('newConfigId', body.config_id);",
               "});"
             ],
             "type": "text/javascript"
@@ -182,13 +175,13 @@
       ]
     },
     {
-      "name": "07 - Create Config Duplicate Order Seq (422)",
+      "name": "07 - Create Config (GL row for same request type)",
       "request": {
         "method": "POST",
         "header": [{"key": "Content-Type", "value": "application/json"}],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"legs\": [\n    {\n      \"target_system\": \"CBS\",\n      \"operation\": \"POSTING\",\n      \"order_seq\": 1\n    },\n    {\n      \"target_system\": \"GL\",\n      \"operation\": \"POSTING\",\n      \"order_seq\": 1\n    }\n  ]\n}"
+          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_TEST_TYPE\",\n  \"target_system\": \"GL\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 2,\n  \"requested_by\": \"OPS-USER\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/v2/payment/account-posting/config",
@@ -201,8 +194,11 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Status 422 or 400', () => {",
-              "    pm.expect(pm.response.code).to.be.oneOf([400, 422]);",
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('order_seq is 2', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.order_seq).to.eql(2);",
+              "    pm.expect(body.target_system).to.eql('GL');",
               "});"
             ],
             "type": "text/javascript"
@@ -211,7 +207,38 @@
       ]
     },
     {
-      "name": "08 - Create Config Missing Required Fields (400)",
+      "name": "08 - Create Config Duplicate order_seq (422)",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_TEST_TYPE\",\n  \"target_system\": \"OBPM\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1,\n  \"requested_by\": \"OPS-USER\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v2/payment/account-posting/config",
+          "host": ["{{baseUrl}}"],
+          "path": ["v2", "payment", "account-posting", "config"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400', () => pm.response.to.have.status(400));",
+              "pm.test('Error DUPLICATE_CONFIG_ORDER', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.name).to.eql('DUPLICATE_CONFIG_ORDER');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Create Config Missing Required Fields (400)",
       "request": {
         "method": "POST",
         "header": [{"key": "Content-Type", "value": "application/json"}],
@@ -231,9 +258,10 @@
           "script": {
             "exec": [
               "pm.test('Status 400', () => pm.response.to.have.status(400));",
-              "pm.test('Error name VALIDATION_FAILED', () => {",
+              "pm.test('Error VALIDATION_FAILED', () => {",
               "    const body = pm.response.json();",
               "    pm.expect(body.name).to.eql('VALIDATION_FAILED');",
+              "    pm.expect(body.errors).to.be.an('array').with.length.above(0);",
               "});"
             ],
             "type": "text/javascript"
@@ -242,18 +270,18 @@
       ]
     },
     {
-      "name": "09 - Update Config",
+      "name": "10 - Update Config",
       "request": {
         "method": "PUT",
         "header": [{"key": "Content-Type", "value": "application/json"}],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"legs\": [\n    {\n      \"target_system\": \"CBS\",\n      \"operation\": \"POSTING\",\n      \"order_seq\": 1\n    },\n    {\n      \"target_system\": \"GL\",\n      \"operation\": \"POSTING\",\n      \"order_seq\": 2\n    }\n  ]\n}"
+          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1,\n  \"requested_by\": \"OPS-USER\"\n}"
         },
         "url": {
-          "raw": "{{baseUrl}}/v2/payment/account-posting/config/IMX_CBS_GL",
+          "raw": "{{baseUrl}}/v2/payment/account-posting/config/1",
           "host": ["{{baseUrl}}"],
-          "path": ["v2", "payment", "account-posting", "config", "IMX_CBS_GL"]
+          "path": ["v2", "payment", "account-posting", "config", "1"]
         }
       },
       "event": [
@@ -262,9 +290,10 @@
           "script": {
             "exec": [
               "pm.test('Status 200', () => pm.response.to.have.status(200));",
-              "pm.test('Correct request type', () => {",
+              "pm.test('Updated correctly', () => {",
               "    const body = pm.response.json();",
               "    pm.expect(body.request_type).to.eql('IMX_CBS_GL');",
+              "    pm.expect(body.target_system).to.eql('CBS');",
               "});"
             ],
             "type": "text/javascript"
@@ -273,18 +302,18 @@
       ]
     },
     {
-      "name": "10 - Update Config Not Found (404)",
+      "name": "11 - Update Config Not Found (404)",
       "request": {
         "method": "PUT",
         "header": [{"key": "Content-Type", "value": "application/json"}],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"GHOST_TYPE\",\n  \"legs\": []\n}"
+          "raw": "{\n  \"source_name\": \"IMX\",\n  \"request_type\": \"GHOST_TYPE\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"order_seq\": 1,\n  \"requested_by\": \"OPS-USER\"\n}"
         },
         "url": {
-          "raw": "{{baseUrl}}/v2/payment/account-posting/config/GHOST_TYPE",
+          "raw": "{{baseUrl}}/v2/payment/account-posting/config/99999",
           "host": ["{{baseUrl}}"],
-          "path": ["v2", "payment", "account-posting", "config", "GHOST_TYPE"]
+          "path": ["v2", "payment", "account-posting", "config", "99999"]
         }
       },
       "event": [
@@ -300,14 +329,14 @@
       ]
     },
     {
-      "name": "11 - Delete Config (created in step 06)",
+      "name": "12 - Delete Config (CBS row created in step 06)",
       "request": {
         "method": "DELETE",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/v2/payment/account-posting/config/IMX_NEW_TYPE",
+          "raw": "{{baseUrl}}/v2/payment/account-posting/config/{{newConfigId}}",
           "host": ["{{baseUrl}}"],
-          "path": ["v2", "payment", "account-posting", "config", "IMX_NEW_TYPE"]
+          "path": ["v2", "payment", "account-posting", "config", "{{newConfigId}}"]
         }
       },
       "event": [
@@ -323,41 +352,14 @@
       ]
     },
     {
-      "name": "12 - Verify Deleted Config Returns 404",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/v2/payment/account-posting/config/IMX_NEW_TYPE",
-          "host": ["{{baseUrl}}"],
-          "path": ["v2", "payment", "account-posting", "config", "IMX_NEW_TYPE"]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status 404', () => pm.response.to.have.status(404));",
-              "pm.test('Error name NOT_FOUND', () => {",
-              "    const body = pm.response.json();",
-              "    pm.expect(body.name).to.eql('NOT_FOUND');",
-              "});"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ]
-    },
-    {
       "name": "13 - Delete Config Not Found (404)",
       "request": {
         "method": "DELETE",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/v2/payment/account-posting/config/GHOST_TYPE",
+          "raw": "{{baseUrl}}/v2/payment/account-posting/config/99999",
           "host": ["{{baseUrl}}"],
-          "path": ["v2", "payment", "account-posting", "config", "GHOST_TYPE"]
+          "path": ["v2", "payment", "account-posting", "config", "99999"]
         }
       },
       "event": [

@@ -16,10 +16,10 @@ export interface AccountPostingRequest {
 }
 
 export interface LegResponse {
-    postingLegId: number;
-    legOrder: number;
-    name: string;       // CBS / GL / OBPM
-    type: string;       // POSTING / ADD_HOLD / CANCEL_HOLD
+    transactionId: number;
+    transactionOrder: number;
+    targetSystem: string;   // CBS / GL / OBPM
+    operation: string;      // POSTING / ADD_HOLD / CANCEL_HOLD
     account: string;
     referenceId?: string;
     postedTime?: string;

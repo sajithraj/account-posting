@@ -4,7 +4,7 @@ import type {LegResponse} from '../types/posting';
 interface Props {
     legs: LegResponse[];
     /** When provided, a "Manual Update" action column is shown for non-SUCCESS legs. */
-    onUpdateStatus?: (postingLegId: number, status: string, reason?: string) => void;
+    onUpdateStatus?: (transactionId: number, status: string, reason?: string) => void;
     updatingLegId?: number | null;
 }
 
@@ -25,9 +25,9 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
     const showActions = !!onUpdateStatus;
 
     const openPopup = (leg: LegResponse) => {
-        if (!leg.postingLegId) return;
+        if (!leg.transactionId) return;
         setPopup({
-            legId: leg.postingLegId,
+            legId: leg.transactionId,
             currentStatus: leg.status,
             selectedStatus: leg.status === 'SUCCESS' ? 'FAILED' : 'SUCCESS',
             reason: '',
@@ -105,13 +105,13 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
                 <tbody>
                 {legs.map((leg, i) => {
                     const isSuccess = leg.status === 'SUCCESS';
-                    const isUpdating = updatingLegId === leg.postingLegId;
+                    const isUpdating = updatingLegId === leg.transactionId;
 
                     return (
                         <tr key={i}>
-                            <td style={{...td, textAlign: 'center', fontWeight: 600}}>{leg.legOrder}</td>
-                            <td style={td}>{leg.name}</td>
-                            <td style={td}>{leg.type}</td>
+                            <td style={{...td, textAlign: 'center', fontWeight: 600}}>{leg.transactionOrder}</td>
+                            <td style={td}>{leg.targetSystem}</td>
+                            <td style={td}>{leg.operation}</td>
                             <td style={td}>{leg.account}</td>
                             <td style={td}>{leg.referenceId ?? '—'}</td>
                             <td style={td}>
@@ -150,7 +150,7 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
                                                 ...updateBtn,
                                                 ...(isUpdating ? disabledStyle : {}),
                                             }}
-                                            disabled={isUpdating || !leg.postingLegId}
+                                            disabled={isUpdating || !leg.transactionId}
                                             onClick={() => openPopup(leg)}
                                         >
                                             {isUpdating ? '…' : 'Update'}

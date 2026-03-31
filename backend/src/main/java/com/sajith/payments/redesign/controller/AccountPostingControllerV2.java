@@ -29,7 +29,7 @@ public class AccountPostingControllerV2 {
     @PostMapping
     public ResponseEntity<AccountPostingCreateResponseV2> create(
             @RequestBody IncomingPostingRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
+        return ResponseEntity.status(HttpStatus.OK).body(service.create(request));
     }
 
     @PostMapping("/search")

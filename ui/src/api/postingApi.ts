@@ -92,12 +92,12 @@ export const postingApi = {
     },
 
     createConfig: async (request: PostingConfigRequest): Promise<PostingConfigResponse> => {
-        const res = await http.post<PostingConfigResponse>(`${BASE}/config`, request);
+        const res = await http.post<PostingConfigResponse>(`${BASE}/config`, {...request, requestedBy: 'UI-USER'});
         return res.data;
     },
 
     updateConfig: async (configId: number, request: PostingConfigRequest): Promise<PostingConfigResponse> => {
-        const res = await http.put<PostingConfigResponse>(`${BASE}/config/${configId}`, request);
+        const res = await http.put<PostingConfigResponse>(`${BASE}/config/${configId}`, {...request, requestedBy: 'UI-USER'});
         return res.data;
     },
 
