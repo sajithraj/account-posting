@@ -1,0 +1,27 @@
+# Copy this file to terraform.tfvars and fill in your values
+# Never commit terraform.tfvars to source control
+
+aws_region   = "ap-southeast-1"
+environment  = "dev"
+project_name = "account-posting"
+
+# Path to the fat JAR built by: cd backend-aws && mvn clean package
+lambda_jar_path = "../backend-aws/target/account-posting-aws.jar"
+
+# Support team email - receives SNS alerts on posting failures
+support_email = "sajithraj3@gmail.com"
+
+# Lambda config
+lambda_memory_mb       = 512
+lambda_timeout_seconds = 60
+
+# SQS config
+sqs_visibility_timeout_seconds = 180
+sqs_batch_size                 = 5
+
+# DynamoDB
+dynamodb_billing_mode = "PAY_PER_REQUEST"
+dynamo_ttl_days       = 60
+
+# CloudWatch
+log_retention_days = 30

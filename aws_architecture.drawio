@@ -1,0 +1,224 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1100" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- Title -->
+    <mxCell id="2" value="Account Posting — AWS Architecture (Redesign)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="450" y="15" width="800" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- AWS Cloud border (visual) -->
+    <mxCell id="3" value="AWS Cloud" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#232F3E;align=left;verticalAlign=top;fontSize=13;fontStyle=1;arcSize=2;opacity=30;" vertex="1" parent="1">
+      <mxGeometry x="400" y="60" width="1280" height="940" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── CONSUMERS ───────────── -->
+    <mxCell id="5" value="Consumers" style="swimlane;startSize=25;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="20" y="170" width="155" height="310" as="geometry" />
+    </mxCell>
+    <mxCell id="6" value="Stablecoin Facade" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="5">
+      <mxGeometry x="10" y="35" width="135" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="7" value="RMS" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="5">
+      <mxGeometry x="10" y="83" width="135" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="8" value="FX" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="5">
+      <mxGeometry x="10" y="131" width="135" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="9" value="RPA" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="5">
+      <mxGeometry x="10" y="179" width="135" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="10" value="Other Sources" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="5">
+      <mxGeometry x="10" y="227" width="135" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Dashboard -->
+    <mxCell id="4" value="Payment Manager Dashboard&#xa;(React UI)" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="90" width="155" height="55" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── API GATEWAY ───────────── -->
+    <mxCell id="11" value="Amazon API Gateway&#xa;REST API (Sync)" style="rounded=1;whiteSpace=wrap;fillColor=#FF9900;strokeColor=#d6b656;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="275" width="145" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── LAMBDA MAIN (API Handler) ───────────── -->
+    <mxCell id="12" value="Payment Orchestration Lambda  |  Java 17 + SnapStart" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="440" y="80" width="470" height="290" as="geometry" />
+    </mxCell>
+
+    <mxCell id="13" value="&lt;b&gt;POST /posting&lt;/b&gt;&#xa;1. Validate duplication (endToEndReferenceId)&#xa;   + requestType → 400 if fail&#xa;2. DynamoDB insert&#xa;   Async → status: RECEIVED&#xa;   Sync  → status: PNDG&#xa;   DynamoDB fail → 500&#xa;3a. Async: Publish to SQS (NORM)&#xa;    Return ACSP immediately&#xa;3b. Sync: Process legs inline&#xa;    Return ACSP / RJCT" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=8;align=left;spacingLeft=5;verticalAlign=top;" vertex="1" parent="12">
+      <mxGeometry x="10" y="40" width="220" height="160" as="geometry" />
+    </mxCell>
+
+    <mxCell id="14" value="&lt;b&gt;POST /retry&lt;/b&gt;&#xa;1. Fetch non-SUCCESS postings&#xa;   (status: PNDG or RECEIVED)&#xa;   using GSI2 on DynamoDB&#xa;2. For each: read requestPayload&#xa;   from account_posting table&#xa;3. Publish to SQS&#xa;   (requestMode: RETRY)&#xa;4. Return 202 Accepted&#xa;   immediately to caller" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=8;align=left;spacingLeft=5;verticalAlign=top;" vertex="1" parent="12">
+      <mxGeometry x="240" y="40" width="220" height="160" as="geometry" />
+    </mxCell>
+
+    <mxCell id="15" value="&lt;b&gt;POST /search&lt;/b&gt;&#xa;DynamoDB GSI query&#xa;Equality + date range only&#xa;Cursor pagination (nextPageToken)" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=8;align=left;spacingLeft=5;verticalAlign=top;" vertex="1" parent="12">
+      <mxGeometry x="10" y="220" width="220" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="16" value="&lt;b&gt;/config CRUD&lt;/b&gt;&#xa;GET / POST / PUT / DELETE&#xa;PostingConfig via Parameter Store" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=8;align=left;spacingLeft=5;verticalAlign=top;" vertex="1" parent="12">
+      <mxGeometry x="240" y="220" width="220" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── SQS ───────────── -->
+    <mxCell id="20" value="&lt;b&gt;Amazon SQS — Processing Queue&lt;/b&gt;&#xa;&#xa;Message structure:&#xa;{&#xa;  postingId:     Long,&#xa;  requestPayload: { full incoming request },&#xa;  requestMode:   NORM | RETRY&#xa;}&#xa;&#xa;Batch Size:          5&#xa;Max Receive Count:   1  (no auto-retry)&#xa;Visibility Timeout:  3 minutes&#xa;DLQ:                 None" style="rounded=1;whiteSpace=wrap;fillColor=#E91E8C;strokeColor=#9c1261;fontColor=#ffffff;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="460" y="430" width="240" height="215" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── PARAMETER STORE ───────────── -->
+    <mxCell id="17" value="&lt;b&gt;AWS Systems Manager — Parameter Store&lt;/b&gt;&#xa;&#xa;• PostingConfig per requestType&#xa;  (targetSystem, operation, orderSeq)&#xa;• Source processingMode per sourceName&#xa;  (SYNC / ASYNC)&#xa;• SNS Support Alert Topic ARN&#xa;&#xa;SDK-level caching (no Caffeine / ElastiCache)" style="rounded=1;whiteSpace=wrap;fillColor=#E8D44D;strokeColor=#b5a800;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="990" y="80" width="260" height="170" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── DYNAMODB POSTING ───────────── -->
+    <mxCell id="18" value="&lt;b&gt;DynamoDB: account_posting&lt;/b&gt;&#xa;&#xa;PK:   postingId (Number)&#xa;GSI1: endToEndReferenceId → idempotency check&#xa;GSI2: status (PK) + createdAt (SK) → search + retry&#xa;GSI3: sourceName (PK) + createdAt (SK) → search&#xa;&#xa;Key attributes:&#xa;  version, retryLockedUntil, requestPayload,&#xa;  targetSystems, reason, ttl&#xa;&#xa;Status: RECEIVED | PNDG | ACSP | RJCT&#xa;TTL:    60 days (DynamoDB auto-delete)" style="rounded=1;whiteSpace=wrap;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="990" y="285" width="270" height="215" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── DYNAMODB LEG ───────────── -->
+    <mxCell id="19" value="&lt;b&gt;DynamoDB: account_posting_leg&lt;/b&gt;&#xa;&#xa;PK: postingId (Number)&#xa;SK: transactionOrder (Number)&#xa;&#xa;Key attributes:&#xa;  targetSystem, account, status,&#xa;  referenceId, reason, attemptNumber,&#xa;  postedTime, mode, operation, version, ttl&#xa;&#xa;mode:   NORM | RETRY | MANUAL&#xa;Status: PNDG | SUCCESS | FAILED&#xa;TTL:    60 days (DynamoDB auto-delete)" style="rounded=1;whiteSpace=wrap;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="990" y="530" width="270" height="210" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── UNIFIED PROCESSOR LAMBDA ───────────── -->
+    <mxCell id="21" value="&lt;b&gt;Payment Orchestration Lambda — SQS Event Handler (Unified Processor)&lt;/b&gt;&#xa;&#xa;requestMode = NORM  →  Read PostingConfig from Parameter Store  →  Create legs as PNDG  →  Process each leg (CBS / GL / OBPM)&#xa;requestMode = RETRY →  Fetch non-SUCCESS legs from DynamoDB  →  Reprocess each leg (CBS / GL / OBPM)&#xa;&#xa;Concurrency guard: retryLockedUntil + version attribute via DynamoDB ConditionExpression (atomic CAS)&#xa;All legs SUCCESS → update posting ACSP   |   Any failure → posting stays PNDG + publish failure details to SNS" style="rounded=1;whiteSpace=wrap;fillColor=#FF9900;strokeColor=#d6b656;fontColor=#000000;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="440" y="700" width="750" height="140" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── SNS ───────────── -->
+    <mxCell id="22" value="Amazon SNS&#xa;Support Alert Topic&#xa;(Email subscription)" style="rounded=1;whiteSpace=wrap;fillColor=#E74C3C;strokeColor=#c0392b;fontColor=#ffffff;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="750" y="895" width="190" height="65" as="geometry" />
+    </mxCell>
+
+    <!-- Support Team -->
+    <mxCell id="23" value="Support Team&#xa;(Email Notification)" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="750" y="990" width="190" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── CLOUDWATCH ───────────── -->
+    <mxCell id="24" value="Amazon CloudWatch&#xa;Lambda Logs + Error Metrics" style="rounded=1;whiteSpace=wrap;fillColor=#9B59B6;strokeColor=#7D3C98;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1330" y="390" width="210" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- IAM -->
+    <mxCell id="25" value="AWS IAM — Lambda Execution Role&#xa;Permissions:&#xa;DynamoDB (R/W), SQS (consume/send),&#xa;SNS (publish), SSM Parameter Store (R/W)" style="rounded=1;whiteSpace=wrap;fillColor=#DD344C;strokeColor=#a31b36;fontColor=#ffffff;fontSize=9;align=left;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1330" y="165" width="230" height="90" as="geometry" />
+    </mxCell>
+
+    <!-- SnapStart -->
+    <mxCell id="26" value="Lambda SnapStart (Java 17)&#xa;Cold start reduced to ~200ms" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="1330" y="285" width="230" height="55" as="geometry" />
+    </mxCell>
+
+    <!-- ───────────── EXTERNAL SYSTEMS ───────────── -->
+    <mxCell id="27" value="External Core Systems" style="swimlane;startSize=25;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1330" y="530" width="160" height="230" as="geometry" />
+    </mxCell>
+    <mxCell id="28" value="CBS" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="27">
+      <mxGeometry x="10" y="35" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="29" value="GL" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="27">
+      <mxGeometry x="10" y="95" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="30" value="OBPM" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="27">
+      <mxGeometry x="10" y="155" width="140" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════ EDGES ═══════════════════ -->
+
+    <!-- Dashboard → API GW -->
+    <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" source="4" target="11" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Consumers → API GW -->
+    <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" source="5" target="11" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- API GW → Lambda Main -->
+    <mxCell id="e3" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontStyle=1;fontSize=9;" edge="1" source="11" target="12" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- /posting → DynamoDB posting -->
+    <mxCell id="e4" value="Insert RECEIVED (async)&#xa;or PNDG (sync)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;dashed=1;" edge="1" source="13" target="18" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- /posting → SQS (async NORM) -->
+    <mxCell id="e5" value="Publish NORM message" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;" edge="1" source="13" target="20" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- /posting → External (sync path) -->
+    <mxCell id="e6" value="Sync path only&#xa;(inline processing)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;dashed=1;fontStyle=2;" edge="1" source="13" target="27" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- /retry → DynamoDB (fetch) -->
+    <mxCell id="e7" value="Fetch PNDG + RECEIVED&#xa;+ requestPayload" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;dashed=1;" edge="1" source="14" target="18" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- /retry → SQS (RETRY) -->
+    <mxCell id="e8" value="Publish RETRY message" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;" edge="1" source="14" target="20" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- /search → DynamoDB -->
+    <mxCell id="e9" value="GSI query" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;dashed=1;" edge="1" source="15" target="18" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- /config → Param Store -->
+    <mxCell id="e10" value="CRUD" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;" edge="1" source="16" target="17" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Param Store → Lambda Main (processingMode read) -->
+    <mxCell id="e11" value="processingMode per source" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.3;entryDx=0;entryDy=0;" edge="1" source="17" target="12" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- SQS → Processor Lambda -->
+    <mxCell id="e12" value="Trigger (batch=5, maxReceive=1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontStyle=1;fontSize=9;" edge="1" source="20" target="21" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Processor → DynamoDB posting -->
+    <mxCell id="e13" value="Update status (ACSP / PNDG)&#xa;ConditionExpression lock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;" edge="1" source="21" target="18" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Processor → DynamoDB leg -->
+    <mxCell id="e14" value="Create / Update legs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;" edge="1" source="21" target="19" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Processor → External -->
+    <mxCell id="e15" value="Process legs (HTTP)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;" edge="1" source="21" target="27" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Processor → SNS on failure -->
+    <mxCell id="e16" value="On failure" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;fontColor=#E74C3C;fontStyle=1;" edge="1" source="21" target="22" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- SNS → Support -->
+    <mxCell id="e17" value="Email alert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;" edge="1" source="22" target="23" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Param Store → Processor Lambda -->
+    <mxCell id="e18" value="PostingConfig (routing rules)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=8;dashed=1;" edge="1" source="17" target="21" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

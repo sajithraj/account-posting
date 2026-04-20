@@ -1,0 +1,24 @@
+services:
+  localstack:
+    image: localstack/localstack:3.4
+    container_name: account-posting-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb,sqs,sns
+      - DEFAULT_REGION=ap-southeast-1
+      - AWS_DEFAULT_REGION=ap-southeast-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - ./localstack/init.sh:/etc/localstack/init/ready.d/init.sh
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  localstack-data:
