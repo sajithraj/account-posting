@@ -5,14 +5,10 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sr.accountposting.dto.posting.IncomingPostingRequest;
 import com.sr.accountposting.dto.posting.PostingResponse;
-import com.sr.accountposting.dto.posting.RetryRequest;
-import com.sr.accountposting.dto.posting.RetryResponse;
-import com.sr.accountposting.entity.config.PostingConfigEntity;
+import com.sr.accountposting.enums.PostingStatus;
 import com.sr.accountposting.exception.BusinessException;
 import com.sr.accountposting.exception.TechnicalException;
 import com.sr.accountposting.exception.ValidationException;
-import com.sr.accountposting.service.config.PostingConfigService;
-import com.sr.accountposting.service.leg.AccountPostingLegService;
 import com.sr.accountposting.service.posting.AccountPostingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,25 +31,23 @@ class ApiGatewayHandlerTest {
 
     @Mock
     private AccountPostingService postingService;
-    @Mock
-    private AccountPostingLegService legService;
-    @Mock
-    private PostingConfigService configService;
 
     private ApiGatewayHandler handler;
 
     @BeforeEach
     void setUp() {
-        handler = new ApiGatewayHandler(postingService, legService, configService);
+        handler = new ApiGatewayHandler(postingService);
     }
+
+    // ─── POST create ─────────────────────────────────────────────────────────
 
     @Test
     void createPosting_validRequest_returns200WithPostingResponse() throws Exception {
         PostingResponse posting = PostingResponse.builder()
                 .endToEndReferenceId("E2E-001")
                 .sourceReferenceId("SRC-001")
-                .postingStatus("ACSP")
-                .processedAt("2026-04-20T10:00:00")
+                .postingStatus(PostingStatus.ACSP.name())
+                .processedAt("2026-04-21T10:00:00Z")
                 .build();
         when(postingService.create(any(IncomingPostingRequest.class))).thenReturn(posting);
 
@@ -66,20 +59,67 @@ class ApiGatewayHandlerTest {
         Map<?, ?> data = (Map<?, ?>) body.get("data");
         assertThat(data.get("end_to_end_reference_id")).isEqualTo("E2E-001");
         assertThat(data.get("posting_status")).isEqualTo("ACSP");
+        verify(postingService).create(any(IncomingPostingRequest.class));
     }
 
     @Test
-    void createPosting_businessException_returns422() {
-        when(postingService.create(any())).thenThrow(new BusinessException("DUPLICATE", "Duplicate reference"));
+    void createPosting_asyncAccepted_returnsAcspStatus() throws Exception {
+        when(postingService.create(any())).thenReturn(PostingResponse.builder()
+                .postingStatus(PostingStatus.ACSP.name())
+                .endToEndReferenceId("E2E-ASYNC")
+                .build());
+
+        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
+
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        Map<?, ?> data = (Map<?, ?>) MAPPER.readValue(response.getBody(), Map.class).get("data");
+        assertThat(data.get("posting_status")).isEqualTo("ACSP");
+    }
+
+    @Test
+    void createPosting_syncProcessed_returnsPndgOrAcspStatus() throws Exception {
+        when(postingService.create(any())).thenReturn(PostingResponse.builder()
+                .postingStatus(PostingStatus.PNDG.name())
+                .endToEndReferenceId("E2E-SYNC")
+                .build());
+
+        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
+
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        Map<?, ?> data = (Map<?, ?>) MAPPER.readValue(response.getBody(), Map.class).get("data");
+        assertThat(data.get("posting_status")).isEqualTo("PNDG");
+    }
+
+    @Test
+    void createPosting_duplicateE2eRef_returns422() throws Exception {
+        when(postingService.create(any())).thenThrow(
+                new BusinessException("DUPLICATE_E2E_REF", "Posting already exists for endToEndReferenceId: E2E-001"));
 
         APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
 
         assertThat(response.getStatusCode()).isEqualTo(422);
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat(body.get("success")).isEqualTo(false);
+        Map<?, ?> error = (Map<?, ?>) body.get("error");
+        assertThat(error.get("name")).isEqualTo("DUPLICATE_E2E_REF");
     }
 
     @Test
-    void createPosting_validationException_returns400() {
-        when(postingService.create(any())).thenThrow(new ValidationException("INVALID_FIELD", "Amount is required"));
+    void createPosting_unknownRequestType_returns400() throws Exception {
+        when(postingService.create(any())).thenThrow(
+                new ValidationException("UNKNOWN_REQUEST_TYPE", "Unknown or unconfigured requestType: DOES_NOT_EXIST"));
+
+        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
+
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        Map<?, ?> error = (Map<?, ?>) MAPPER.readValue(response.getBody(), Map.class).get("error");
+        assertThat(error.get("name")).isEqualTo("UNKNOWN_REQUEST_TYPE");
+    }
+
+    @Test
+    void createPosting_missingAmount_returns400() throws Exception {
+        when(postingService.create(any())).thenThrow(
+                new ValidationException("MISSING_AMOUNT", "Amount is required"));
 
         APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
 
@@ -87,62 +127,50 @@ class ApiGatewayHandlerTest {
     }
 
     @Test
-    void createPosting_technicalException_returns500() {
-        when(postingService.create(any())).thenThrow(new TechnicalException("Connection failed"));
+    void createPosting_technicalException_returns500() throws Exception {
+        when(postingService.create(any())).thenThrow(
+                new TechnicalException("Failed to persist posting"));
 
         APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
 
         assertThat(response.getStatusCode()).isEqualTo(500);
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat(body.get("success")).isEqualTo(false);
+    }
+
+    // ─── Routes not in backend-aws ────────────────────────────────────────────
+
+    @Test
+    void searchRoute_notHandledByThisLambda_returns404() {
+        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE + "/search", "{}"), null);
+        assertThat(response.getStatusCode()).isEqualTo(404);
     }
 
     @Test
-    void getConfig_allConfigs_returns200() {
-        PostingConfigEntity config = new PostingConfigEntity();
-        config.setRequestType("IMX_CBS_GL");
-        when(configService.getAll()).thenReturn(List.of(config));
+    void retryRoute_notHandledByThisLambda_returns404() {
+        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE + "/retry", "{}"), null);
+        assertThat(response.getStatusCode()).isEqualTo(404);
+    }
 
+    @Test
+    void configRoute_notHandledByThisLambda_returns404() {
         APIGatewayV2HTTPResponse response = handler.handle(apiEvent("GET", BASE + "/config", null), null);
-
-        assertThat(response.getStatusCode()).isEqualTo(200);
-        verify(configService).getAll();
+        assertThat(response.getStatusCode()).isEqualTo(404);
     }
 
     @Test
-    void getConfig_byRequestType_returns200() {
-        when(configService.getByRequestType("IMX_CBS_GL")).thenReturn(List.of(new PostingConfigEntity()));
-
-        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("GET", BASE + "/config/IMX_CBS_GL", null), null);
-
-        assertThat(response.getStatusCode()).isEqualTo(200);
-        verify(configService).getByRequestType("IMX_CBS_GL");
-    }
-
-    @Test
-    void retryPosting_returns200WithRetryResponse() throws Exception {
-        RetryResponse retryResponse = RetryResponse.builder()
-                .totalPostings(3)
-                .queued(2)
-                .skippedLocked(1)
-                .build();
-        when(postingService.retry(any(RetryRequest.class))).thenReturn(retryResponse);
-
-        String body = "{\"requestedBy\":\"test\"}";
-        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE + "/retry", body), null);
-
-        assertThat(response.getStatusCode()).isEqualTo(200);
-        Map<?, ?> respBody = MAPPER.readValue(response.getBody(), Map.class);
-        Map<?, ?> data = (Map<?, ?>) respBody.get("data");
-        assertThat(data.get("total_postings")).isEqualTo(3);
-        assertThat(data.get("queued")).isEqualTo(2);
-        assertThat(data.get("skipped_locked")).isEqualTo(1);
+    void findById_notHandledByThisLambda_returns404() {
+        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("GET", BASE + "/123456", null), null);
+        assertThat(response.getStatusCode()).isEqualTo(404);
     }
 
     @Test
     void unknownRoute_returns404() {
-        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("GET", "/unknown/path", null), null);
-
+        APIGatewayV2HTTPResponse response = handler.handle(apiEvent("GET", "/completely/unknown", null), null);
         assertThat(response.getStatusCode()).isEqualTo(404);
     }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private static APIGatewayV2HTTPEvent apiEvent(String method, String path, String body) {
         APIGatewayV2HTTPEvent.RequestContext.Http http = APIGatewayV2HTTPEvent.RequestContext.Http.builder()
@@ -169,7 +197,7 @@ class ApiGatewayHandlerTest {
                   "credit_debit_indicator": "DEBIT",
                   "debtor_account": "1000123456",
                   "creditor_account": "1000654321",
-                  "requested_execution_date": "2026-04-20",
+                  "requested_execution_date": "2026-04-21",
                   "amount": { "value": "1000.00", "currency_code": "USD" }
                 }
                 """;

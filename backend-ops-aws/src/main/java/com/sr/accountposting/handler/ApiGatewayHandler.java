@@ -74,6 +74,8 @@ public class ApiGatewayHandler {
         return response;
     }
 
+    // ─── Router ───────────────────────────────────────────────────────────────
+
     private APIGatewayV2HTTPResponse route(String method, String path, APIGatewayV2HTTPEvent event) {
         String body = event.getBody();
 

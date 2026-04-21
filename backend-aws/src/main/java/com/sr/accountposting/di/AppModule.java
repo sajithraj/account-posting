@@ -1,8 +1,6 @@
 package com.sr.accountposting.di;
 
 import com.sr.accountposting.infra.AwsClientFactory;
-import com.sr.accountposting.service.config.PostingConfigService;
-import com.sr.accountposting.service.config.PostingConfigServiceImpl;
 import com.sr.accountposting.service.leg.AccountPostingLegService;
 import com.sr.accountposting.service.leg.AccountPostingLegServiceImpl;
 import com.sr.accountposting.service.posting.AccountPostingService;
@@ -31,10 +29,6 @@ public abstract class AppModule {
     @Binds
     @Singleton
     abstract PostingProcessorService bindPostingProcessorService(PostingProcessorServiceImpl impl);
-
-    @Binds
-    @Singleton
-    abstract PostingConfigService bindPostingConfigService(PostingConfigServiceImpl impl);
 
     @Provides
     @Singleton

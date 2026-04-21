@@ -96,7 +96,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Dagger 2 -->
+        <!-- Dagger 2 — compile-time DI (no reflection, Lambda-friendly) -->
         <dependency>
             <groupId>com.google.dagger</groupId>
             <artifactId>dagger</artifactId>
@@ -190,4 +190,32 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>localstack</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.2.5</version>
+                        <configuration>
+                            <environmentVariables>
+                                <AWS_ACCESS_KEY_ID>test</AWS_ACCESS_KEY_ID>
+                                <AWS_SECRET_ACCESS_KEY>test</AWS_SECRET_ACCESS_KEY>
+                                <AWS_ENDPOINT_URL>http://localhost:4566</AWS_ENDPOINT_URL>
+                                <AWS_ACCOUNT_REGION>ap-southeast-1</AWS_ACCOUNT_REGION>
+                                <POSTING_TABLE_NAME>account-posting</POSTING_TABLE_NAME>
+                                <LEG_TABLE_NAME>account-posting-leg</LEG_TABLE_NAME>
+                                <CONFIG_TABLE_NAME>account-posting-config</CONFIG_TABLE_NAME>
+                                <PROCESSING_QUEUE_URL>http://localhost:4566/000000000000/posting-queue
+                                </PROCESSING_QUEUE_URL>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

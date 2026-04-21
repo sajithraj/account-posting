@@ -27,16 +27,10 @@ public class ApiGatewayHandler {
     private static final String BASE = "/v2/payment/account-posting";
 
     private final AccountPostingService postingService;
-    private final AccountPostingLegService legService;
-    private final PostingConfigService configService;
 
     @Inject
-    public ApiGatewayHandler(AccountPostingService postingService,
-                             AccountPostingLegService legService,
-                             PostingConfigService configService) {
+    public ApiGatewayHandler(AccountPostingService postingService) {
         this.postingService = postingService;
-        this.legService = legService;
-        this.configService = configService;
     }
 
     public APIGatewayV2HTTPResponse handle(APIGatewayV2HTTPEvent event, Context context) {
@@ -78,60 +72,6 @@ public class ApiGatewayHandler {
             IncomingPostingRequest req = JsonUtil.fromJson(body, IncomingPostingRequest.class);
             return ok(postingService.create(req));
         }
-        if ("POST".equals(method) && path.equals(BASE + "/search")) {
-            PostingSearchRequest req = JsonUtil.fromJson(body, PostingSearchRequest.class);
-            return ok(postingService.search(req));
-        }
-        if ("POST".equals(method) && path.equals(BASE + "/retry")) {
-            RetryRequest req = JsonUtil.fromJson(body, RetryRequest.class);
-            return ok(postingService.retry(req));
-        }
-        if ("GET".equals(method) && path.matches(BASE + "/\\d+")) {
-            Long postingId = extractLastLongSegment(path);
-            return ok(postingService.findById(postingId));
-        }
-        if ("GET".equals(method) && path.matches(BASE + "/\\d+/transaction")) {
-            Long postingId = extractSegmentAt(path, -2);
-            return ok(legService.listLegs(postingId));
-        }
-        if ("GET".equals(method) && path.matches(BASE + "/\\d+/transaction/\\d+")) {
-            Long postingId = extractSegmentAt(path, -3);
-            int transactionOrder = (int) extractLastLongSegment(path).longValue();
-            return ok(legService.getLeg(postingId, transactionOrder));
-        }
-        if ("PATCH".equals(method) && path.matches(BASE + "/\\d+/transaction/\\d+")) {
-            Long postingId = extractSegmentAt(path, -3);
-            int transactionOrder = (int) extractLastLongSegment(path).longValue();
-            ManualUpdateRequest req = JsonUtil.fromJson(body, ManualUpdateRequest.class);
-            legService.manualUpdateLeg(postingId, transactionOrder,
-                    req.getStatus(), req.getReason(), req.getRequestedBy());
-            return ok(legService.getLeg(postingId, transactionOrder));
-        }
-        if ("GET".equals(method) && path.equals(BASE + "/config")) {
-            return ok(configService.getAll());
-        }
-        if ("GET".equals(method) && path.matches(BASE + "/config/.+")) {
-            String requestType = path.substring(path.lastIndexOf('/') + 1);
-            return ok(configService.getByRequestType(requestType));
-        }
-        if ("POST".equals(method) && path.equals(BASE + "/config")) {
-            PostingConfigEntity config = JsonUtil.fromJson(body, PostingConfigEntity.class);
-            return created(configService.create(config));
-        }
-        if ("PUT".equals(method) && path.matches(BASE + "/config/.+/\\d+")) {
-            String[] segments = path.split("/");
-            String requestType = segments[segments.length - 2];
-            Integer orderSeq = Integer.parseInt(segments[segments.length - 1]);
-            PostingConfigEntity updated = JsonUtil.fromJson(body, PostingConfigEntity.class);
-            return ok(configService.update(requestType, orderSeq, updated));
-        }
-        if ("DELETE".equals(method) && path.matches(BASE + "/config/.+/\\d+")) {
-            String[] segments = path.split("/");
-            String requestType = segments[segments.length - 2];
-            Integer orderSeq = Integer.parseInt(segments[segments.length - 1]);
-            configService.delete(requestType, orderSeq);
-            return noContent();
-        }
 
         log.warn("ROUTE_NOT_FOUND: no handler for {} {}", method, path);
         return error(404, "ROUTE_NOT_FOUND", "No handler for " + method + " " + path);
@@ -139,14 +79,6 @@ public class ApiGatewayHandler {
 
     private APIGatewayV2HTTPResponse ok(Object data) {
         return response(200, JsonUtil.toJson(ApiResponse.ok(data)));
-    }
-
-    private APIGatewayV2HTTPResponse created(Object data) {
-        return response(201, JsonUtil.toJson(ApiResponse.ok(data)));
-    }
-
-    private APIGatewayV2HTTPResponse noContent() {
-        return response(204, "");
     }
 
     private APIGatewayV2HTTPResponse error(int statusCode, String code, String message) {
@@ -160,16 +92,5 @@ public class ApiGatewayHandler {
                 .withHeaders(Map.of("Content-Type", "application/json"))
                 .withBody(body)
                 .build();
-    }
-
-    private Long extractLastLongSegment(String path) {
-        String[] parts = path.split("/");
-        return Long.parseLong(parts[parts.length - 1]);
-    }
-
-    private Long extractSegmentAt(String path, int offset) {
-        String[] parts = path.split("/");
-        int idx = parts.length + offset;
-        return Long.parseLong(parts[idx]);
     }
 }

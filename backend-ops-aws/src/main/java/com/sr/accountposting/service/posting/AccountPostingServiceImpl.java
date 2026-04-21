@@ -108,7 +108,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
             queued++;
         }
 
-        log.info("Retry request by '{}' — {} candidates, {} queued, {} skipped (lock held)",
+        log.info("Retry request by '{}' — {} candidates, {} queued for processing, {} skipped (lock held)",
                 request.getRequestedBy(), candidates.size(), queued, skipped);
 
         return RetryResponse.builder()
