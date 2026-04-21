@@ -1,303 +1,338 @@
-# backend-aws-infra — AWS Infrastructure (Terraform)
+# backend-aws-infra
 
-Terraform configuration for the full AWS deployment. Provisions **two Lambda functions**
-(posting creation + ops dashboard), three DynamoDB tables, SQS queue, SNS alert topic,
-HTTP API Gateway v2, IAM roles, and CloudWatch alarms.
+Terraform infrastructure for the account posting AWS implementation. This repo provisions the shared backend resources for:
 
----
+- `backend-aws`: posting create API and SQS worker
+- `backend-ops-aws`: search, retry, transaction-leg, and config APIs
 
-## Architecture overview
+It supports two deployment targets:
 
-```
-                        ┌─────────────────────────────────────┐
-                        │          API Gateway v2 (HTTP)       │
-                        │   /v3/payment/account-posting/...    │
-                        └────────────┬────────────────┬────────┘
-                                     │                │
-                      POST /  only   │                │  All other routes
-                                     ▼                ▼
-                         ┌──────────────┐    ┌──────────────────┐
-                         │  backend-aws │    │ backend-ops-aws  │
-                         │  (creation + │    │  (search, retry, │
-                         │  SQS worker) │    │   legs, config)  │
-                         └──────┬───────┘    └────────┬─────────┘
-                                │                     │
-              ┌─────────────────┼─────────────────────┤
-              │                 │                     │
-              ▼                 ▼                     ▼
-         DynamoDB            SQS queue            DynamoDB
-   (posting/leg/config)   (async jobs)       (posting/leg/config)
-              │                 │
-              │   (on failure)  ▼
-              │              SNS topic
-              │           (support alert)
-              └─────────────────────────────────────────────────
+- AWS: HTTP API Gateway v2
+- LocalStack: REST API Gateway v1 for local browser/Postman/UI testing
+
+## What This Infra Creates
+
+- 2 Lambda functions
+- 3 DynamoDB tables
+- 1 SQS queue
+- 1 SNS topic
+- API Gateway
+- IAM roles and policies
+- CloudWatch log groups and alarms
+
+## High-Level Route Split
+
+Base path:
+
+```text
+/v3/payment/account-posting
 ```
 
-| Module | Lambda | Handles |
-|--------|--------|---------|
-| [`backend-aws`](../backend-aws/README.md) | `{project}-{env}-handler` | `POST /` create + SQS consumer |
-| [`backend-ops-aws`](../backend-ops-aws/README.md) | `{project}-{env}-ops-handler` | Search, retry, legs, config CRUD |
+Routes handled by `backend-aws`:
 
----
+- `POST /v3/payment/account-posting`
 
-## AWS Resources Provisioned
+Routes handled by `backend-ops-aws`:
 
-| Resource | Name pattern | Detail |
-|----------|-------------|--------|
-| Lambda | `{project}-{env}-handler` | `backend-aws` — creation + SQS, Java 17, SnapStart |
-| Lambda | `{project}-{env}-ops-handler` | `backend-ops-aws` — ops dashboard, Java 17, SnapStart |
-| API Gateway | `{project}-{env}-api` | HTTP API v2, routes split across both Lambdas |
-| SQS Queue | `{project}-{env}-processing-queue` | Async posting jobs, `ReportBatchItemFailures` enabled |
-| DynamoDB | `{project}-{env}-posting` | PK=postingId, 3 GSIs, TTL 60 days, PITR enabled |
-| DynamoDB | `{project}-{env}-leg` | PK=postingId + SK=transactionOrder, TTL, PITR |
-| DynamoDB | `{project}-{env}-config` | PK=requestType + SK=orderSeq — routing rules |
-| SNS Topic | `{project}-{env}-support-alert` | Email alert on async leg failures |
-| IAM Role | `{project}-{env}-lambda-execution-role` | DynamoDB + SQS + SNS least-privilege |
-| IAM Role | `{project}-{env}-ops-lambda-role` | DynamoDB + SQS least-privilege (no SNS) |
-| CloudWatch | `/aws/lambda/{project}-{env}-handler` | Lambda log group + error alarm |
-| CloudWatch | `/aws/lambda/{project}-{env}-ops-handler` | Ops Lambda log group |
-| CloudWatch | `/aws/apigateway/{project}-{env}-api` | API Gateway access log group |
+- `POST /v3/payment/account-posting/search`
+- `POST /v3/payment/account-posting/retry`
+- `GET /v3/payment/account-posting/{id}`
+- `GET /v3/payment/account-posting/{id}/transaction`
+- `GET /v3/payment/account-posting/{id}/transaction/{order}`
+- `PATCH /v3/payment/account-posting/{id}/transaction/{order}`
+- `GET /v3/payment/account-posting/config`
+- `GET /v3/payment/account-posting/config/{requestType}`
+- `POST /v3/payment/account-posting/config`
+- `PUT /v3/payment/account-posting/config/{type}/{order}`
+- `DELETE /v3/payment/account-posting/config/{type}/{order}`
 
----
+## Important Notes
 
-## API Routes by Lambda
+- `postingId` is now a UUID string, not a numeric sequence.
+- DynamoDB `postingId` key type is `S` in both posting and leg tables.
+- AWS deployment uses API Gateway HTTP API v2.
+- LocalStack deployment uses API Gateway REST API v1.
+- LocalStack API Gateway v1 is used because `apigatewayv2` is not supported in the current LocalStack setup used for this project.
+- For Terraform-managed LocalStack deployments, set `BOOTSTRAP_AWS_RESOURCES=false` before starting LocalStack.
 
-| Method | Path | Lambda |
-|--------|------|--------|
-| `POST` | `/v3/payment/account-posting` | **backend-aws** |
-| `POST` | `/v3/payment/account-posting/search` | **backend-ops-aws** |
-| `POST` | `/v3/payment/account-posting/retry` | **backend-ops-aws** |
-| `GET` | `/v3/payment/account-posting/{id}` | **backend-ops-aws** |
-| `GET` | `/v3/payment/account-posting/{id}/transaction` | **backend-ops-aws** |
-| `GET` | `/v3/payment/account-posting/{id}/transaction/{order}` | **backend-ops-aws** |
-| `PATCH` | `/v3/payment/account-posting/{id}/transaction/{order}` | **backend-ops-aws** |
-| `GET` | `/v3/payment/account-posting/config` | **backend-ops-aws** |
-| `GET` | `/v3/payment/account-posting/config/{requestType}` | **backend-ops-aws** |
-| `POST` | `/v3/payment/account-posting/config` | **backend-ops-aws** |
-| `PUT` | `/v3/payment/account-posting/config/{type}/{order}` | **backend-ops-aws** |
-| `DELETE` | `/v3/payment/account-posting/config/{type}/{order}` | **backend-ops-aws** |
+## Resource Naming
 
----
+Most resources use:
+
+```text
+{project_name}-{environment}-...
+```
+
+Example with defaults:
+
+```text
+account-posting-dev-handler
+account-posting-dev-ops-handler
+account-posting-dev-api
+account-posting-dev-posting
+account-posting-dev-leg
+account-posting-dev-config
+account-posting-dev-processing-queue
+```
 
 ## Prerequisites
 
-| Tool | Min version | Check |
-|------|------------|-------|
-| Docker Desktop | — | `docker --version` |
-| AWS CLI | 2.x | `aws --version` |
-| Terraform | 1.5.0 | `terraform -version` |
-| Java | 17 | `java -version` |
-| Maven | 3.8+ | `mvn -version` |
+- Docker Desktop
+- Terraform 1.5+
+- Java 17
+- Maven 3.8+
+- AWS CLI
 
----
+Quick checks:
 
-## Part 1 — Local Development with LocalStack
+```powershell
+docker --version
+terraform -version
+java -version
+mvn -version
+aws --version
+```
 
-Full end-to-end test on your machine before touching AWS.
+## Local Workflows
 
-### Step 1 — Start LocalStack
+There are two local workflows.
 
-`docker-compose.yml` and `localstack/init.sh` are included here. The init script runs automatically
-on startup and creates all DynamoDB tables (with GSIs), the SQS queue, and the SNS topic.
+### 1. Integration Test Mode
 
-> **Windows only — fix line endings first.**
-> ```bash
-> git config core.autocrlf false
-> git add --renormalize localstack/init.sh
-> ```
-> Or open `localstack/init.sh` in VS Code, click **CRLF** in the bottom-right, select **LF**, save.
+Use this when you want LocalStack only for DynamoDB, SQS, and SNS, and you are fine testing through JUnit without an HTTP endpoint.
 
-```bash
-cd backend-aws-infra
+In this mode:
+
+- `localstack/init.sh` bootstraps local AWS resources
+- tests call Lambda handlers directly
+- browser/Postman/UI testing is not needed
+
+### 2. Local API Gateway Mode
+
+Use this when you want to test the full API from:
+
+- browser
+- Postman
+- UI frontend
+
+In this mode:
+
+- LocalStack runs Lambda, API Gateway, DynamoDB, SQS, SNS, IAM, and logs
+- Terraform deploys the stack into LocalStack
+- you get a localhost API base URL
+
+This is the mode to use for config API testing from browser/Postman/UI.
+
+## Local API Gateway Mode: Exact Steps
+
+### Step 1. Build both Lambda jars
+
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws
+mvn clean package -DskipTests
+
+cd E:\Development\code_practice\claude\project\backend-ops-aws
+mvn clean package -DskipTests
+```
+
+Expected jars:
+
+- `E:\Development\code_practice\claude\project\backend-aws\target\account-posting-aws.jar`
+- `E:\Development\code_practice\claude\project\backend-ops-aws\target\account-posting-ops-aws.jar`
+
+### Step 2. Start LocalStack in Terraform-managed mode
+
+From this repo:
+
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
+
+docker compose down -v
+$env:BOOTSTRAP_AWS_RESOURCES = "false"
 docker compose up -d
 ```
 
-### Step 2 — Confirm LocalStack is ready
+Why this matters:
 
-```bash
-docker compose ps        # STATUS should show "healthy"
+- `BOOTSTRAP_AWS_RESOURCES=false` stops `localstack/init.sh` from pre-creating tables, queues, and topics
+- Terraform becomes the single owner of the local resources
+
+Check LocalStack health:
+
+```powershell
+docker compose ps
 docker compose logs localstack
 ```
 
-Expected init output:
-
-```
-==> Creating DynamoDB tables
-Table 'account-posting' created
-Table 'account-posting-leg' created
-Table 'account-posting-config' created
-==> Creating SQS queue
-Queue 'posting-queue' created
-==> Creating SNS topic
-SNS topic 'posting-alerts' ready
-==> LocalStack init complete
-```
-
-Optionally verify:
-
-```bash
-aws --endpoint-url=http://localhost:4566 --region ap-southeast-1 dynamodb list-tables
-aws --endpoint-url=http://localhost:4566 --region ap-southeast-1 sqs list-queues
-```
-
-### Step 3 — Build both Lambda JARs
-
-```bash
-cd ../backend-aws     && mvn clean package -DskipTests
-cd ../backend-ops-aws && mvn clean package -DskipTests
-cd ../backend-aws-infra
-```
-
-Confirm:
-
-```bash
-ls ../backend-aws/target/account-posting-aws.jar
-ls ../backend-ops-aws/target/account-posting-ops-aws.jar
-```
-
-### Step 4 — Set environment variables
-
-```bash
-export AWS_ACCESS_KEY_ID=test
-export AWS_SECRET_ACCESS_KEY=test
-export AWS_ENDPOINT_URL=http://localhost:4566
-export AWS_ACCOUNT_REGION=ap-southeast-1
-export POSTING_TABLE_NAME=account-posting
-export LEG_TABLE_NAME=account-posting-leg
-export CONFIG_TABLE_NAME=account-posting-config
-export PROCESSING_QUEUE_URL=http://localhost:4566/000000000000/posting-queue
-export SUPPORT_ALERT_TOPIC_ARN=arn:aws:sns:ap-southeast-1:000000000000:posting-alerts
-```
-
-`AWS_ENDPOINT_URL` is picked up automatically by AWS SDK v2 (2.21+) — no code change needed.
-
-### Step 5 — Run integration tests
-
-Tests directly instantiate each Lambda handler and drive it with simulated API Gateway / SQS events —
-no Lambda deployment or server needed.
-
-**PowerShell (Windows):**
+### Step 3. Prepare LocalStack Terraform variables
 
 ```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
+Copy-Item terraform.localstack.tfvars.example terraform.localstack.tfvars -Force
+```
+
+The example file is already configured for LocalStack usage, including:
+
+- `use_localstack = true`
+- `localstack_endpoint = "http://localhost:4566"`
+
+### Step 4. Deploy to LocalStack
+
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
+terraform init
+terraform apply -var-file="terraform.localstack.tfvars" -auto-approve
+```
+
+### Step 5. Get the local API URL
+
+```powershell
+terraform output api_gateway_url
+terraform output api_gateway_invoke_url
+terraform output localstack_api_gateway_url
+```
+
+Use `api_gateway_url` first.
+
+If needed, use `localstack_api_gateway_url`, which is the explicit localhost-friendly format:
+
+```text
+http://localhost:4566/restapis/<api-id>/<stage>/_user_request_/v3/payment/account-posting
+```
+
+## How To Test Config APIs
+
+Base URL:
+
+```text
+<base-url> = terraform output api_gateway_url
+```
+
+or
+
+```text
+<base-url> = terraform output localstack_api_gateway_url
+```
+
+### Browser Testing
+
+These are the easiest GET calls to test in the browser:
+
+- `<base-url>/config`
+- `<base-url>/config/IMX_CBS_GL`
+
+If the browser shows an error page or raw JSON text, that is still useful. The important part is the HTTP response and payload.
+
+### Postman Testing
+
+Recommended order:
+
+1. `GET <base-url>/config`
+2. `GET <base-url>/config/IMX_CBS_GL`
+3. `POST <base-url>/config`
+4. `PUT <base-url>/config/TEST_CFG_UUID_FLOW/1`
+5. `DELETE <base-url>/config/TEST_CFG_UUID_FLOW/1`
+
+Sample create payload:
+
+```json
+{
+  "request_type": "TEST_CFG_UUID_FLOW",
+  "order_seq": 1,
+  "source_name": "IMX",
+  "target_system": "CBS",
+  "operation": "POSTING",
+  "processing_mode": "ASYNC"
+}
+```
+
+Sample update payload:
+
+```json
+{
+  "request_type": "TEST_CFG_UUID_FLOW",
+  "order_seq": 1,
+  "source_name": "IMX",
+  "target_system": "GL",
+  "operation": "POSTING",
+  "processing_mode": "ASYNC"
+}
+```
+
+Why use a throwaway request type:
+
+- it avoids collisions with seeded config values
+- it makes create, update, and delete easy to verify
+
+### UI Testing
+
+Use the same Terraform output base URL as the backend API base URL in your UI config.
+
+For local testing, the UI should point to:
+
+```text
+http://localhost:4566/restapis/<api-id>/<stage>/_user_request_/v3/payment/account-posting
+```
+
+or whichever value `terraform output api_gateway_url` returns successfully in your environment.
+
+## Integration Test Mode: Exact Steps
+
+Use this if you only want test-driven validation without exposing HTTP locally.
+
+### Step 1. Start LocalStack with bootstrap enabled
+
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
+docker compose down -v
+Remove-Item Env:BOOTSTRAP_AWS_RESOURCES -ErrorAction SilentlyContinue
+docker compose up -d
+```
+
+In this mode, `localstack/init.sh` creates:
+
+- DynamoDB tables
+- SQS queue
+- SNS topic
+
+### Step 2. Run integration tests
+
+PowerShell:
+
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
 .\localstack\run-tests.ps1
 ```
 
-**Git Bash / WSL:**
+Git Bash or WSL:
 
 ```bash
+cd /e/Development/code_practice/claude/project/backend-aws-infra
 bash localstack/run-tests.sh
 ```
 
-The scripts run both `backend-aws` and `backend-ops-aws` integration tests in sequence.
+## AWS Deployment Steps
 
-#### backend-aws integration tests cover
+### Step 1. Build both Lambda jars
 
-| Order | Test | Validates |
-|-------|------|-----------|
-| 1 | `createPosting_async_returnsAcspStatus` | `POST /` with IMX_CBS_GL queues SQS job, returns ACSP |
-| 2 | `createPosting_duplicateE2eRef_returns422` | Duplicate endToEndReferenceId → 422 |
-| 3 | `processAsyncPosting_viaSqsEvent` | Reads SQS message, processes CBS+GL legs, marks ACSP |
-| 4 | `createPosting_sync_returnsImmediateResult` | `POST /` with ADD_ACCOUNT_HOLD processes inline |
-| 5 | `createPosting_unknownRequestType_returns400` | Unknown requestType → 400 |
-| 6 | `createPosting_missingAmount_returns400` | Missing amount field → 400 |
-| 7–9 | `*Route_notHandledByThisLambda*` | search / retry / config routes → 404 |
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws
+mvn clean package -DskipTests
 
-#### backend-ops-aws integration tests cover
-
-| Order | Test | Validates |
-|-------|------|-----------|
-| 1–8 | Config CRUD | Create, get all, get by type, update, delete config rows |
-| 9–10 | Find by ID | Fetch seeded posting with legs; missing ID → 404 |
-| 11–13 | Search | By status, by sourceName, no filters |
-| 14–15 | Retry | Re-queue all PNDG, re-queue specific ID |
-| 16–20 | Legs | List legs, get single leg, manual update, not-found → 404 |
-| 21 | Create route boundary | POST / → 404 (belongs to backend-aws) |
-
-### Step 6 — Seed config (CLI alternative)
-
-If you prefer CLI over the test auto-seed:
-
-```bash
-LS="http://localhost:4566"
-
-# IMX_CBS_GL — async (CBS + GL legs)
-aws --endpoint-url=$LS --region ap-southeast-1 dynamodb put-item --table-name account-posting-config \
-  --item '{"requestType":{"S":"IMX_CBS_GL"},"orderSeq":{"N":"1"},"sourceName":{"S":"IMX"},"targetSystem":{"S":"CBS"},"operation":{"S":"POSTING"},"processingMode":{"S":"ASYNC"}}'
-
-aws --endpoint-url=$LS --region ap-southeast-1 dynamodb put-item --table-name account-posting-config \
-  --item '{"requestType":{"S":"IMX_CBS_GL"},"orderSeq":{"N":"2"},"sourceName":{"S":"IMX"},"targetSystem":{"S":"GL"},"operation":{"S":"POSTING"},"processingMode":{"S":"ASYNC"}}'
-
-# ADD_ACCOUNT_HOLD — sync (CBS hold leg)
-aws --endpoint-url=$LS --region ap-southeast-1 dynamodb put-item --table-name account-posting-config \
-  --item '{"requestType":{"S":"ADD_ACCOUNT_HOLD"},"orderSeq":{"N":"1"},"sourceName":{"S":"STABLECOIN"},"targetSystem":{"S":"CBS"},"operation":{"S":"ADD_HOLD"},"processingMode":{"S":"SYNC"}}'
+cd E:\Development\code_practice\claude\project\backend-ops-aws
+mvn clean package -DskipTests
 ```
 
-### Docker Compose lifecycle
+### Step 2. Create Terraform variables
 
-| Command | What it does |
-|---------|-------------|
-| `docker compose up -d` | Start in background |
-| `docker compose ps` | Show status and health |
-| `docker compose logs -f localstack` | Stream init + runtime logs |
-| `docker compose stop` | Pause — data preserved in named volume |
-| `docker compose start` | Resume a stopped container |
-| `docker compose restart` | Restart and re-run init (skips existing resources) |
-| `docker compose down` | Stop and remove container — **volume kept** |
-| `docker compose down -v` | Stop, remove container **and wipe all data** |
-
----
-
-## Part 2 — AWS Deploy
-
-### Step 1 — Clear LocalStack environment variables
-
-```bash
-unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ENDPOINT_URL
-unset AWS_ACCOUNT_REGION POSTING_TABLE_NAME LEG_TABLE_NAME
-unset CONFIG_TABLE_NAME PROCESSING_QUEUE_URL SUPPORT_ALERT_TOPIC_ARN
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
+Copy-Item terraform.tfvars.example terraform.tfvars -Force
 ```
 
-### Step 2 — Configure AWS credentials
+Update `terraform.tfvars` with real values.
 
-**Option A — AWS CLI (recommended for local dev)**
-
-```bash
-aws configure
-# Enter key, secret, region (ap-southeast-1), output (json)
-aws sts get-caller-identity   # verify
-```
-
-**Option B — Environment variables (CI)**
-
-```bash
-export AWS_ACCESS_KEY_ID=<key>
-export AWS_SECRET_ACCESS_KEY=<secret>
-export AWS_DEFAULT_REGION=ap-southeast-1
-```
-
-**Option C — SSO / named profile**
-
-```bash
-aws sso login --profile my-profile
-export AWS_PROFILE=my-profile
-```
-
-### Step 3 — Build both Lambda JARs
-
-```bash
-cd ../backend-aws     && mvn clean package -DskipTests
-cd ../backend-ops-aws && mvn clean package -DskipTests
-cd ../backend-aws-infra
-```
-
-### Step 4 — Configure Terraform variables
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars`:
+Typical values:
 
 ```hcl
 aws_region    = "ap-southeast-1"
@@ -309,464 +344,213 @@ lambda_jar_path     = "../backend-aws/target/account-posting-aws.jar"
 ops_lambda_jar_path = "../backend-ops-aws/target/account-posting-ops-aws.jar"
 ```
 
-> **Never commit `terraform.tfvars`** — it is in `.gitignore`.
+### Step 3. Apply Terraform
 
-### Step 5 — Initialise Terraform
-
-```bash
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
 terraform init
-```
-
-### Step 6 — Plan and apply
-
-```bash
 terraform plan
-terraform apply    # ~2–3 minutes
-```
-
-Capture the API base URL:
-
-```bash
-terraform output api_gateway_url
-```
-
-### Step 7 — Confirm SNS email subscription
-
-AWS sends a confirmation email to `support_email`. Click **Confirm subscription** — alerts will not arrive until confirmed.
-
-### Step 8 — Seed the config table
-
-```bash
-BASE_URL=$(terraform output -raw api_gateway_url)
-# e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev/v3/payment/account-posting
-```
-
-Config is managed via the **ops Lambda** (`backend-ops-aws`):
-
-#### IMX
-
-```bash
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"IMX_CBS_GL","orderSeq":1,"sourceName":"IMX","targetSystem":"CBS","operation":"POSTING","processingMode":"ASYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"IMX_CBS_GL","orderSeq":2,"sourceName":"IMX","targetSystem":"GL","operation":"POSTING","processingMode":"ASYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"IMX_OBPM","orderSeq":1,"sourceName":"IMX","targetSystem":"OBPM","operation":"POSTING","processingMode":"ASYNC"}'
-```
-
-#### RMS
-
-```bash
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"FED_RETURN","orderSeq":1,"sourceName":"RMS","targetSystem":"CBS","operation":"POSTING","processingMode":"ASYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"FED_RETURN","orderSeq":2,"sourceName":"RMS","targetSystem":"GL","operation":"POSTING","processingMode":"ASYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"GL_RETURN","orderSeq":1,"sourceName":"RMS","targetSystem":"GL","operation":"POSTING","processingMode":"ASYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"MCA_RETURN","orderSeq":1,"sourceName":"RMS","targetSystem":"OBPM","operation":"POSTING","processingMode":"ASYNC"}'
-```
-
-#### STABLECOIN
-
-```bash
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"ADD_ACCOUNT_HOLD","orderSeq":1,"sourceName":"STABLECOIN","targetSystem":"CBS","operation":"ADD_HOLD","processingMode":"SYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"BUY_CUSTOMER_POSTING","orderSeq":1,"sourceName":"STABLECOIN","targetSystem":"CBS","operation":"REMOVE_HOLD","processingMode":"SYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"BUY_CUSTOMER_POSTING","orderSeq":2,"sourceName":"STABLECOIN","targetSystem":"CBS","operation":"POSTING","processingMode":"ASYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"CUSTOMER_POSTING","orderSeq":1,"sourceName":"STABLECOIN","targetSystem":"CBS","operation":"POSTING","processingMode":"ASYNC"}'
-
-curl -s -X POST "$BASE_URL/config" -H "Content-Type: application/json" -d \
-  '{"requestType":"CUSTOMER_POSTING","orderSeq":2,"sourceName":"STABLECOIN","targetSystem":"GL","operation":"POSTING","processingMode":"ASYNC"}'
-```
-
-Verify:
-
-```bash
-curl -s "$BASE_URL/config" | jq .
-```
-
----
-
-## Example API calls
-
-All paths are relative to `terraform output api_gateway_url`.
-
-#### Create a posting (→ backend-aws)
-
-```bash
-curl -s -X POST "$BASE_URL/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source_name": "IMX",
-    "source_reference_id": "SRC-001",
-    "end_to_end_reference_id": "E2E-001",
-    "request_type": "IMX_CBS_GL",
-    "credit_debit_indicator": "DEBIT",
-    "debtor_account": "1000123456",
-    "creditor_account": "1000654321",
-    "requested_execution_date": "2026-04-21",
-    "amount": { "value": "5000.00", "currency_code": "USD" }
-  }' | jq .
-```
-
-#### Search postings (→ backend-ops-aws)
-
-```bash
-curl -s -X POST "$BASE_URL/search" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"PNDG","limit":20}' | jq .
-```
-
-#### Retry all pending (→ backend-ops-aws)
-
-```bash
-curl -s -X POST "$BASE_URL/retry" \
-  -H "Content-Type: application/json" \
-  -d '{"requested_by":"ops-team"}' | jq .
-```
-
----
-
-## Update Lambda after code changes
-
-**backend-aws only:**
-
-```bash
-cd ../backend-aws && mvn clean package -DskipTests && cd ../backend-aws-infra
-terraform apply -target=aws_lambda_function.main
-```
-
-**backend-ops-aws only:**
-
-```bash
-cd ../backend-ops-aws && mvn clean package -DskipTests && cd ../backend-aws-infra
-terraform apply -target=aws_lambda_function.ops
-```
-
-**Both Lambdas:**
-
-```bash
-cd ../backend-aws     && mvn clean package -DskipTests
-cd ../backend-ops-aws && mvn clean package -DskipTests
-cd ../backend-aws-infra
 terraform apply
 ```
 
----
+### Step 4. Read outputs
 
-## Destroy
-
-```bash
-terraform destroy
+```powershell
+terraform output api_gateway_url
+terraform output lambda_function_name
+terraform output ops_lambda_function_name
+terraform output sqs_queue_url
+terraform output dynamodb_posting_table_name
+terraform output dynamodb_leg_table_name
+terraform output dynamodb_config_table_name
 ```
 
-> DynamoDB tables have point-in-time recovery enabled (`dynamodb.tf`). Take a backup before destroying production data.
+### Step 5. Confirm SNS email subscription
 
----
+AWS sends a confirmation email to `support_email`. Alerts will not be delivered until the subscription is confirmed.
+
+## Config Seeding Examples
+
+Base URL:
+
+```powershell
+$BASE_URL = terraform output -raw api_gateway_url
+```
+
+Create a config row:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "$BASE_URL/config" -ContentType "application/json" -Body '{
+  "request_type": "IMX_CBS_GL",
+  "order_seq": 1,
+  "source_name": "IMX",
+  "target_system": "CBS",
+  "operation": "POSTING",
+  "processing_mode": "ASYNC"
+}'
+```
+
+List all config:
+
+```powershell
+Invoke-RestMethod -Method Get -Uri "$BASE_URL/config"
+```
+
+Get one type:
+
+```powershell
+Invoke-RestMethod -Method Get -Uri "$BASE_URL/config/IMX_CBS_GL"
+```
 
 ## Variables Reference
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `aws_region` | `ap-southeast-1` | Deployment region |
-| `environment` | *(required)* | `dev`, `staging`, or `prod` — used in all resource names |
+| `use_localstack` | `false` | Switch Terraform endpoints from AWS to LocalStack |
+| `localstack_endpoint` | `http://localhost:4566` | Shared LocalStack endpoint |
 | `project_name` | `account-posting` | Resource name prefix |
-| `support_email` | *(required)* | SNS failure alert recipient |
-| `lambda_jar_path` | `../backend-aws/target/account-posting-aws.jar` | Path to backend-aws fat JAR |
-| `ops_lambda_jar_path` | `../backend-ops-aws/target/account-posting-ops-aws.jar` | Path to backend-ops-aws fat JAR |
-| `lambda_memory_mb` | `512` | Lambda memory in MB (applies to both) |
-| `lambda_timeout_seconds` | `60` | Lambda max execution time |
-| `sqs_batch_size` | `5` | SQS messages per backend-aws invocation |
-| `sqs_visibility_timeout_seconds` | `180` | Must be greater than `lambda_timeout_seconds` |
-| `dynamodb_billing_mode` | `PAY_PER_REQUEST` | `PAY_PER_REQUEST` or `PROVISIONED` |
-| `dynamo_ttl_days` | `60` | Auto-delete DynamoDB items after N days |
-| `log_retention_days` | `30` | CloudWatch log retention in days |
-
----
+| `environment` | required | Environment name such as `dev`, `staging`, `prod`, or `dev-local` |
+| `support_email` | required | SNS alert email recipient |
+| `lambda_jar_path` | `../backend-aws/target/account-posting-aws.jar` | Main Lambda jar path |
+| `ops_lambda_jar_path` | `../backend-ops-aws/target/account-posting-ops-aws.jar` | Ops Lambda jar path |
+| `lambda_memory_mb` | `512` | Lambda memory for both functions |
+| `lambda_timeout_seconds` | `60` | Lambda timeout |
+| `sqs_batch_size` | `5` | SQS batch size for worker Lambda |
+| `sqs_visibility_timeout_seconds` | `180` | SQS visibility timeout |
+| `dynamodb_billing_mode` | `PAY_PER_REQUEST` | DynamoDB billing mode |
+| `dynamo_ttl_days` | `60` | TTL days for posting and leg items |
+| `log_retention_days` | `30` | CloudWatch log retention |
 
 ## Outputs Reference
 
-```bash
-terraform output api_gateway_url               # Full API base URL
-terraform output lambda_function_name          # backend-aws Lambda name
-terraform output lambda_arn                    # backend-aws Lambda ARN
-terraform output ops_lambda_function_name      # backend-ops-aws Lambda name
-terraform output ops_lambda_arn                # backend-ops-aws Lambda ARN
-terraform output sqs_queue_url                 # SQS queue URL
-terraform output sqs_queue_arn                 # SQS queue ARN
-terraform output sns_topic_arn                 # SNS alert topic ARN
-terraform output dynamodb_posting_table_name   # Posting table name
-terraform output dynamodb_leg_table_name       # Leg table name
-terraform output dynamodb_config_table_name    # Config table name
-terraform output api_gateway_id                # API Gateway ID
-```
-
----
-
-## File Structure
-
-```
-backend-aws-infra/
-├── docker-compose.yml          LocalStack for local dev
-├── localstack/
-│   ├── init.sh                 Auto-creates tables, queue, SNS topic on LocalStack start
-│   ├── run-tests.ps1           Run both integration test suites (PowerShell / Windows)
-│   └── run-tests.sh            Run both integration test suites (bash / Git Bash / WSL)
-├── main.tf                     Provider config, locals (name_prefix)
-├── variables.tf                All input variables with defaults
-├── outputs.tf                  Exported values after apply
-├── terraform.tfvars.example    Template — copy to terraform.tfvars and fill in values
-├── dynamodb.tf                 3 tables: posting (3 GSIs + TTL + PITR), leg, config
-├── sqs.tf                      Processing queue (ReportBatchItemFailures, no DLQ)
-├── sns.tf                      Support alert topic + email subscription
-├── iam.tf                      Lambda execution roles + DynamoDB/SQS/SNS policies
-├── lambda.tf                   Both Lambda functions + SQS event source mapping + API GW permissions
-├── api_gateway.tf              HTTP API v2 + route integrations per Lambda + stage
-└── cloudwatch.tf               Lambda log groups + API GW log group + error alarm
-```
-
----
-
-## Terraform Files
-
-### `main.tf`
-
-Configures the AWS provider and defines a `local.name_prefix` value (`{project_name}-{environment}`)
-used as the prefix for every resource name.
-
-```hcl
-locals {
-  name_prefix = "${var.project_name}-${var.environment}"
-}
-```
-
-Resources: none (provider + locals only).
-
----
-
-### `variables.tf`
-
-All input variables. Set required ones in `terraform.tfvars`.
-
-| Variable | Type | Default | Required | Purpose |
-|----------|------|---------|----------|---------|
-| `aws_region` | string | `ap-southeast-1` | | Deployment region |
-| `project_name` | string | `account-posting` | | Prefix for all resource names |
-| `environment` | string | — | ✓ | `dev` / `staging` / `prod` |
-| `support_email` | string | — | ✓ | SNS failure alert recipient |
-| `lambda_jar_path` | string | `../backend-aws/target/...` | | Path to backend-aws fat JAR |
-| `ops_lambda_jar_path` | string | `../backend-ops-aws/target/...` | | Path to backend-ops-aws fat JAR |
-| `lambda_memory_mb` | number | `512` | | Memory in MB (both Lambdas) |
-| `lambda_timeout_seconds` | number | `60` | | Max Lambda execution time |
-| `sqs_batch_size` | number | `5` | | SQS messages per Lambda invocation |
-| `sqs_visibility_timeout_seconds` | number | `180` | | Must exceed `lambda_timeout_seconds` |
-| `dynamodb_billing_mode` | string | `PAY_PER_REQUEST` | | `PAY_PER_REQUEST` or `PROVISIONED` |
-| `dynamo_ttl_days` | number | `60` | | Auto-expire items after N days |
-| `log_retention_days` | number | `30` | | CloudWatch retention in days |
-
----
-
-### `outputs.tf`
-
-Values printed after `terraform apply` and accessible via `terraform output <name>`.
-
 | Output | Description |
 |--------|-------------|
-| `api_gateway_url` | Full base URL: `https://<id>.execute-api.<region>.amazonaws.com/<env>/v3/payment/account-posting` |
-| `api_gateway_id` | API Gateway resource ID |
-| `lambda_function_name` | backend-aws Lambda name |
-| `lambda_arn` | backend-aws Lambda ARN |
-| `ops_lambda_function_name` | backend-ops-aws Lambda name |
-| `ops_lambda_arn` | backend-ops-aws Lambda ARN |
-| `sqs_queue_url` | SQS processing queue URL |
-| `sqs_queue_arn` | SQS processing queue ARN |
+| `api_gateway_url` | Main base URL for the deployed API |
+| `api_gateway_invoke_url` | Raw stage invoke URL |
+| `localstack_api_gateway_url` | LocalStack-friendly localhost URL |
+| `api_gateway_id` | API Gateway id |
+| `lambda_function_name` | Main Lambda function name |
+| `lambda_arn` | Main Lambda ARN |
+| `ops_lambda_function_name` | Ops Lambda function name |
+| `ops_lambda_arn` | Ops Lambda ARN |
+| `sqs_queue_url` | Processing queue URL |
+| `sqs_queue_arn` | Processing queue ARN |
 | `sns_topic_arn` | SNS support alert topic ARN |
-| `dynamodb_posting_table_name` | account_posting table name |
-| `dynamodb_leg_table_name` | account_posting_leg table name |
-| `dynamodb_config_table_name` | account_posting_config table name |
+| `dynamodb_posting_table_name` | Posting table name |
+| `dynamodb_leg_table_name` | Leg table name |
+| `dynamodb_config_table_name` | Config table name |
 
----
+## LocalStack-Specific Behavior
 
-### `dynamodb.tf`
+When `use_localstack = true`:
 
-Three DynamoDB tables. All use `PAY_PER_REQUEST` billing by default and have TTL + PITR enabled.
+- provider endpoints point to `http://localhost:4566`
+- Lambda SnapStart is disabled
+- SNS email subscription is skipped
+- CloudWatch alarms are skipped
+- LocalStack REST API Gateway resources are created instead of HTTP API v2 resources
 
-#### `account_posting` (posting table)
+When `use_localstack = false`:
 
-| Key | Type | Role |
-|-----|------|------|
-| `postingId` (PK) | N | Primary key |
+- normal AWS resources are created
+- HTTP API Gateway v2 is used
+- alarms and SNS email subscription are enabled
 
-GSIs:
+## Common Troubleshooting
 
-| Index | PK | SK | Purpose |
-|-------|----|----|---------|
-| `status-createdAt-index` | `status` (S) | `createdAt` (S) | Search by status + date |
-| `sourceName-createdAt-index` | `sourceName` (S) | `createdAt` (S) | Search by source |
-| `endToEndReferenceId-index` | `endToEndReferenceId` (S) | — | Idempotency check |
+### Error: `apigatewayv2 not yet implemented or pro feature`
 
-TTL attribute: `ttl` (epoch seconds).
+Cause:
 
-#### `account_posting_leg` (leg table)
+- LocalStack does not support the current HTTP API v2 resource path used by Terraform in this setup
 
-| Key | Type | Role |
-|-----|------|------|
-| `postingId` (PK) | N | Parent posting |
-| `transactionOrder` (SK) | N | Leg sequence number |
+Fix:
 
-TTL attribute: `ttl`.
+- use `terraform.localstack.tfvars` with `use_localstack = true`
+- this repo will then create REST API v1 resources for LocalStack automatically
 
-#### `account_posting_config` (routing config table)
+### Browser or Postman cannot resolve the returned URL
 
-| Key | Type | Role |
-|-----|------|------|
-| `requestType` (PK) | S | Posting type (e.g. `IMX_CBS_GL`) |
-| `orderSeq` (SK) | N | Execution order within type |
+Try:
 
-No TTL — config rows are permanent until deleted via the ops API.
+- `terraform output localstack_api_gateway_url`
 
----
+instead of:
 
-### `sqs.tf`
+- `terraform output api_gateway_url`
 
-Single SQS queue: `{name_prefix}-processing-queue`.
+### Terraform apply fails because resources already exist
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| `visibility_timeout_seconds` | `180` | Must exceed Lambda timeout (60 s) to prevent duplicate processing |
-| `message_retention_seconds` | `86400` (24 h) | Unprocessed jobs kept for 1 day |
-| `receive_wait_time_seconds` | `20` | Long polling — reduces empty receives |
-| No DLQ | — | `ReportBatchItemFailures` in Lambda handles partial batch failures; individual failed messages are redriven by SQS visibility timeout |
+Usually this means LocalStack bootstrap and Terraform are both trying to manage the same resources.
 
----
+Fix:
 
-### `sns.tf`
+```powershell
+cd E:\Development\code_practice\claude\project\backend-aws-infra
+docker compose down -v
+$env:BOOTSTRAP_AWS_RESOURCES = "false"
+docker compose up -d
+terraform apply -var-file="terraform.localstack.tfvars" -auto-approve
+```
 
-SNS topic: `{name_prefix}-posting-alerts`.
+### Config APIs return unexpected routing behavior
 
-Used exclusively by `backend-aws` `SqsHandler` to publish failure alerts when async leg processing fails.
-`backend-ops-aws` does not publish to SNS.
+The ops handler route ordering was fixed so that:
 
-An email subscription is created for `var.support_email`. AWS sends a confirmation email — click
-**Confirm subscription** or alerts will not be delivered.
+- `GET /config`
+- `GET /config/{requestType}`
 
----
+are not mistaken for:
 
-### `iam.tf`
+- `GET /{postingId}`
 
-Two IAM execution roles — one per Lambda — following least-privilege.
+## Useful Commands
 
-#### `{name_prefix}-lambda-execution-role` (backend-aws)
+Start LocalStack:
 
-Attached policies:
-- `AWSLambdaBasicExecutionRole` (CloudWatch Logs)
-- Custom `{name_prefix}-lambda-app-policy`:
-  - **DynamoDB**: full read/write on all three tables and their GSIs
-  - **SQS**: `SendMessage`, `ReceiveMessage`, `DeleteMessage`, `GetQueueAttributes`, `ChangeMessageVisibility`
-  - **SNS**: `Publish` on the support alert topic
+```powershell
+docker compose up -d
+```
 
-#### `{name_prefix}-ops-lambda-execution-role` (backend-ops-aws)
+Stop LocalStack:
 
-Attached policies:
-- `AWSLambdaBasicExecutionRole` (CloudWatch Logs)
-- Custom `{name_prefix}-ops-lambda-app-policy`:
-  - **DynamoDB**: full read/write on all three tables and their GSIs
-  - **SQS**: `SendMessage`, `GetQueueAttributes` only (retry re-queuing; no consume)
-  - **No SNS** — ops Lambda does not publish alerts
+```powershell
+docker compose down
+```
 
----
+Wipe LocalStack data:
 
-### `lambda.tf`
+```powershell
+docker compose down -v
+```
 
-Two Lambda functions + SQS trigger + API Gateway invocation permissions.
+Validate Terraform:
 
-#### `aws_lambda_function.main` (backend-aws)
+```powershell
+terraform validate
+```
 
-| Setting | Value |
-|---------|-------|
-| Handler | `com.sr.accountposting.LambdaRequestHandler::handleRequest` |
-| Runtime | `java17` |
-| JAR | `var.lambda_jar_path` |
-| SnapStart | `PublishedVersions` — eliminates JVM cold-start |
-| Memory | `var.lambda_memory_mb` (default 512 MB) |
-| Timeout | `var.lambda_timeout_seconds` (default 60 s) |
-| Env vars | All six: tables, queue, SNS topic, region, TTL |
+Destroy AWS or LocalStack-managed Terraform resources:
 
-#### `aws_lambda_function.ops` (backend-ops-aws)
+```powershell
+terraform destroy
+```
 
-Same runtime/SnapStart settings. Env vars omit `SUPPORT_ALERT_TOPIC_ARN` (not needed by ops Lambda).
+## Repo Files
 
-#### `aws_lambda_event_source_mapping.sqs_trigger`
+- `docker-compose.yml`: LocalStack services
+- `localstack/init.sh`: bootstrap script for integration-test mode
+- `localstack/run-tests.ps1`: Windows integration test runner
+- `localstack/run-tests.sh`: bash integration test runner
+- `main.tf`: provider configuration and shared locals
+- `variables.tf`: input variables
+- `outputs.tf`: Terraform outputs
+- `api_gateway.tf`: AWS HTTP API v2 and LocalStack REST API v1 definitions
+- `lambda.tf`: Lambda functions, env vars, SQS event source mapping, invoke permissions
+- `dynamodb.tf`: posting, leg, and config tables
+- `sqs.tf`: processing queue
+- `sns.tf`: support alert topic
+- `iam.tf`: execution roles and policies
+- `cloudwatch.tf`: log groups and alarms
 
-Binds the SQS queue to **backend-aws only**. `batch_size=5`, `ReportBatchItemFailures` enabled so
-a single failed message does not retry the entire batch.
-
-#### Permissions
-
-`aws_lambda_permission.api_gateway_invoke` and `aws_lambda_permission.ops_api_gateway_invoke` allow
-API Gateway to invoke each Lambda. `source_arn` is scoped to `<api_arn>/*/*` (all stages + routes).
-
----
-
-### `api_gateway.tf`
-
-HTTP API v2 with explicit route-to-Lambda mapping. No `$default` catch-all — every route is declared.
-
-#### `aws_apigatewayv2_api.main`
-
-CORS pre-configured for all origins, methods, and `Content-Type` / `Authorization` headers.
-Protocol: `HTTP` (not REST). Payload format: `2.0`.
-
-#### Integrations
-
-| Resource | Lambda |
-|----------|--------|
-| `aws_apigatewayv2_integration.posting_lambda` | `aws_lambda_function.main` (backend-aws) |
-| `aws_apigatewayv2_integration.ops_lambda` | `aws_lambda_function.ops` (backend-ops-aws) |
-
-#### Routes
-
-| Route key | Integration |
-|-----------|-------------|
-| `POST /v3/payment/account-posting` | `posting_lambda` |
-| `POST /v3/payment/account-posting/search` | `ops_lambda` |
-| `POST /v3/payment/account-posting/retry` | `ops_lambda` |
-| `GET /v3/payment/account-posting/{id}` | `ops_lambda` |
-| `GET /v3/payment/account-posting/{id}/transaction` | `ops_lambda` |
-| `GET /v3/payment/account-posting/{id}/transaction/{order}` | `ops_lambda` |
-| `PATCH /v3/payment/account-posting/{id}/transaction/{order}` | `ops_lambda` |
-| `GET /v3/payment/account-posting/config` | `ops_lambda` |
-| `GET /v3/payment/account-posting/config/{requestType}` | `ops_lambda` |
-| `POST /v3/payment/account-posting/config` | `ops_lambda` |
-| `PUT /v3/payment/account-posting/config/{type}/{order}` | `ops_lambda` |
-| `DELETE /v3/payment/account-posting/config/{type}/{order}` | `ops_lambda` |
-
-#### Stage
-
-`aws_apigatewayv2_stage.main` — named after `var.environment`, `auto_deploy = true`.
-Access logs stream to CloudWatch in structured JSON (requestId, IP, method, route, status, duration).
-
----
-
-### `cloudwatch.tf`
-
-| Resource | Log group | Retention |
-|----------|-----------|-----------|
-| `aws_cloudwatch_log_group.main` | `/aws/lambda/{name_prefix}-handler` | `var.log_retention_days` |
-| `aws_cloudwatch_log_group.ops` | `/aws/lambda/{name_prefix}-ops-handler` | `var.log_retention_days` |
-| `aws_cloudwatch_log_group.api_gateway` | `/aws/apigateway/{name_prefix}-api` | `var.log_retention_days` |
-
-Two CloudWatch metric alarms watch Lambda `Errors` (sum over 5 min, threshold=5).
-Both publish to the SNS topic on breach so the support team is notified of Lambda failures.

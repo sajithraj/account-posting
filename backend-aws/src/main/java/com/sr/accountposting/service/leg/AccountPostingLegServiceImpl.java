@@ -27,7 +27,7 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public AccountPostingLegEntity createLeg(Long postingId, int transactionOrder, String targetSystem,
+    public AccountPostingLegEntity createLeg(String postingId, int transactionOrder, String targetSystem,
                                              String account, String operation, String mode, int ttlDays) {
         log.info("createLeg postingId={} order={} targetSystem={} account={} operation={} mode={}",
                 postingId, transactionOrder, targetSystem, account, operation, mode);
@@ -52,7 +52,7 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public void updateLeg(Long postingId, int transactionOrder, String status,
+    public void updateLeg(String postingId, int transactionOrder, String status,
                           String referenceId, String postedTime, String reason,
                           String requestPayload, String responsePayload, boolean isRetry) {
         log.info("updateLeg postingId={} order={} status={} referenceId={} isRetry={}",
@@ -81,7 +81,7 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public void manualUpdateLeg(Long postingId, int transactionOrder,
+    public void manualUpdateLeg(String postingId, int transactionOrder,
                                 String status, String reason, String requestedBy) {
         log.info("manualUpdateLeg postingId={} order={} status={} requestedBy={}",
                 postingId, transactionOrder, status, requestedBy);
@@ -99,7 +99,7 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public List<LegResponse> listLegs(Long postingId) {
+    public List<LegResponse> listLegs(String postingId) {
         log.info("listLegs postingId={}", postingId);
         List<LegResponse> legs = legRepo.findByPostingId(postingId).stream()
                 .map(this::toResponse).collect(Collectors.toList());
@@ -108,7 +108,7 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public LegResponse getLeg(Long postingId, int transactionOrder) {
+    public LegResponse getLeg(String postingId, int transactionOrder) {
         log.info("getLeg postingId={} order={}", postingId, transactionOrder);
         AccountPostingLegEntity leg = legRepo.findByPostingIdAndOrder(postingId, transactionOrder)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -117,7 +117,7 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public List<AccountPostingLegEntity> listNonSuccessLegs(Long postingId) {
+    public List<AccountPostingLegEntity> listNonSuccessLegs(String postingId) {
         return legRepo.findNonSuccessByPostingId(postingId);
     }
 

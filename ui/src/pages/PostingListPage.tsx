@@ -12,7 +12,7 @@ export default function PostingListPage() {
 
     const [searchRequest, setSearchRequest] = useState<PostingSearchRequest>({limit: 20});
     const [draft, setDraft] = useState<PostingFilterDraft>({});
-    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [selected, setSelected] = useState<Set<string>>(new Set());
 
     const {data, isLoading, isError} = useQuery({
         queryKey: ['postings', searchRequest],
@@ -29,7 +29,7 @@ export default function PostingListPage() {
     });
 
     const retrySelectedMutation = useMutation({
-        mutationFn: (ids: number[]) => postingApi.retry(ids),
+        mutationFn: (ids: string[]) => postingApi.retry(ids),
         onSuccess: () => {
             setSelected(new Set());
             queryClient.invalidateQueries({queryKey: ['postings']});
@@ -59,9 +59,9 @@ export default function PostingListPage() {
     );
     const hasSelectedPending = selectedPendingIds.length > 0;
 
-    const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-    const toggleExpand = (id: number, e: React.MouseEvent) => {
+    const toggleExpand = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setExpandedIds(prev => {
             const next = new Set(prev);
@@ -71,7 +71,7 @@ export default function PostingListPage() {
         });
     };
 
-    const toggleRow = (id: number) => {
+    const toggleRow = (id: string) => {
         setSelected(prev => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
@@ -154,7 +154,7 @@ export default function PostingListPage() {
                     <option value="">Posting Status</option>
                     <option value="PNDG">PNDG</option>
                     <option value="ACSP">ACSP</option>
-                    <option value="RECEIVED">RECEIVED</option>
+                    <option value="RCVD">RCVD</option>
                     <option value="RJCT">RJCT</option>
                 </select>
                 <select

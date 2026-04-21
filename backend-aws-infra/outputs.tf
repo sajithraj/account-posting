@@ -1,11 +1,21 @@
 output "api_gateway_url" {
   description = "Base URL of the API Gateway endpoint"
-  value       = "${aws_apigatewayv2_stage.main.invoke_url}/v3/payment/account-posting"
+  value       = var.use_localstack ? "http://localhost:4566/restapis/${aws_api_gateway_rest_api.localstack[0].id}/${aws_api_gateway_stage.localstack[0].stage_name}/_user_request_/v3/payment/account-posting" : "${aws_apigatewayv2_stage.main[0].invoke_url}/v3/payment/account-posting"
+}
+
+output "api_gateway_invoke_url" {
+  description = "Raw API Gateway stage invoke URL"
+  value       = var.use_localstack ? aws_api_gateway_stage.localstack[0].invoke_url : aws_apigatewayv2_stage.main[0].invoke_url
+}
+
+output "localstack_api_gateway_url" {
+  description = "LocalStack API Gateway URL candidate for browser/Postman/UI testing"
+  value       = var.use_localstack ? "http://localhost:4566/restapis/${aws_api_gateway_rest_api.localstack[0].id}/${aws_api_gateway_stage.localstack[0].stage_name}/_user_request_/v3/payment/account-posting" : null
 }
 
 output "api_gateway_id" {
   description = "API Gateway ID"
-  value       = aws_apigatewayv2_api.main.id
+  value       = var.use_localstack ? aws_api_gateway_rest_api.localstack[0].id : aws_apigatewayv2_api.main[0].id
 }
 
 output "lambda_arn" {

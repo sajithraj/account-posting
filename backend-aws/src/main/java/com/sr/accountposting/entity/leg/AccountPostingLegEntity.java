@@ -11,28 +11,28 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
 @DynamoDbBean
 public class AccountPostingLegEntity {
 
-    private Long postingId;
+    private String postingId;
     private Integer transactionOrder;
     private String targetSystem;
     private String account;
-    private String status;          // LegStatus stored as String
+    private String status;
     private String referenceId;
     private String reason;
     private Integer attemptNumber;
     private String postedTime;
     private String requestPayload;
     private String responsePayload;
-    private String mode;            // LegMode stored as String
+    private String mode;
     private String operation;
     private Long version;
     private String createdAt;
     private String updatedAt;
     private String createdBy;
     private String updatedBy;
-    private Long ttl;             // Epoch seconds — DynamoDB auto-delete
+    private Long ttl;
 
     @DynamoDbPartitionKey
-    public Long getPostingId() {
+    public String getPostingId() {
         return postingId;
     }
 

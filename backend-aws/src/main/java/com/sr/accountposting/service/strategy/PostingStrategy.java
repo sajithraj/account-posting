@@ -6,9 +6,6 @@ import com.sr.accountposting.entity.config.PostingConfigEntity;
 
 public interface PostingStrategy {
 
-    /**
-     * e.g. "CBS_POSTING", "GL_POSTING", "OBPM_POSTING", "CBS_ADD_HOLD", "CBS_REMOVE_HOLD"
-     */
     String getFlowKey();
 
     ExternalCallResult process(IncomingPostingRequest request, PostingConfigEntity config);

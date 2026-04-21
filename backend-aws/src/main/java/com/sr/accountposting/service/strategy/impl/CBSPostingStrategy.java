@@ -52,7 +52,7 @@ public class CBSPostingStrategy implements PostingStrategy {
         String postedTime = cbsResponse.get("posted_time") != null
                 ? String.valueOf(cbsResponse.get("posted_time")) : null;
 
-        log.info("CBS responded for e2e={} — status={} ref={}", request.getEndToEndReferenceId(), cbsStatus, referenceId);
+        log.info("CBS responded for e2e={} Ã¢â‚¬â€ status={} ref={}", request.getEndToEndReferenceId(), cbsStatus, referenceId);
         log.debug("CBS response payload: {}", responsePayloadJson);
 
         return ExternalCallResult.builder()

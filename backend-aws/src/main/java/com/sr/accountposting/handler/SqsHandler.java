@@ -20,30 +20,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Consumes {@link com.sr.accountposting.dto.posting.PostingJob} messages from the SQS processing queue.
- *
- * <p>Triggered by the SQS queue configured at {@code PROCESSING_QUEUE_URL}. Each record in the batch
- * is processed independently — an exception in one record is caught and logged so the remaining
- * records continue. The failed message will be retried by SQS (visibility timeout / DLQ policy applies).
- *
- * <p>Processing flow per message:
- * <ol>
- *   <li>Deserialise the message body into a {@code PostingJob}.</li>
- *   <li>Look up routing configs from DynamoDB ({@code CONFIG_TABLE_NAME}) by request type.</li>
- *   <li>If no configs found — publish a failure alert to SNS and skip processing.</li>
- *   <li>Invoke {@link com.sr.accountposting.service.processor.PostingProcessorService#process} for each leg.</li>
- *   <li>If any legs fail — publish one SNS alert per failed leg to {@code SUPPORT_ALERT_TOPIC_ARN}.</li>
- * </ol>
- *
- * <p>SNS publish failures are swallowed (logged only) so they do not cause the message to be retried.
- *
- * <p>Required environment variables (resolved via {@link com.sr.accountposting.util.AppConfig}):
- * <pre>
- *   CONFIG_TABLE_NAME        DynamoDB config table
- *   SUPPORT_ALERT_TOPIC_ARN  SNS topic for failure alerts
- * </pre>
- */
 @Singleton
 public class SqsHandler {
 
@@ -74,10 +50,10 @@ public class SqsHandler {
             String body = (String) record.get("body");
             try {
                 PostingJob job = JsonUtil.fromJson(body, PostingJob.class);
-                log.info("SQS message received — posting [id={}] mode={}", job.getPostingId(), job.getRequestMode());
+                log.info("SQS message received Ã¢â‚¬â€ posting [id={}] mode={}", job.getPostingId(), job.getRequestMode());
                 processJob(job);
             } catch (Exception e) {
-                log.error("Failed to process SQS message (messageId={}) — posting stays PNDG for dashboard retry",
+                log.error("Failed to process SQS message (messageId={}) Ã¢â‚¬â€ posting stays PNDG for dashboard retry",
                         messageId, e);
             }
         }
@@ -88,7 +64,7 @@ public class SqsHandler {
                 job.getRequestPayload().getRequestType());
 
         if (configs.isEmpty()) {
-            log.error("Posting [id={}] — no routing configs found for requestType={}, alerting support",
+            log.error("Posting [id={}] Ã¢â‚¬â€ no routing configs found for requestType={}, alerting support",
                     job.getPostingId(), job.getRequestPayload().getRequestType());
             alertSupportTeam(job.getPostingId(),
                     job.getRequestPayload().getEndToEndReferenceId(),
@@ -101,19 +77,19 @@ public class SqsHandler {
 
         if (result.getStatus() != PostingStatus.ACSP && !result.getFailures().isEmpty()) {
             String e2eRef = job.getRequestPayload().getEndToEndReferenceId();
-            log.warn("Posting [id={}] finished with {} failure(s) — alerting support team",
+            log.warn("Posting [id={}] finished with {} failure(s) Ã¢â‚¬â€ alerting support team",
                     job.getPostingId(), result.getFailures().size());
             result.getFailures().forEach(f ->
                     alertSupportTeam(job.getPostingId(), e2eRef, f.getTargetSystem(), f.getReason()));
         }
 
-        log.info("SQS job done — posting [id={}] final status={}", job.getPostingId(), result.getStatus());
+        log.info("SQS job done Ã¢â‚¬â€ posting [id={}] final status={}", job.getPostingId(), result.getStatus());
     }
 
-    private void alertSupportTeam(Long postingId, String e2eRef, String targetSystem, String reason) {
+    private void alertSupportTeam(String postingId, String e2eRef, String targetSystem, String reason) {
         String message = String.format(
-                "Account Posting Failed — Action Required%n" +
-                        "postingId:    %d%n" +
+                "Account Posting Failed Ã¢â‚¬â€ Action Required%n" +
+                        "postingId:    %s%n" +
                         "e2eReference: %s%n" +
                         "targetSystem: %s%n" +
                         "reason:       %s%n" +

@@ -5,13 +5,18 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=dynamodb,sqs,sns
+      - DEBUG=0
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LAMBDA_EXECUTOR=docker
+      - SERVICES=lambda,apigateway,apigatewayv2,dynamodb,sqs,sns,iam,logs,cloudwatch,sts
       - DEFAULT_REGION=ap-southeast-1
       - AWS_DEFAULT_REGION=ap-southeast-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
+      - BOOTSTRAP_AWS_RESOURCES=${BOOTSTRAP_AWS_RESOURCES:-true}
     volumes:
       - ./localstack/init.sh:/etc/localstack/init/ready.d/init.sh
+      - /var/run/docker.sock:/var/run/docker.sock
       - localstack-data:/var/lib/localstack
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]

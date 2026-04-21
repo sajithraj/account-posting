@@ -12,7 +12,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecon
 @DynamoDbBean
 public class AccountPostingEntity {
 
-    private Long postingId;
+    private String postingId;
     private String sourceReferenceId;
     private String endToEndReferenceId;
     private String sourceName;
@@ -24,21 +24,21 @@ public class AccountPostingEntity {
     private String creditorAccount;
     private String requestedExecutionDate;
     private String remittanceInformation;
-    private String status;           // PostingStatus stored as String
+    private String status;
     private String targetSystems;
     private String reason;
-    private String requestPayload;   // Full incoming request JSON — used for retry
+    private String requestPayload;
     private String responsePayload;
-    private Long retryLockedUntil; // Epoch millis — distributed retry lock
+    private Long retryLockedUntil;
     private Long version;
-    private String createdAt;        // ISO-8601 — used as GSI sort key
+    private String createdAt;
     private String updatedAt;
     private String createdBy;
     private String updatedBy;
-    private Long ttl;              // Epoch seconds — DynamoDB auto-delete (60 days)
+    private Long ttl;
 
     @DynamoDbPartitionKey
-    public Long getPostingId() {
+    public String getPostingId() {
         return postingId;
     }
 

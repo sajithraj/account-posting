@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -41,6 +42,7 @@ public class ExternalApiHelper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
         response.put("status", "SUCCESS");
+        response.put("posted_time", Instant.now().toString());
         log.info("callCbs transactionIndex={} response={}", transactionIndex, response);
         return response;
     }
@@ -61,6 +63,7 @@ public class ExternalApiHelper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
         response.put("status", "SUCCESS");
+        response.put("posted_time", Instant.now().toString());
         log.info("callCbsAddHold transactionIndex={} response={}", transactionIndex, response);
         return response;
     }
@@ -81,6 +84,7 @@ public class ExternalApiHelper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
         response.put("status", "SUCCESS");
+        response.put("posted_time", Instant.now().toString());
         log.info("callCbsRemoveHold transactionIndex={} response={}", transactionIndex, response);
         return response;
     }
@@ -102,6 +106,7 @@ public class ExternalApiHelper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("responder_ref_id", UUID.randomUUID().toString());
         response.put("status", "SUCCESS");
+        response.put("posted_time", Instant.now().toString());
         log.info("callGl response={}", response);
         return response;
     }
@@ -126,6 +131,7 @@ public class ExternalApiHelper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_id", transactionId);
         response.put("status", "SUCCESS");
+        response.put("posted_time", Instant.now().toString());
         log.info("callObpm response={}", response);
         return response;
     }

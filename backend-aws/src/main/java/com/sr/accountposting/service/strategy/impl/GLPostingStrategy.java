@@ -50,7 +50,7 @@ public class GLPostingStrategy implements PostingStrategy {
         String postedTime = glResponse.get("posted_time") != null
                 ? String.valueOf(glResponse.get("posted_time")) : null;
 
-        log.info("GL responded for e2e={} — status={} ref={}", request.getEndToEndReferenceId(), glStatus, referenceId);
+        log.info("GL responded for e2e={} Ã¢â‚¬â€ status={} ref={}", request.getEndToEndReferenceId(), glStatus, referenceId);
         log.debug("GL response payload: {}", responsePayloadJson);
 
         return ExternalCallResult.builder()

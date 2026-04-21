@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "backend-ops-aws — Account Posting Operations API",
-    "description": "AWS Lambda API for the operations / dashboard: search, retry, leg management, and routing config CRUD.\n\nDoes NOT handle POST /v3/payment/account-posting (posting creation) — that belongs to backend-aws.",
-    "version": "1.0.0"
+    "description": "AWS Lambda API for the operations / dashboard: search, retry, leg management, and routing config CRUD.\n\nDoes NOT handle POST /v3/payment/account-posting (posting creation) — that belongs to backend-aws.\n\nResponse format: raw JSON (no {success, data, error} envelope).\nError format: {id, name, message}.\n\nAll posting IDs are UUID strings.",
+    "version": "2.0.0"
   },
   "servers": [
     {
@@ -16,17 +16,18 @@
         },
         "stage": {
           "default": "dev",
-          "enum": [
-            "dev",
-            "staging",
-            "prod"
-          ]
+          "enum": ["dev", "staging", "prod"]
         }
       }
     },
     {
-      "url": "http://localhost:4566",
-      "description": "LocalStack (integration tests)"
+      "url": "http://localhost:4566/restapis/{rest_api_id}/dev-local/_user_request_",
+      "description": "LocalStack",
+      "variables": {
+        "rest_api_id": {
+          "default": "xxxxxxxxxx"
+        }
+      }
     }
   ],
   "paths": {
@@ -39,29 +40,31 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PostingSearchRequest"
-              },
+              "schema": { "$ref": "#/components/schemas/PostingSearchRequest" },
               "examples": {
                 "all": {
                   "summary": "No filters — latest 20",
-                  "value": {
-                    "limit": 20
-                  }
+                  "value": { "limit": 20 }
                 },
                 "by_status": {
                   "summary": "Filter by PNDG status",
-                  "value": {
-                    "status": "PNDG",
-                    "limit": 20
-                  }
+                  "value": { "status": "PNDG", "limit": 20 }
                 },
                 "by_source": {
                   "summary": "Filter by source name",
-                  "value": {
-                    "source_name": "IMX",
-                    "limit": 10
-                  }
+                  "value": { "source_name": "IMX", "limit": 10 }
+                },
+                "by_request_type": {
+                  "summary": "Filter by request type",
+                  "value": { "request_type": "IMX_CBS_GL", "limit": 20 }
+                },
+                "by_e2e_ref": {
+                  "summary": "Filter by end-to-end reference",
+                  "value": { "end_to_end_reference_id": "E2E-001", "limit": 1 }
+                },
+                "by_source_ref": {
+                  "summary": "Filter by source reference",
+                  "value": { "source_reference_id": "SRC-001", "limit": 1 }
                 },
                 "by_date": {
                   "summary": "Filter by date range",
@@ -77,11 +80,12 @@
         },
         "responses": {
           "200": {
-            "description": "Search results",
+            "description": "Array of matching postings (may be empty)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePostingList"
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/PostingResponse" }
                 }
               }
             }
@@ -93,29 +97,25 @@
       "post": {
         "operationId": "retryPostings",
         "summary": "Retry pending postings",
-        "description": "Re-queues postings to SQS for reprocessing. If posting_ids is omitted, all PNDG/RECEIVED postings are retried. Uses DynamoDB conditional write for retry locking — already-locked postings are counted as skipped_locked.",
+        "description": "Re-queues postings to SQS for reprocessing. If posting_ids is omitted, all PNDG and RCVD postings are retried. Uses DynamoDB conditional write for retry locking — already-locked postings are skipped.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RetryRequest"
-              },
+              "schema": { "$ref": "#/components/schemas/RetryRequest" },
               "examples": {
                 "all_pending": {
-                  "summary": "Retry all PNDG/RECEIVED",
-                  "value": {
-                    "requested_by": "ops-team"
-                  }
+                  "summary": "Retry all PNDG/RCVD",
+                  "value": { "requested_by": "OPS-USER" }
                 },
                 "specific": {
-                  "summary": "Retry specific IDs",
+                  "summary": "Retry specific posting IDs",
                   "value": {
                     "posting_ids": [
-                      1234567890123,
-                      9876543210987
+                      "058be267-6679-475e-bbb7-e199fc4c9a32",
+                      "c5499148-7297-458e-ad45-cf58d2372d91"
                     ],
-                    "requested_by": "ops-user"
+                    "requested_by": "OPS-USER"
                   }
                 }
               }
@@ -127,20 +127,14 @@
             "description": "Retry summary",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseRetryResponse"
-                },
+                "schema": { "$ref": "#/components/schemas/RetryResponse" },
                 "examples": {
                   "success": {
                     "value": {
-                      "success": true,
-                      "data": {
-                        "total_postings": 5,
-                        "queued": 4,
-                        "skipped_locked": 1,
-                        "message": "Retry processing submitted. Check dashboard for status updates."
-                      },
-                      "error": null
+                      "total_postings": 5,
+                      "queued": 4,
+                      "skipped_locked": 1,
+                      "message": "Retry processing submitted. Check dashboard for status updates."
                     }
                   }
                 }
@@ -156,17 +150,52 @@
         "summary": "Get posting by ID",
         "description": "Fetches a single posting and all its legs.",
         "parameters": [
-          {
-            "$ref": "#/components/parameters/PostingId"
-          }
+          { "$ref": "#/components/parameters/PostingId" }
         ],
         "responses": {
           "200": {
             "description": "Posting found",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePostingResponse"
+                "schema": { "$ref": "#/components/schemas/PostingResponse" },
+                "examples": {
+                  "found": {
+                    "value": {
+                      "posting_id": "058be267-6679-475e-bbb7-e199fc4c9a32",
+                      "source_reference_id": "SRC-001",
+                      "end_to_end_reference_id": "E2E-001",
+                      "source_name": "IMX",
+                      "request_type": "IMX_CBS_GL",
+                      "amount": "5000.00",
+                      "currency": "USD",
+                      "credit_debit_indicator": "DEBIT",
+                      "debtor_account": "1000123456",
+                      "creditor_account": "1000654321",
+                      "requested_execution_date": "2026-04-21",
+                      "remittance_information": "Invoice payment",
+                      "posting_status": "ACSP",
+                      "target_systems": "CBS,GL",
+                      "processed_at": "2026-04-21T10:00:00Z",
+                      "created_at": "2026-04-21T10:00:00Z",
+                      "updated_at": "2026-04-21T10:00:05Z",
+                      "legs": [
+                        {
+                          "posting_id": "058be267-6679-475e-bbb7-e199fc4c9a32",
+                          "transaction_order": 1,
+                          "target_system": "CBS",
+                          "account": "1000123456",
+                          "status": "SUCCESS",
+                          "reference_id": "6b9d8304-f09e-431f-a733-c28dc062039d",
+                          "attempt_number": 1,
+                          "posted_time": "2026-04-21T10:00:03Z",
+                          "mode": "NORM",
+                          "operation": "POSTING",
+                          "created_at": "2026-04-21T10:00:01Z",
+                          "updated_at": "2026-04-21T10:00:04Z"
+                        }
+                      ]
+                    }
+                  }
                 }
               }
             }
@@ -175,8 +204,15 @@
             "description": "Posting not found",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "examples": {
+                  "not_found": {
+                    "value": {
+                      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "name": "NOT_FOUND",
+                      "message": "Posting not found: 99999999-9999-9999-9999-999999999999"
+                    }
+                  }
                 }
               }
             }
@@ -189,17 +225,16 @@
         "operationId": "listLegs",
         "summary": "List all legs for a posting",
         "parameters": [
-          {
-            "$ref": "#/components/parameters/PostingId"
-          }
+          { "$ref": "#/components/parameters/PostingId" }
         ],
         "responses": {
           "200": {
-            "description": "Leg list",
+            "description": "Array of legs (may be empty)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseLegList"
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/LegResponse" }
                 }
               }
             }
@@ -212,21 +247,15 @@
         "operationId": "getLeg",
         "summary": "Get a single leg",
         "parameters": [
-          {
-            "$ref": "#/components/parameters/PostingId"
-          },
-          {
-            "$ref": "#/components/parameters/TransactionOrder"
-          }
+          { "$ref": "#/components/parameters/PostingId" },
+          { "$ref": "#/components/parameters/TransactionOrder" }
         ],
         "responses": {
           "200": {
             "description": "Leg found",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseLegResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/LegResponse" }
               }
             }
           },
@@ -234,9 +263,7 @@
             "description": "Leg not found",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiError" }
               }
             }
           }
@@ -247,27 +274,29 @@
         "summary": "Manual leg status override",
         "description": "Overrides the leg status manually. Sets mode=MANUAL and records requestedBy. attemptNumber is NOT incremented — this is a manual correction, not a retry.",
         "parameters": [
-          {
-            "$ref": "#/components/parameters/PostingId"
-          },
-          {
-            "$ref": "#/components/parameters/TransactionOrder"
-          }
+          { "$ref": "#/components/parameters/PostingId" },
+          { "$ref": "#/components/parameters/TransactionOrder" }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ManualUpdateRequest"
-              },
+              "schema": { "$ref": "#/components/schemas/ManualUpdateRequest" },
               "examples": {
                 "approve": {
-                  "summary": "Manually mark as ACSP",
+                  "summary": "Manually mark as SUCCESS",
                   "value": {
-                    "status": "ACSP",
+                    "status": "SUCCESS",
                     "reason": "Confirmed by ops team — external system responded via phone",
-                    "requested_by": "ops-user"
+                    "requested_by": "OPS-USER"
+                  }
+                },
+                "reject": {
+                  "summary": "Manually mark as FAILED",
+                  "value": {
+                    "status": "FAILED",
+                    "reason": "Target system confirmed rejection",
+                    "requested_by": "OPS-USER"
                   }
                 }
               }
@@ -276,12 +305,10 @@
         },
         "responses": {
           "200": {
-            "description": "Updated leg",
+            "description": "Updated leg returned",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseLegResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/LegResponse" }
               }
             }
           },
@@ -289,9 +316,7 @@
             "description": "Leg not found",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiError" }
               }
             }
           }
@@ -305,11 +330,12 @@
         "description": "Returns all routing config entries across all request types.",
         "responses": {
           "200": {
-            "description": "Config list",
+            "description": "Array of config entries",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseConfigList"
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/PostingConfig" }
                 }
               }
             }
@@ -319,35 +345,44 @@
       "post": {
         "operationId": "createConfig",
         "summary": "Create a routing config entry",
-        "description": "Adds a routing config row. Each requestType can have multiple ordered entries (one per orderSeq) — each entry routes to a different targetSystem.",
+        "description": "Adds a routing config row. Each requestType can have multiple ordered entries (one per orderSeq).",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PostingConfig"
-              },
+              "schema": { "$ref": "#/components/schemas/PostingConfig" },
               "examples": {
                 "imx_cbs": {
-                  "summary": "IMX → CBS (order 1, async)",
+                  "summary": "IMX → CBS leg 1 (async)",
                   "value": {
-                    "requestType": "IMX_CBS_GL",
-                    "orderSeq": 1,
-                    "sourceName": "IMX",
-                    "targetSystem": "CBS",
+                    "request_type": "IMX_CBS_GL",
+                    "order_seq": 1,
+                    "source_name": "IMX",
+                    "target_system": "CBS",
                     "operation": "POSTING",
-                    "processingMode": "ASYNC"
+                    "processing_mode": "ASYNC"
+                  }
+                },
+                "imx_gl": {
+                  "summary": "IMX → GL leg 2 (async)",
+                  "value": {
+                    "request_type": "IMX_CBS_GL",
+                    "order_seq": 2,
+                    "source_name": "IMX",
+                    "target_system": "GL",
+                    "operation": "POSTING",
+                    "processing_mode": "ASYNC"
                   }
                 },
                 "hold_sync": {
                   "summary": "STABLECOIN → CBS ADD_HOLD (sync)",
                   "value": {
-                    "requestType": "ADD_ACCOUNT_HOLD",
-                    "orderSeq": 1,
-                    "sourceName": "STABLECOIN",
-                    "targetSystem": "CBS",
+                    "request_type": "ADD_ACCOUNT_HOLD",
+                    "order_seq": 1,
+                    "source_name": "STABLECOIN",
+                    "target_system": "CBS",
                     "operation": "ADD_HOLD",
-                    "processingMode": "SYNC"
+                    "processing_mode": "SYNC"
                   }
                 }
               }
@@ -356,12 +391,10 @@
         },
         "responses": {
           "201": {
-            "description": "Config created",
+            "description": "Config entry created",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseConfig"
-                }
+                "schema": { "$ref": "#/components/schemas/PostingConfig" }
               }
             }
           }
@@ -377,9 +410,7 @@
             "name": "requestType",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            },
+            "schema": { "type": "string" },
             "example": "IMX_CBS_GL"
           }
         ],
@@ -389,7 +420,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseConfigList"
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/PostingConfig" }
                 }
               }
             }
@@ -406,18 +438,14 @@
             "name": "type",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            },
+            "schema": { "type": "string" },
             "example": "IMX_CBS_GL"
           },
           {
             "name": "order",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "integer"
-            },
+            "schema": { "type": "integer" },
             "example": 1
           }
         ],
@@ -425,20 +453,29 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PostingConfig"
+              "schema": { "$ref": "#/components/schemas/PostingConfig" },
+              "examples": {
+                "change_mode": {
+                  "summary": "Change processing mode to SYNC",
+                  "value": {
+                    "request_type": "IMX_CBS_GL",
+                    "order_seq": 1,
+                    "source_name": "IMX",
+                    "target_system": "CBS",
+                    "operation": "POSTING",
+                    "processing_mode": "SYNC"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Updated config",
+            "description": "Updated config entry",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseConfig"
-                }
+                "schema": { "$ref": "#/components/schemas/PostingConfig" }
               }
             }
           },
@@ -446,9 +483,7 @@
             "description": "Config not found",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiError" }
               }
             }
           }
@@ -462,32 +497,24 @@
             "name": "type",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            },
+            "schema": { "type": "string" },
             "example": "IMX_CBS_GL"
           },
           {
             "name": "order",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "integer"
-            },
+            "schema": { "type": "integer" },
             "example": 1
           }
         ],
         "responses": {
-          "204": {
-            "description": "Deleted — no content"
-          },
+          "204": { "description": "Deleted — no content" },
           "404": {
             "description": "Config not found",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiError" }
               }
             }
           }
@@ -502,19 +529,17 @@
         "in": "path",
         "required": true,
         "schema": {
-          "type": "integer",
-          "format": "int64"
+          "type": "string",
+          "format": "uuid"
         },
-        "description": "Posting ID (Snowflake-style long)",
-        "example": 1234567890123
+        "description": "Posting ID (UUID string)",
+        "example": "058be267-6679-475e-bbb7-e199fc4c9a32"
       },
       "TransactionOrder": {
         "name": "order",
         "in": "path",
         "required": true,
-        "schema": {
-          "type": "integer"
-        },
+        "schema": { "type": "integer" },
         "description": "Leg sequence number (1-based)",
         "example": 1
       }
@@ -525,17 +550,29 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "RECEIVED",
-              "PNDG",
-              "ACSP"
-            ],
+            "enum": ["RCVD", "PNDG", "ACSP", "RJCT"],
             "description": "Filter by posting status."
           },
           "source_name": {
             "type": "string",
             "description": "Filter by source system name.",
+            "enum": ["IMX", "RMS", "STABLECOIN"],
             "example": "IMX"
+          },
+          "request_type": {
+            "type": "string",
+            "description": "Filter by request type.",
+            "example": "IMX_CBS_GL"
+          },
+          "end_to_end_reference_id": {
+            "type": "string",
+            "description": "Filter by end-to-end reference ID (exact match via GSI).",
+            "example": "E2E-001"
+          },
+          "source_reference_id": {
+            "type": "string",
+            "description": "Filter by source reference ID.",
+            "example": "SRC-001"
           },
           "from_date": {
             "type": "string",
@@ -555,27 +592,29 @@
             "maximum": 200,
             "default": 20,
             "description": "Max results to return."
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token from a previous response for fetching the next page."
           }
         }
       },
       "RetryRequest": {
         "type": "object",
-        "required": [
-          "requested_by"
-        ],
+        "required": ["requested_by"],
         "properties": {
           "posting_ids": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Specific posting IDs to retry. Omit to retry all PNDG/RECEIVED."
+            "description": "Specific posting IDs (UUIDs) to retry. Omit to retry all PNDG/RCVD."
           },
           "requested_by": {
             "type": "string",
             "description": "Operator identity — stored for audit.",
-            "example": "ops-team"
+            "example": "OPS-USER"
           }
         }
       },
@@ -584,7 +623,7 @@
         "properties": {
           "total_postings": {
             "type": "integer",
-            "description": "Number of candidates evaluated."
+            "description": "Number of candidate postings evaluated."
           },
           "queued": {
             "type": "integer",
@@ -595,36 +634,98 @@
             "description": "Postings skipped because retry lock was already held."
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "example": "Retry processing submitted. Check dashboard for status updates."
           }
         }
       },
       "PostingResponse": {
         "type": "object",
+        "description": "Full posting object as returned by search and get-by-ID. All fields present in DynamoDB are included.",
         "properties": {
+          "posting_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "058be267-6679-475e-bbb7-e199fc4c9a32"
+          },
           "source_reference_id": {
-            "type": "string"
+            "type": "string",
+            "example": "SRC-001"
           },
           "end_to_end_reference_id": {
-            "type": "string"
+            "type": "string",
+            "example": "E2E-001"
+          },
+          "source_name": {
+            "type": "string",
+            "enum": ["IMX", "RMS", "STABLECOIN"],
+            "example": "IMX"
+          },
+          "request_type": {
+            "type": "string",
+            "example": "IMX_CBS_GL"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Decimal amount as string.",
+            "example": "5000.00"
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO 4217 3-letter currency code.",
+            "example": "USD"
+          },
+          "credit_debit_indicator": {
+            "type": "string",
+            "enum": ["CREDIT", "DEBIT"]
+          },
+          "debtor_account": {
+            "type": "string",
+            "example": "1000123456"
+          },
+          "creditor_account": {
+            "type": "string",
+            "example": "1000654321"
+          },
+          "requested_execution_date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-04-21"
+          },
+          "remittance_information": {
+            "type": "string",
+            "example": "Invoice payment"
           },
           "posting_status": {
             "type": "string",
-            "enum": [
-              "RECEIVED",
-              "PNDG",
-              "ACSP"
-            ]
+            "enum": ["RCVD", "PNDG", "ACSP", "RJCT"],
+            "description": "RCVD — received and queued. PNDG — pending processing. ACSP — all legs succeeded. RJCT — one or more legs failed."
+          },
+          "target_systems": {
+            "type": "string",
+            "description": "Comma-separated list of target systems for this posting.",
+            "example": "CBS,GL"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Failure reason when posting_status is RJCT.",
+            "example": "CBS leg failed: timeout"
           },
           "processed_at": {
             "type": "string",
             "format": "date-time"
           },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
           "legs": {
             "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LegResponse"
-            }
+            "items": { "$ref": "#/components/schemas/LegResponse" }
           }
         }
       },
@@ -632,59 +733,57 @@
         "type": "object",
         "properties": {
           "posting_id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid",
+            "example": "058be267-6679-475e-bbb7-e199fc4c9a32"
           },
           "transaction_order": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Execution order within the posting (1-based).",
+            "example": 1
           },
           "target_system": {
             "type": "string",
-            "enum": [
-              "CBS",
-              "GL",
-              "OBPM"
-            ]
+            "enum": ["CBS", "GL", "OBPM"]
           },
           "account": {
-            "type": "string"
+            "type": "string",
+            "example": "1000123456"
           },
           "status": {
             "type": "string",
-            "enum": [
-              "PNDG",
-              "ACSP",
-              "RJCT"
-            ]
+            "enum": ["PNDG", "SUCCESS", "FAILED"],
+            "description": "PNDG — awaiting processing. SUCCESS — target system accepted. FAILED — target system rejected or error."
           },
           "reference_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Reference ID returned by the target system.",
+            "example": "6b9d8304-f09e-431f-a733-c28dc062039d"
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "description": "Failure reason when status is FAILED.",
+            "example": "Connection timeout"
           },
           "attempt_number": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Number of processing attempts (incremented on retry, not on manual update).",
+            "example": 1
           },
           "posted_time": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Timestamp when the target system processed the leg."
           },
           "mode": {
             "type": "string",
-            "enum": [
-              "NORM",
-              "RETRY",
-              "MANUAL"
-            ]
+            "enum": ["NORM", "RETRY", "MANUAL"],
+            "description": "NORM — initial processing. RETRY — re-queued retry. MANUAL — ops manual override."
           },
           "operation": {
             "type": "string",
-            "enum": [
-              "POSTING",
-              "ADD_HOLD",
-              "REMOVE_HOLD"
-            ]
+            "enum": ["POSTING", "ADD_HOLD", "REMOVE_HOLD"],
+            "description": "Operation type executed on the target system."
           },
           "created_at": {
             "type": "string",
@@ -698,19 +797,12 @@
       },
       "ManualUpdateRequest": {
         "type": "object",
-        "required": [
-          "status",
-          "requested_by"
-        ],
+        "required": ["status", "requested_by"],
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "ACSP",
-              "RJCT",
-              "PNDG"
-            ],
-            "description": "New status to set on the leg."
+            "enum": ["SUCCESS", "FAILED", "PNDG"],
+            "description": "New status to force on the leg."
           },
           "reason": {
             "type": "string",
@@ -719,244 +811,72 @@
           "requested_by": {
             "type": "string",
             "description": "Operator identity.",
-            "example": "ops-user"
+            "example": "OPS-USER"
           }
         }
       },
       "PostingConfig": {
         "type": "object",
-        "required": [
-          "requestType",
-          "orderSeq",
-          "targetSystem",
-          "operation",
-          "processingMode"
-        ],
+        "required": ["request_type", "order_seq", "target_system", "operation", "processing_mode"],
         "properties": {
-          "requestType": {
+          "request_type": {
             "type": "string",
-            "description": "Posting type (DynamoDB PK).",
+            "description": "Posting type — DynamoDB partition key.",
             "example": "IMX_CBS_GL"
           },
-          "orderSeq": {
+          "order_seq": {
             "type": "integer",
-            "description": "Execution order within the requestType (DynamoDB SK).",
+            "description": "Execution order within the requestType — DynamoDB sort key.",
             "example": 1
           },
-          "sourceName": {
+          "source_name": {
             "type": "string",
-            "description": "Expected upstream system name. Blank = any source allowed.",
+            "description": "Expected upstream system name. Blank = any source accepted.",
             "example": "IMX"
           },
-          "targetSystem": {
+          "target_system": {
             "type": "string",
-            "enum": [
-              "CBS",
-              "GL",
-              "OBPM"
-            ],
+            "enum": ["CBS", "GL", "OBPM"],
             "description": "External system this leg routes to."
           },
           "operation": {
             "type": "string",
-            "enum": [
-              "POSTING",
-              "ADD_HOLD",
-              "REMOVE_HOLD"
-            ]
+            "enum": ["POSTING", "ADD_HOLD", "REMOVE_HOLD"]
           },
-          "processingMode": {
+          "processing_mode": {
             "type": "string",
-            "enum": [
-              "SYNC",
-              "ASYNC"
-            ],
-            "description": "ASYNC — posting is queued to SQS; caller gets ACSP immediately. SYNC — posting is processed inline before the API response is returned."
+            "enum": ["SYNC", "ASYNC"],
+            "description": "ASYNC — posting is queued to SQS; caller gets ACSP immediately. SYNC — posting is processed inline before the API response."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
           }
         }
       },
       "ApiError": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique error trace ID.",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
           "name": {
             "type": "string",
+            "description": "Error code.",
             "example": "NOT_FOUND"
           },
           "message": {
             "type": "string",
-            "example": "Posting not found: 9999999"
-          }
-        }
-      },
-      "ApiResponsePostingResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "$ref": "#/components/schemas/PostingResponse"
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponsePostingList": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PostingResponse"
-            }
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponseLegResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "$ref": "#/components/schemas/LegResponse"
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponseLegList": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LegResponse"
-            }
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponseRetryResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "$ref": "#/components/schemas/RetryResponse"
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponseConfig": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "$ref": "#/components/schemas/PostingConfig"
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponseConfigList": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PostingConfig"
-            }
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponseError": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": false
-          },
-          "data": {
-            "type": "null",
-            "example": null
-          },
-          "error": {
-            "$ref": "#/components/schemas/ApiError"
+            "example": "Posting not found: 99999999-9999-9999-9999-999999999999"
           }
         }
       }

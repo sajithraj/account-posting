@@ -13,6 +13,7 @@ import com.sr.accountposting.exception.TechnicalException;
 import com.sr.accountposting.exception.ValidationException;
 import com.sr.accountposting.repository.config.PostingConfigRepository;
 import com.sr.accountposting.repository.posting.AccountPostingRepository;
+import com.sr.accountposting.service.leg.AccountPostingLegService;
 import com.sr.accountposting.service.processor.PostingProcessorService;
 import com.sr.accountposting.util.AppConfig;
 import com.sr.accountposting.util.IdGenerator;
@@ -31,21 +32,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Posting creation service for the backend-aws Lambda.
- *
- * <p>Responsibilities:
- * <ol>
- *   <li>Validate the incoming request against {@code CONFIG_TABLE_NAME} routing configs.</li>
- *   <li>Guard against duplicate submissions using {@code endToEndReferenceId}.</li>
- *   <li>Persist the posting to {@code POSTING_TABLE_NAME} (DynamoDB).</li>
- *   <li>If all configs are {@code ASYNC}: publish a {@link com.sr.accountposting.dto.posting.PostingJob}
- *       to {@code PROCESSING_QUEUE_URL} (SQS) and return immediately with status {@code ACSP}.</li>
- *   <li>If any config is {@code SYNC}: call
- *       {@link com.sr.accountposting.service.processor.PostingProcessorService#process} inline
- *       and return the final status.</li>
- * </ol>
- */
 @Singleton
 public class AccountPostingServiceImpl implements AccountPostingService {
 
@@ -54,6 +40,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
     private final AccountPostingRepository postingRepo;
     private final PostingConfigRepository configRepo;
     private final PostingProcessorService processor;
+    private final AccountPostingLegService legService;
     private final AccountPostingValidator validator;
     private final SqsClient sqsClient;
 
@@ -61,11 +48,13 @@ public class AccountPostingServiceImpl implements AccountPostingService {
     public AccountPostingServiceImpl(AccountPostingRepository postingRepo,
                                      PostingConfigRepository configRepo,
                                      PostingProcessorService processor,
+                                     AccountPostingLegService legService,
                                      AccountPostingValidator validator,
                                      SqsClient sqsClient) {
         this.postingRepo = postingRepo;
         this.configRepo = configRepo;
         this.processor = processor;
+        this.legService = legService;
         this.validator = validator;
         this.sqsClient = sqsClient;
     }
@@ -92,14 +81,14 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 .collect(Collectors.toSet());
         boolean isAsync = modes.size() == 1 && modes.contains("ASYNC");
 
-        long postingId = IdGenerator.nextId();
+        String postingId = IdGenerator.nextId();
         String now = Instant.now().toString();
         AccountPostingEntity posting = buildPosting(postingId, request,
                 isAsync ? PostingStatus.RCVD : PostingStatus.PNDG, now);
 
         try {
             postingRepo.save(posting);
-            log.info("Posting [id={}] accepted — requestType={} sourceName={} isAsync={}",
+            log.info("Posting [id={}] accepted Ã¢â‚¬â€ requestType={} sourceName={} isAsync={}",
                     postingId, request.getRequestType(), request.getSourceName(), isAsync);
         } catch (Exception e) {
             throw new TechnicalException("Failed to persist posting [id=" + postingId + "]", e);
@@ -116,7 +105,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 publishJob(job);
             } catch (Exception e) {
                 throw new TechnicalException(
-                        "Posting [id=" + postingId + "] saved but failed to enqueue — caller should retry", e);
+                        "Posting [id=" + postingId + "] saved but failed to enqueue Ã¢â‚¬â€ caller should retry", e);
             }
             return PostingResponse.builder()
                     .postingStatus(PostingStatus.ACSP.name())
@@ -126,11 +115,22 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                     .build();
         } else {
             ProcessingResult result = processor.process(job, configs);
+            List<com.sr.accountposting.dto.leg.LegResponse> legs = legService.listLegs(postingId)
+                    .stream()
+                    .map(l -> com.sr.accountposting.dto.leg.LegResponse.builder()
+                            .targetSystem(l.getTargetSystem())
+                            .account(l.getAccount())
+                            .status(l.getStatus())
+                            .referenceId(l.getReferenceId())
+                            .postedTime(l.getPostedTime())
+                            .build())
+                    .collect(Collectors.toList());
             return PostingResponse.builder()
-                    .postingStatus(result.getStatus().name())
-                    .endToEndReferenceId(request.getEndToEndReferenceId())
                     .sourceReferenceId(request.getSourceReferenceId())
+                    .endToEndReferenceId(request.getEndToEndReferenceId())
+                    .postingStatus(result.getStatus().name())
                     .processedAt(result.getUpdatedAt())
+                    .legs(legs)
                     .build();
         }
     }
@@ -143,7 +143,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         log.info("Posting [id={}] queued for {} processing", job.getPostingId(), job.getRequestMode());
     }
 
-    private AccountPostingEntity buildPosting(long postingId, IncomingPostingRequest req,
+    private AccountPostingEntity buildPosting(String postingId, IncomingPostingRequest req,
                                               PostingStatus status, String now) {
         AccountPostingEntity p = new AccountPostingEntity();
         p.setPostingId(postingId);

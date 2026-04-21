@@ -279,8 +279,11 @@ class LocalStackIntegrationTest {
         String responseBody = (String) rawMap.get("body");
         System.out.printf("[TEST] <-- %d  body=%s%n", statusCode, responseBody);
 
-        Map<String, Object> apiResponse = MAPPER.readValue(responseBody, Map.class);
-        return new ParsedResponse(statusCode, (Boolean) apiResponse.get("success"), apiResponse.get("data"));
+        Object parsedBody = MAPPER.readValue(responseBody, Object.class);
+        if (parsedBody instanceof Map<?, ?> responseMap && responseMap.containsKey("success")) {
+            return new ParsedResponse(statusCode, (Boolean) responseMap.get("success"), responseMap.get("data"));
+        }
+        return new ParsedResponse(statusCode, statusCode < 400, parsedBody);
     }
 
     private void drainQueue() {

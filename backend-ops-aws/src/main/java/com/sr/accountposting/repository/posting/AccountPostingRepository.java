@@ -46,7 +46,7 @@ public class AccountPostingRepository {
         table.putItem(posting);
     }
 
-    public Optional<AccountPostingEntity> findById(Long postingId) {
+    public Optional<AccountPostingEntity> findById(String postingId) {
         AccountPostingEntity result = table.getItem(Key.builder().partitionValue(postingId).build());
         return Optional.ofNullable(result);
     }
@@ -75,12 +75,12 @@ public class AccountPostingRepository {
         return results;
     }
 
-    public boolean acquireRetryLock(Long postingId, long lockUntilEpochMillis) {
+    public boolean acquireRetryLock(String postingId, long lockUntilEpochMillis) {
         long now = System.currentTimeMillis();
         try {
             rawClient.updateItem(UpdateItemRequest.builder()
                     .tableName(tableName)
-                    .key(Map.of("postingId", AttributeValue.builder().n(postingId.toString()).build()))
+                    .key(Map.of("postingId", AttributeValue.builder().s(postingId).build()))
                     .updateExpression("SET retryLockedUntil = :lockVal")
                     .conditionExpression(
                             "attribute_not_exists(retryLockedUntil) OR retryLockedUntil < :now")

@@ -6,10 +6,10 @@ import java.util.List;
 
 public interface AccountPostingLegService {
 
-    void manualUpdateLeg(Long postingId, int transactionOrder,
+    void manualUpdateLeg(String postingId, int transactionOrder,
                          String status, String reason, String requestedBy);
 
-    List<LegResponse> listLegs(Long postingId);
+    List<LegResponse> listLegs(String postingId);
 
-    LegResponse getLeg(Long postingId, int transactionOrder);
+    LegResponse getLeg(String postingId, int transactionOrder);
 }

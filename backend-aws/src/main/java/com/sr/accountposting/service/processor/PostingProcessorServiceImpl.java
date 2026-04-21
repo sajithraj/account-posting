@@ -44,7 +44,7 @@ public class PostingProcessorServiceImpl implements PostingProcessorService {
 
     @Override
     public ProcessingResult process(PostingJob job, List<PostingConfigEntity> configs) {
-        Long postingId = job.getPostingId();
+        String postingId = job.getPostingId();
         RequestMode mode = job.getRequestMode();
 
         AccountPostingEntity posting = postingRepo.findById(postingId)
@@ -54,7 +54,7 @@ public class PostingProcessorServiceImpl implements PostingProcessorService {
         posting.setTargetSystems(targetSystems);
 
         if (mode == RequestMode.NORM) {
-            log.info("Posting [id={}] — creating {} leg(s) for target system(s): {}",
+            log.info("Posting [id={}] Ã¢â‚¬â€ creating {} leg(s) for target system(s): {}",
                     postingId, configs.size(), targetSystems);
             for (PostingConfigEntity config : configs) {
                 legService.createLeg(postingId, config.getOrderSeq(),
@@ -73,7 +73,7 @@ public class PostingProcessorServiceImpl implements PostingProcessorService {
             if (config == null) {
                 String reason = "No routing config found for targetSystem=" + leg.getTargetSystem()
                         + " operation=" + leg.getOperation();
-                log.error("Posting [id={}] — {}", postingId, reason);
+                log.error("Posting [id={}] Ã¢â‚¬â€ {}", postingId, reason);
                 allSuccess = false;
                 lastFailReason = reason;
                 failures.add(ProcessingResult.LegFailure.builder()
@@ -91,10 +91,10 @@ public class PostingProcessorServiceImpl implements PostingProcessorService {
                         mode == RequestMode.RETRY);
 
                 if (result.getStatus() == LegStatus.SUCCESS) {
-                    log.info("Posting [id={}] — leg [order={} system={}] posted successfully, ref={}",
+                    log.info("Posting [id={}] Ã¢â‚¬â€ leg [order={} system={}] posted successfully, ref={}",
                             postingId, leg.getTransactionOrder(), leg.getTargetSystem(), result.getReferenceId());
                 } else {
-                    log.warn("Posting [id={}] — leg [order={} system={}] failed: {}",
+                    log.warn("Posting [id={}] Ã¢â‚¬â€ leg [order={} system={}] failed: {}",
                             postingId, leg.getTransactionOrder(), leg.getTargetSystem(), result.getReason());
                     allSuccess = false;
                     lastFailReason = result.getReason();
@@ -102,7 +102,7 @@ public class PostingProcessorServiceImpl implements PostingProcessorService {
                             .targetSystem(leg.getTargetSystem()).reason(result.getReason()).build());
                 }
             } catch (Exception e) {
-                log.error("Posting [id={}] — strategy call threw exception for leg [order={} system={}]",
+                log.error("Posting [id={}] Ã¢â‚¬â€ strategy call threw exception for leg [order={} system={}]",
                         postingId, leg.getTransactionOrder(), leg.getTargetSystem(), e);
                 allSuccess = false;
                 lastFailReason = e.getMessage();
@@ -120,7 +120,7 @@ public class PostingProcessorServiceImpl implements PostingProcessorService {
         posting.setRetryLockedUntil(null);
         postingRepo.update(posting);
 
-        log.info("Posting [id={}] processing complete — status={}, legs processed={}, failed={}",
+        log.info("Posting [id={}] processing complete Ã¢â‚¬â€ status={}, legs processed={}, failed={}",
                 postingId, finalStatus, legsToProcess.size(), failures.size());
 
         return ProcessingResult.builder()

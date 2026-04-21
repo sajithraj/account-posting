@@ -11,7 +11,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
 @DynamoDbBean
 public class AccountPostingLegEntity {
 
-    private Long postingId;
+    private String postingId;
     private Integer transactionOrder;
     private String targetSystem;
     private String account;
@@ -32,7 +32,7 @@ public class AccountPostingLegEntity {
     private Long ttl;
 
     @DynamoDbPartitionKey
-    public Long getPostingId() {
+    public String getPostingId() {
         return postingId;
     }
 

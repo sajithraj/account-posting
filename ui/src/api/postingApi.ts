@@ -8,8 +8,6 @@ import type {
     PostingSearchRequest,
 } from '../types/posting';
 
-// ── key-case helpers ──────────────────────────────────────────────────────────
-
 function snakeToCamel(str: string): string {
     return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
@@ -31,28 +29,10 @@ function transformKeys(obj: unknown, transform: (k: string) => string): unknown 
     return obj;
 }
 
-// ── Lambda API envelope ───────────────────────────────────────────────────────
-
-interface ApiEnvelope<T> {
-    success: boolean;
-    data: T;
-    error?: { name: string; message: string } | null;
-}
-
-function unwrap<T>(envelope: ApiEnvelope<T>): T {
-    if (!envelope.success) {
-        throw new Error(envelope.error?.message ?? 'Request failed');
-    }
-    return envelope.data;
-}
-
-// ── axios instance with interceptors ─────────────────────────────────────────
-
 const BASE = '/v3/payment/account-posting';
 
 const http = axios.create({baseURL: ''});
 
-// Outgoing: convert camelCase body → snake_case
 http.interceptors.request.use(config => {
     if (config.data && typeof config.data === 'object') {
         config.data = transformKeys(config.data, camelToSnake);
@@ -60,15 +40,19 @@ http.interceptors.request.use(config => {
     return config;
 });
 
-// Incoming: convert snake_case response → camelCase
 http.interceptors.response.use(response => {
     response.data = transformKeys(response.data, snakeToCamel);
     return response;
 });
 
 export function getErrorMessage(err: unknown): string {
-    if (err instanceof AxiosError && err.response?.data?.error?.message) {
-        return err.response.data.error.message;
+    if (err instanceof AxiosError) {
+        if (err.response?.data?.error?.message) {
+            return err.response.data.error.message;
+        }
+        if (err.response?.data?.message) {
+            return err.response.data.message;
+        }
     }
     if (err instanceof Error) return err.message;
     return 'An unexpected error occurred';
@@ -76,49 +60,49 @@ export function getErrorMessage(err: unknown): string {
 
 export const postingApi = {
     create: async (request: AccountPostingRequest): Promise<PostingCreateResponse> => {
-        const res = await http.post<ApiEnvelope<PostingCreateResponse>>(BASE, request);
-        return unwrap(res.data);
+        const res = await http.post<PostingCreateResponse>(BASE, request);
+        return res.data;
     },
 
     search: async (request: PostingSearchRequest): Promise<AccountPostingResponse[]> => {
-        const res = await http.post<ApiEnvelope<AccountPostingResponse[]>>(`${BASE}/search`, request);
-        return unwrap(res.data);
+        const res = await http.post<AccountPostingResponse[]>(`${BASE}/search`, request);
+        return res.data;
     },
 
-    getById: async (postingId: number): Promise<AccountPostingResponse> => {
-        const res = await http.get<ApiEnvelope<AccountPostingResponse>>(`${BASE}/${postingId}`);
-        return unwrap(res.data);
+    getById: async (postingId: string): Promise<AccountPostingResponse> => {
+        const res = await http.get<AccountPostingResponse>(`${BASE}/${postingId}`);
+        return res.data;
     },
 
-    retry: async (postingIds?: number[]): Promise<unknown> => {
-        const res = await http.post<ApiEnvelope<unknown>>(`${BASE}/retry`, {
+    retry: async (postingIds?: string[]): Promise<unknown> => {
+        const res = await http.post<unknown>(`${BASE}/retry`, {
             postingIds,
             requestedBy: 'OPS-USER',
         });
-        return unwrap(res.data);
+        return res.data;
     },
 
     getAllConfigs: async (): Promise<PostingConfigResponse[]> => {
-        const res = await http.get<ApiEnvelope<PostingConfigResponse[]>>(`${BASE}/config`);
-        return unwrap(res.data);
+        const res = await http.get<PostingConfigResponse[]>(`${BASE}/config`);
+        return res.data;
     },
 
     getConfig: async (requestType: string): Promise<PostingConfigResponse[]> => {
-        const res = await http.get<ApiEnvelope<PostingConfigResponse[]>>(`${BASE}/config/${requestType}`);
-        return unwrap(res.data);
+        const res = await http.get<PostingConfigResponse[]>(`${BASE}/config/${requestType}`);
+        return res.data;
     },
 
     createConfig: async (request: PostingConfigRequest): Promise<PostingConfigResponse> => {
-        const res = await http.post<ApiEnvelope<PostingConfigResponse>>(`${BASE}/config`, request);
-        return unwrap(res.data);
+        const res = await http.post<PostingConfigResponse>(`${BASE}/config`, request);
+        return res.data;
     },
 
     updateConfig: async (requestType: string, orderSeq: number, request: PostingConfigRequest): Promise<PostingConfigResponse> => {
-        const res = await http.put<ApiEnvelope<PostingConfigResponse>>(
+        const res = await http.put<PostingConfigResponse>(
             `${BASE}/config/${requestType}/${orderSeq}`,
             request,
         );
-        return unwrap(res.data);
+        return res.data;
     },
 
     deleteConfig: async (requestType: string, orderSeq: number): Promise<void> => {
@@ -126,15 +110,15 @@ export const postingApi = {
     },
 
     updateLegStatus: async (
-        postingId: number,
+        postingId: string,
         transactionOrder: number,
         status: string,
         reason?: string,
     ): Promise<unknown> => {
-        const res = await http.patch<ApiEnvelope<unknown>>(
+        const res = await http.patch<unknown>(
             `${BASE}/${postingId}/transaction/${transactionOrder}`,
             {status, requestedBy: 'OPS-USER', ...(reason ? {reason} : {})},
         );
-        return unwrap(res.data);
+        return res.data;
     },
 };

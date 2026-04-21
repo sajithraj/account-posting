@@ -25,11 +25,19 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PostingProcessorServiceImplTest {
+
+    private static final String POSTING_ID = "11111111-1111-1111-1111-111111111111";
+    private static final String E2E_REF = "E2E-REF-001";
 
     @Mock
     AccountPostingRepository postingRepo;
@@ -42,9 +50,6 @@ class PostingProcessorServiceImplTest {
 
     @InjectMocks
     PostingProcessorServiceImpl processor;
-
-    private static final Long POSTING_ID = 100001L;
-    private static final String E2E_REF = "E2E-REF-001";
 
     private IncomingPostingRequest request;
     private PostingConfigEntity cbsConfig;
@@ -116,7 +121,7 @@ class PostingProcessorServiceImplTest {
                 eq("CBS-TXN-999"), eq("2026-04-19T10:00:00Z"),
                 isNull(), any(), any(), eq(false));
 
-        verify(postingRepo).update(argThat(p ->
+        verify(postingRepo).update(org.mockito.ArgumentMatchers.argThat(p ->
                 PostingStatus.ACSP.name().equals(p.getStatus()) && p.getReason() == null));
     }
 
@@ -148,7 +153,7 @@ class PostingProcessorServiceImplTest {
         assertThat(result.getFailures()).hasSize(1);
         assertThat(result.getFailures().get(0).getTargetSystem()).isEqualTo("CBS");
 
-        verify(postingRepo).update(argThat(p ->
+        verify(postingRepo).update(org.mockito.ArgumentMatchers.argThat(p ->
                 PostingStatus.PNDG.name().equals(p.getStatus())
                         && p.getReason() != null && p.getReason().contains("INSUFFICIENT_FUNDS")));
     }

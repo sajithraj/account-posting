@@ -1,4 +1,4 @@
-export type PostingStatus = 'PNDG' | 'ACSP' | 'RJCT' | 'RECEIVED';
+export type PostingStatus = 'PNDG' | 'ACSP' | 'RJCT' | 'RCVD';
 export type CreditDebitIndicator = 'CREDIT' | 'DEBIT';
 
 export interface Amount {
@@ -27,7 +27,7 @@ export interface PostingCreateResponse {
 }
 
 export interface LegResponse {
-    postingId: number;
+    postingId: string;
     transactionOrder: number;
     targetSystem: string;
     operation: string;
@@ -43,7 +43,7 @@ export interface LegResponse {
 }
 
 export interface AccountPostingResponse {
-    postingId: number;
+    postingId: string;
     sourceReferenceId: string;
     endToEndReferenceId: string;
     sourceName: string;

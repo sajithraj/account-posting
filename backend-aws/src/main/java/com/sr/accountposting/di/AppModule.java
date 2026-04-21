@@ -15,19 +15,6 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 
 import javax.inject.Singleton;
 
-/**
- * Dagger module for the backend-aws Lambda.
- *
- * <p>Binds service interfaces to their implementations and provides AWS SDK clients:
- * <ul>
- *   <li>{@code SqsClient} — used by {@link com.sr.accountposting.service.posting.AccountPostingServiceImpl}
- *       to publish async jobs to {@code PROCESSING_QUEUE_URL}.</li>
- *   <li>{@code SnsClient} — used by {@link com.sr.accountposting.handler.SqsHandler} to publish
- *       failure alerts to {@code SUPPORT_ALERT_TOPIC_ARN}.</li>
- * </ul>
- * AWS clients are initialised via {@link com.sr.accountposting.infra.AwsClientFactory} which reads
- * the endpoint, region, and credentials from environment variables (supports LocalStack override).
- */
 @Module
 public abstract class AppModule {
 

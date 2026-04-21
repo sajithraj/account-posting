@@ -32,8 +32,11 @@ resource "aws_lambda_function" "main" {
   memory_size      = var.lambda_memory_mb
   timeout          = var.lambda_timeout_seconds
 
-  snap_start {
-    apply_on = "PublishedVersions"
+  dynamic "snap_start" {
+    for_each = var.use_localstack ? [] : [1]
+    content {
+      apply_on = "PublishedVersions"
+    }
   }
 
   environment {
@@ -62,8 +65,11 @@ resource "aws_lambda_function" "ops" {
   memory_size      = var.lambda_memory_mb
   timeout          = var.lambda_timeout_seconds
 
-  snap_start {
-    apply_on = "PublishedVersions"
+  dynamic "snap_start" {
+    for_each = var.use_localstack ? [] : [1]
+    content {
+      apply_on = "PublishedVersions"
+    }
   }
 
   environment {
@@ -93,17 +99,37 @@ resource "aws_lambda_event_source_mapping" "sqs_trigger" {
 }
 
 resource "aws_lambda_permission" "api_gateway_invoke" {
+  count         = var.use_localstack ? 0 : 1
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.main.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.main[0].execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "ops_api_gateway_invoke" {
+  count         = var.use_localstack ? 0 : 1
   statement_id  = "AllowAPIGatewayInvokeOps"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.ops.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.main[0].execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "localstack_api_gateway_invoke" {
+  count         = var.use_localstack ? 1 : 0
+  statement_id  = "AllowLocalStackAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.main.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.localstack[0].execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "localstack_ops_api_gateway_invoke" {
+  count         = var.use_localstack ? 1 : 0
+  statement_id  = "AllowLocalStackAPIGatewayInvokeOps"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ops.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.localstack[0].execution_arn}/*/*"
 }

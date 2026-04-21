@@ -50,7 +50,7 @@ public class CBSAddHoldStrategy implements PostingStrategy {
         boolean success = "SUCCESS".equalsIgnoreCase(cbsStatus);
         String referenceId = String.valueOf(cbsResponse.get("transaction_index"));
 
-        log.info("CBS ADD_HOLD responded for e2e={} — status={} ref={}", request.getEndToEndReferenceId(), cbsStatus, referenceId);
+        log.info("CBS ADD_HOLD responded for e2e={} Ã¢â‚¬â€ status={} ref={}", request.getEndToEndReferenceId(), cbsStatus, referenceId);
         log.debug("CBS ADD_HOLD response payload: {}", responsePayloadJson);
         String postedTime = cbsResponse.get("posted_time") != null
                 ? String.valueOf(cbsResponse.get("posted_time")) : null;

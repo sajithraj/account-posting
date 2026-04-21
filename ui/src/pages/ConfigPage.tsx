@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {postingApi} from '../api/postingApi';
+import {getErrorMessage, postingApi} from '../api/postingApi';
 import type {PostingConfigRequest, PostingConfigResponse} from '../types/posting';
 
 const EMPTY_FORM: PostingConfigRequest = {
@@ -31,7 +31,7 @@ export default function ConfigPage() {
             queryClient.invalidateQueries({queryKey: ['configs']});
             closeForm();
         },
-        onError: (err: Error) => alert(`Failed to create: ${err.message}`),
+        onError: err => alert(`Failed to create: ${getErrorMessage(err)}`),
     });
 
     const updateMutation = useMutation({
@@ -41,7 +41,7 @@ export default function ConfigPage() {
             queryClient.invalidateQueries({queryKey: ['configs']});
             closeForm();
         },
-        onError: (err: Error) => alert(`Failed to update: ${err.message}`),
+        onError: err => alert(`Failed to update: ${getErrorMessage(err)}`),
     });
 
     const deleteMutation = useMutation({
@@ -51,7 +51,7 @@ export default function ConfigPage() {
             queryClient.invalidateQueries({queryKey: ['configs']});
             setDeleteConfirm(null);
         },
-        onError: (err: Error) => alert(`Failed to delete: ${err.message}`),
+        onError: err => alert(`Failed to delete: ${getErrorMessage(err)}`),
     });
 
     const openAdd = () => {

@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "backend-aws — Account Posting Creation API",
-    "description": "AWS Lambda API for posting creation and async job processing.\n\nHandles a single route:\n  POST /v3/payment/account-posting — validate, persist, and process (sync) or queue (async) a posting.\n\nAll other routes return HTTP 404 from this Lambda. Search, retry, config CRUD, and leg management are handled by backend-ops-aws.\n\nSync vs Async:\n- If all routing configs for the request_type have processingMode=ASYNC, the posting is queued to SQS and the response carries posting_status: ACSP.\n- If any config has processingMode=SYNC, the posting is processed inline before responding.",
-    "version": "1.0.0"
+    "description": "AWS Lambda API for posting creation and async job processing.\n\nHandles a single route:\n  POST /v3/payment/account-posting — validate, persist, and process (sync) or queue (async) a posting.\n\nAll other routes return HTTP 404 from this Lambda. Search, retry, config CRUD, and leg management are handled by backend-ops-aws.\n\nSync vs Async:\n- If all routing configs for the request_type have processingMode=ASYNC, the posting is queued to SQS and the response carries posting_status=ACSP with no legs.\n- If any config has processingMode=SYNC, the posting is processed inline and the response includes posting_status + trimmed leg results.\n\nResponse format: raw JSON (no {success, data, error} envelope).\nError format: {id, name, message}.",
+    "version": "2.0.0"
   },
   "servers": [
     {
@@ -16,17 +16,18 @@
         },
         "stage": {
           "default": "dev",
-          "enum": [
-            "dev",
-            "staging",
-            "prod"
-          ]
+          "enum": ["dev", "staging", "prod"]
         }
       }
     },
     {
-      "url": "http://localhost:4566",
-      "description": "LocalStack (integration tests)"
+      "url": "http://localhost:4566/restapis/{rest_api_id}/dev-local/_user_request_",
+      "description": "LocalStack",
+      "variables": {
+        "rest_api_id": {
+          "default": "xxxxxxxxxx"
+        }
+      }
     }
   ],
   "paths": {
@@ -77,6 +78,29 @@
                       "currency_code": "USD"
                     }
                   }
+                },
+                "rms_fed_return": {
+                  "summary": "RMS FED_RETURN with optional fields",
+                  "value": {
+                    "source_name": "RMS",
+                    "source_reference_id": "SRC-RMS-001",
+                    "end_to_end_reference_id": "E2E-RMS-001",
+                    "request_type": "FED_RETURN",
+                    "credit_debit_indicator": "CREDIT",
+                    "debtor_account": "2000100200",
+                    "creditor_account": "2000300400",
+                    "requested_execution_date": "2026-04-21",
+                    "remittance_information": "Fed wire return",
+                    "team_code": "OPS-01",
+                    "transaction_code": "TXN-9034",
+                    "branch": "BR-NYC",
+                    "cif": "CIF-12345",
+                    "customer_name": "John Doe",
+                    "amount": {
+                      "value": "250.00",
+                      "currency_code": "USD"
+                    }
+                  }
                 }
               }
             }
@@ -84,37 +108,41 @@
         },
         "responses": {
           "200": {
-            "description": "Posting accepted or processed",
+            "description": "Posting accepted or processed successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePostingResponse"
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/PostingResponseAsync" },
+                    { "$ref": "#/components/schemas/PostingResponseSync" }
+                  ]
                 },
                 "examples": {
                   "async_accepted": {
-                    "summary": "Async — queued to SQS",
+                    "summary": "Async — queued to SQS (no legs in response)",
                     "value": {
-                      "success": true,
-                      "data": {
-                        "posting_status": "ACSP",
-                        "end_to_end_reference_id": "E2E-001",
-                        "source_reference_id": "SRC-001",
-                        "processed_at": "2026-04-21T10:00:00Z"
-                      },
-                      "error": null
+                      "source_reference_id": "SRC-001",
+                      "end_to_end_reference_id": "E2E-001",
+                      "posting_status": "ACSP",
+                      "processed_at": "2026-04-21T10:00:00Z"
                     }
                   },
                   "sync_success": {
-                    "summary": "Sync — processed inline",
+                    "summary": "Sync — processed inline (includes legs)",
                     "value": {
-                      "success": true,
-                      "data": {
-                        "posting_status": "PNDG",
-                        "end_to_end_reference_id": "E2E-HOLD-001",
-                        "source_reference_id": "SRC-HOLD-001",
-                        "processed_at": "2026-04-21T10:01:00Z"
-                      },
-                      "error": null
+                      "source_reference_id": "SRC-HOLD-001",
+                      "end_to_end_reference_id": "E2E-HOLD-001",
+                      "posting_status": "ACSP",
+                      "processed_at": "2026-04-21T10:01:00Z",
+                      "legs": [
+                        {
+                          "target_system": "CBS",
+                          "account": "9000111222",
+                          "status": "SUCCESS",
+                          "reference_id": "6b9d8304-f09e-431f-a733-c28dc062039d",
+                          "posted_time": "2026-04-21T10:01:00.385Z"
+                        }
+                      ]
                     }
                   }
                 }
@@ -125,28 +153,20 @@
             "description": "Validation error or unknown request type",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
-                },
+                "schema": { "$ref": "#/components/schemas/ApiError" },
                 "examples": {
                   "missing_amount": {
                     "value": {
-                      "success": false,
-                      "data": null,
-                      "error": {
-                        "name": "VALIDATION_ERROR",
-                        "message": "Request validation failed: amount is required"
-                      }
+                      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "name": "VALIDATION_ERROR",
+                      "message": "Request validation failed: amount is required"
                     }
                   },
                   "unknown_type": {
                     "value": {
-                      "success": false,
-                      "data": null,
-                      "error": {
-                        "name": "UNKNOWN_REQUEST_TYPE",
-                        "message": "Unknown or unconfigured requestType: FOOBAR"
-                      }
+                      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "name": "UNKNOWN_REQUEST_TYPE",
+                      "message": "Unknown or unconfigured requestType: FOOBAR"
                     }
                   }
                 }
@@ -157,18 +177,13 @@
             "description": "Business rule violation",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
-                },
+                "schema": { "$ref": "#/components/schemas/ApiError" },
                 "examples": {
                   "duplicate": {
                     "value": {
-                      "success": false,
-                      "data": null,
-                      "error": {
-                        "name": "DUPLICATE_E2E_REF",
-                        "message": "Posting already exists for endToEndReferenceId: E2E-001"
-                      }
+                      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "name": "DUPLICATE_E2E_REF",
+                      "message": "Posting already exists for endToEndReferenceId: E2E-001"
                     }
                   }
                 }
@@ -179,9 +194,7 @@
             "description": "Technical error",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseError"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiError" }
               }
             }
           }
@@ -208,6 +221,7 @@
           "source_name": {
             "type": "string",
             "description": "Upstream system name. Must match the sourceName in routing config.",
+            "enum": ["IMX", "RMS", "STABLECOIN"],
             "example": "IMX"
           },
           "source_reference_id": {
@@ -217,20 +231,18 @@
           },
           "end_to_end_reference_id": {
             "type": "string",
-            "description": "End-to-end unique reference. Used for idempotency — duplicate submissions are rejected.",
+            "description": "End-to-end unique reference. Used for idempotency — duplicate submissions are rejected with 422.",
             "example": "E2E-001"
           },
           "request_type": {
             "type": "string",
             "description": "Identifies which routing config to use. Must be present in the config table.",
+            "enum": ["IMX_CBS_GL", "IMX_OBPM", "FED_RETURN", "GL_RETURN", "MCA_RETURN", "BUY_CUSTOMER_POSTING", "ADD_ACCOUNT_HOLD", "CUSTOMER_POSTING"],
             "example": "IMX_CBS_GL"
           },
           "credit_debit_indicator": {
             "type": "string",
-            "enum": [
-              "CREDIT",
-              "DEBIT"
-            ],
+            "enum": ["CREDIT", "DEBIT"],
             "example": "DEBIT"
           },
           "debtor_account": {
@@ -256,19 +268,41 @@
           },
           "amount": {
             "$ref": "#/components/schemas/Amount"
+          },
+          "team_code": {
+            "type": "string",
+            "description": "Optional team/department code for routing or audit.",
+            "example": "OPS-01"
+          },
+          "transaction_code": {
+            "type": "string",
+            "description": "Optional transaction code passed to the target system.",
+            "example": "TXN-9034"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Optional branch identifier.",
+            "example": "BR-NYC"
+          },
+          "cif": {
+            "type": "string",
+            "description": "Optional customer CIF (Customer Information File) number.",
+            "example": "CIF-12345"
+          },
+          "customer_name": {
+            "type": "string",
+            "description": "Optional customer name.",
+            "example": "John Doe"
           }
         }
       },
       "Amount": {
         "type": "object",
-        "required": [
-          "value",
-          "currency_code"
-        ],
+        "required": ["value", "currency_code"],
         "properties": {
           "value": {
             "type": "string",
-            "description": "Decimal amount as string. Must be > 0.0001.",
+            "description": "Decimal amount as string. Must be > 0.",
             "example": "5000.00"
           },
           "currency_code": {
@@ -280,23 +314,16 @@
           }
         }
       },
-      "PostingResponse": {
+      "PostingResponseAsync": {
         "type": "object",
+        "description": "Response for ASYNC postings — queued to SQS, no legs in response.",
         "properties": {
+          "source_reference_id": { "type": "string" },
+          "end_to_end_reference_id": { "type": "string" },
           "posting_status": {
             "type": "string",
-            "enum": [
-              "RECEIVED",
-              "PNDG",
-              "ACSP"
-            ],
-            "description": "ACSP — async accepted (queued to SQS). PNDG — sync processing started. RECEIVED — received but not yet processed."
-          },
-          "end_to_end_reference_id": {
-            "type": "string"
-          },
-          "source_reference_id": {
-            "type": "string"
+            "enum": ["ACSP"],
+            "description": "ACSP — posting accepted and queued to SQS for async processing."
           },
           "processed_at": {
             "type": "string",
@@ -304,9 +331,68 @@
           }
         }
       },
+      "PostingResponseSync": {
+        "type": "object",
+        "description": "Response for SYNC postings — processed inline, trimmed leg results included.",
+        "properties": {
+          "source_reference_id": { "type": "string" },
+          "end_to_end_reference_id": { "type": "string" },
+          "posting_status": {
+            "type": "string",
+            "enum": ["ACSP", "RJCT"],
+            "description": "ACSP — all legs succeeded. RJCT — one or more legs failed."
+          },
+          "processed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "legs": {
+            "type": "array",
+            "description": "Trimmed leg results. Only key outcome fields are returned.",
+            "items": {
+              "$ref": "#/components/schemas/SyncLegResult"
+            }
+          }
+        }
+      },
+      "SyncLegResult": {
+        "type": "object",
+        "description": "Trimmed leg result returned in sync posting response.",
+        "properties": {
+          "target_system": {
+            "type": "string",
+            "enum": ["CBS", "GL", "OBPM"]
+          },
+          "account": {
+            "type": "string",
+            "example": "9000111222"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SUCCESS", "FAILED"],
+            "description": "Outcome of this leg."
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "Reference ID returned by the target system.",
+            "example": "6b9d8304-f09e-431f-a733-c28dc062039d"
+          },
+          "posted_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the target system processed the leg."
+          }
+        }
+      },
       "ApiError": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique error trace ID.",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
           "name": {
             "type": "string",
             "description": "Error code.",
@@ -315,43 +401,6 @@
           "message": {
             "type": "string",
             "example": "Request validation failed: amount is required"
-          }
-        }
-      },
-      "ApiResponsePostingResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "data": {
-            "$ref": "#/components/schemas/PostingResponse"
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ApiError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ApiResponseError": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": false
-          },
-          "data": {
-            "type": "null",
-            "example": null
-          },
-          "error": {
-            "$ref": "#/components/schemas/ApiError"
           }
         }
       }

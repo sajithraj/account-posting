@@ -28,11 +28,23 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AccountPostingServiceImplTest {
+
+    private static final String POSTING_ID = "11111111-1111-1111-1111-111111111111";
+    private static final String POSTING_ID_2 = "22222222-2222-2222-2222-222222222222";
+    private static final String POSTING_ID_3 = "33333333-3333-3333-3333-333333333333";
+    private static final String MISSING_POSTING_ID = "99999999-9999-9999-9999-999999999999";
 
     @Mock
     private AccountPostingRepository postingRepo;
@@ -43,14 +55,10 @@ class AccountPostingServiceImplTest {
 
     private AccountPostingServiceImpl service;
 
-    private static final Long POSTING_ID = 100001L;
-
     @BeforeEach
     void setUp() {
         service = new AccountPostingServiceImpl(postingRepo, legRepo, sqsClient);
     }
-
-    // ─── findById ─────────────────────────────────────────────────────────────
 
     @Test
     void findById_existingPosting_returnsPostingWithLegs() {
@@ -89,24 +97,22 @@ class AccountPostingServiceImplTest {
 
     @Test
     void findById_missingPosting_throwsResourceNotFoundException() {
-        when(postingRepo.findById(anyLong())).thenReturn(Optional.empty());
+        when(postingRepo.findById(anyString())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findById(999L))
+        assertThatThrownBy(() -> service.findById(MISSING_POSTING_ID))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("999");
+                .hasMessageContaining(MISSING_POSTING_ID);
     }
-
-    // ─── search ───────────────────────────────────────────────────────────────
 
     @Test
     void search_byStatus_returnsMatchingPostings() {
-        AccountPostingEntity p1 = buildPosting(100001L, PostingStatus.PNDG, "E2E-001", "IMX");
-        AccountPostingEntity p2 = buildPosting(100002L, PostingStatus.PNDG, "E2E-002", "IMX");
+        AccountPostingEntity p1 = buildPosting(POSTING_ID, PostingStatus.PNDG, "E2E-001", "IMX");
+        AccountPostingEntity p2 = buildPosting(POSTING_ID_2, PostingStatus.PNDG, "E2E-002", "IMX");
 
         when(postingRepo.search(eq("PNDG"), any(), any(), any(), eq(10)))
                 .thenReturn(List.of(p1, p2));
-        when(legRepo.findByPostingId(100001L)).thenReturn(List.of());
-        when(legRepo.findByPostingId(100002L)).thenReturn(List.of());
+        when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of());
+        when(legRepo.findByPostingId(POSTING_ID_2)).thenReturn(List.of());
 
         PostingSearchRequest req = new PostingSearchRequest();
         req.setStatus("PNDG");
@@ -121,11 +127,11 @@ class AccountPostingServiceImplTest {
 
     @Test
     void search_bySourceName_returnsMatchingPostings() {
-        AccountPostingEntity p = buildPosting(100001L, PostingStatus.ACSP, "E2E-001", "RMS");
+        AccountPostingEntity p = buildPosting(POSTING_ID, PostingStatus.ACSP, "E2E-001", "RMS");
 
         when(postingRepo.search(any(), eq("RMS"), any(), any(), anyInt()))
                 .thenReturn(List.of(p));
-        when(legRepo.findByPostingId(100001L)).thenReturn(List.of());
+        when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of());
 
         PostingSearchRequest req = new PostingSearchRequest();
         req.setSourceName("RMS");
@@ -133,14 +139,14 @@ class AccountPostingServiceImplTest {
         List<PostingResponse> results = service.search(req);
 
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).getSourceReferenceId()).isEqualTo("SRC-100001");
+        assertThat(results.get(0).getSourceReferenceId()).isEqualTo("SRC-" + POSTING_ID);
     }
 
     @Test
     void search_defaultLimit_uses20WhenNotSpecified() {
         when(postingRepo.search(any(), any(), any(), any(), eq(20))).thenReturn(List.of());
 
-        service.search(new PostingSearchRequest()); // no limit set
+        service.search(new PostingSearchRequest());
 
         verify(postingRepo).search(any(), any(), any(), any(), eq(20));
     }
@@ -153,8 +159,6 @@ class AccountPostingServiceImplTest {
 
         assertThat(results).isEmpty();
     }
-
-    // ─── retry ────────────────────────────────────────────────────────────────
 
     @Test
     void retry_withSpecificIds_locksAndPublishesJobForEach() throws Exception {
@@ -185,9 +189,9 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_withNoIds_scansAllPndgAndReceived() {
-        AccountPostingEntity pndg1 = buildPosting(100001L, PostingStatus.PNDG, "E2E-001", "IMX");
-        AccountPostingEntity pndg2 = buildPosting(100002L, PostingStatus.PNDG, "E2E-002", "IMX");
-        AccountPostingEntity received = buildPosting(100003L, PostingStatus.RCVD, "E2E-003", "RMS");
+        AccountPostingEntity pndg1 = buildPosting(POSTING_ID, PostingStatus.PNDG, "E2E-001", "IMX");
+        AccountPostingEntity pndg2 = buildPosting(POSTING_ID_2, PostingStatus.PNDG, "E2E-002", "IMX");
+        AccountPostingEntity received = buildPosting(POSTING_ID_3, PostingStatus.RCVD, "E2E-003", "RMS");
 
         for (AccountPostingEntity p : List.of(pndg1, pndg2, received)) {
             p.setRequestPayload(JsonUtil.toJson(buildRequest("IMX_CBS_GL", p.getEndToEndReferenceId())));
@@ -195,14 +199,20 @@ class AccountPostingServiceImplTest {
 
         when(postingRepo.findByStatus(PostingStatus.PNDG.name())).thenReturn(List.of(pndg1, pndg2));
         when(postingRepo.findByStatus(PostingStatus.RCVD.name())).thenReturn(List.of(received));
-        when(postingRepo.findById(anyLong())).thenAnswer(inv -> {
-            Long id = inv.getArgument(0);
-            if (id.equals(100001L)) return Optional.of(pndg1);
-            if (id.equals(100002L)) return Optional.of(pndg2);
-            if (id.equals(100003L)) return Optional.of(received);
+        when(postingRepo.findById(anyString())).thenAnswer(inv -> {
+            String id = inv.getArgument(0);
+            if (id.equals(POSTING_ID)) {
+                return Optional.of(pndg1);
+            }
+            if (id.equals(POSTING_ID_2)) {
+                return Optional.of(pndg2);
+            }
+            if (id.equals(POSTING_ID_3)) {
+                return Optional.of(received);
+            }
             return Optional.empty();
         });
-        when(postingRepo.acquireRetryLock(anyLong(), anyLong())).thenReturn(true);
+        when(postingRepo.acquireRetryLock(anyString(), anyLong())).thenReturn(true);
 
         RetryRequest req = new RetryRequest();
         req.setRequestedBy("ops-admin");
@@ -235,10 +245,10 @@ class AccountPostingServiceImplTest {
 
     @Test
     void retry_postingNotFound_skippedWithoutError() {
-        when(postingRepo.findById(anyLong())).thenReturn(Optional.empty());
+        when(postingRepo.findById(anyString())).thenReturn(Optional.empty());
 
         RetryRequest req = new RetryRequest();
-        req.setPostingIds(List.of(999L));
+        req.setPostingIds(List.of(MISSING_POSTING_ID));
         req.setRequestedBy("ops-admin");
 
         RetryResponse response = service.retry(req);
@@ -248,9 +258,7 @@ class AccountPostingServiceImplTest {
         verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
-    private AccountPostingEntity buildPosting(Long id, PostingStatus status, String e2eRef, String source) {
+    private AccountPostingEntity buildPosting(String id, PostingStatus status, String e2eRef, String source) {
         AccountPostingEntity p = new AccountPostingEntity();
         p.setPostingId(id);
         p.setStatus(status.name());
@@ -262,7 +270,7 @@ class AccountPostingServiceImplTest {
         return p;
     }
 
-    private AccountPostingLegEntity buildLeg(Long postingId, int order, String targetSystem) {
+    private AccountPostingLegEntity buildLeg(String postingId, int order, String targetSystem) {
         AccountPostingLegEntity leg = new AccountPostingLegEntity();
         leg.setPostingId(postingId);
         leg.setTransactionOrder(order);

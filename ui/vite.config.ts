@@ -8,7 +8,7 @@ export default defineConfig({
         proxy: {
             // Forward /v2 calls to the account-posting backend during local dev
             '/v3': {
-                target: 'http://localhost:4566',
+                target: 'http://localhost:4566/restapis/9r2xy1g5ow/dev-local/_user_request_',
                 changeOrigin: true,
             },
         },

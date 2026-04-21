@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface AccountPostingService {
 
-    PostingResponse findById(Long postingId);
+    PostingResponse findById(String postingId);
 
     List<PostingResponse> search(PostingSearchRequest searchRequest);
 

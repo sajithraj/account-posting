@@ -25,13 +25,18 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SqsHandlerTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Long POSTING_ID = 100001L;
+    private static final String POSTING_ID = "11111111-1111-1111-1111-111111111111";
+    private static final String POSTING_ID_2 = "22222222-2222-2222-2222-222222222222";
     private static final String REQUEST_TYPE = "IMX_CBS_GL";
 
     @Mock
@@ -48,8 +53,6 @@ class SqsHandlerTest {
         handler = new SqsHandler(processor, configRepo, snsClient);
     }
 
-    // ─── Happy path ───────────────────────────────────────────────────────────
-
     @Test
     void handle_singleRecord_processorInvokedWithJob() throws Exception {
         PostingConfigEntity config = buildConfig(REQUEST_TYPE, 1, "CBS");
@@ -59,9 +62,9 @@ class SqsHandlerTest {
         handler.handle(sqsEvent(buildJobJson(POSTING_ID, REQUEST_TYPE)), null);
 
         verify(processor).process(
-                argThat(job -> job.getPostingId().equals(POSTING_ID)
+                org.mockito.ArgumentMatchers.argThat(job -> job.getPostingId().equals(POSTING_ID)
                         && job.getRequestMode() == RequestMode.NORM),
-                eq(List.of(config))
+                org.mockito.ArgumentMatchers.eq(List.of(config))
         );
         verifyNoInteractions(snsClient);
     }
@@ -72,10 +75,9 @@ class SqsHandlerTest {
         when(configRepo.findByRequestType(REQUEST_TYPE)).thenReturn(List.of(config));
         when(processor.process(any(), any())).thenReturn(acspResult());
 
-        Long postingId2 = 100002L;
         List<Map<String, Object>> records = new ArrayList<>();
         records.add(buildRecord("msg-1", buildJobJson(POSTING_ID, REQUEST_TYPE)));
-        records.add(buildRecord("msg-2", buildJobJson(postingId2, REQUEST_TYPE)));
+        records.add(buildRecord("msg-2", buildJobJson(POSTING_ID_2, REQUEST_TYPE)));
 
         handler.handle(Map.of("Records", records), null);
 
@@ -92,12 +94,10 @@ class SqsHandlerTest {
         handler.handle(sqsEvent(MAPPER.writeValueAsString(job)), null);
 
         verify(processor).process(
-                argThat(j -> j.getRequestMode() == RequestMode.RETRY),
+                org.mockito.ArgumentMatchers.argThat(j -> j.getRequestMode() == RequestMode.RETRY),
                 any()
         );
     }
-
-    // ─── Empty / null Records ─────────────────────────────────────────────────
 
     @Test
     void handle_noRecords_processorNeverCalled() {
@@ -113,8 +113,6 @@ class SqsHandlerTest {
         verifyNoInteractions(processor, snsClient);
     }
 
-    // ─── Config not found ─────────────────────────────────────────────────────
-
     @Test
     void handle_noConfigsForRequestType_processorSkippedAndSnsAlertPublished() throws Exception {
         when(configRepo.findByRequestType(REQUEST_TYPE)).thenReturn(List.of());
@@ -124,11 +122,9 @@ class SqsHandlerTest {
         verifyNoInteractions(processor);
         ArgumentCaptor<PublishRequest> snsCaptor = ArgumentCaptor.forClass(PublishRequest.class);
         verify(snsClient).publish(snsCaptor.capture());
-        assertThat(snsCaptor.getValue().message()).contains(String.valueOf(POSTING_ID));
+        assertThat(snsCaptor.getValue().message()).contains(POSTING_ID);
         assertThat(snsCaptor.getValue().message()).contains("No routing configs");
     }
-
-    // ─── Processor throws ────────────────────────────────────────────────────
 
     @Test
     void handle_processorThrowsRuntimeException_exceptionCaughtRemainingRecordsContinue() throws Exception {
@@ -138,16 +134,13 @@ class SqsHandlerTest {
 
         List<Map<String, Object>> records = List.of(
                 buildRecord("msg-1", buildJobJson(POSTING_ID, REQUEST_TYPE)),
-                buildRecord("msg-2", buildJobJson(100002L, REQUEST_TYPE))
+                buildRecord("msg-2", buildJobJson(POSTING_ID_2, REQUEST_TYPE))
         );
 
-        // Must not throw — both records attempted
         handler.handle(Map.of("Records", records), null);
 
         verify(processor, times(2)).process(any(), any());
     }
-
-    // ─── Processing failures → SNS alert ─────────────────────────────────────
 
     @Test
     void handle_processorReturnsFailures_snsAlertPublishedForEachFailure() throws Exception {
@@ -184,15 +177,11 @@ class SqsHandlerTest {
 
     @Test
     void handle_snsPublishFails_noExceptionPropagated() throws Exception {
-        PostingConfigEntity config = buildConfig(REQUEST_TYPE, 1, "CBS");
         when(configRepo.findByRequestType(REQUEST_TYPE)).thenReturn(List.of());
         doThrow(new RuntimeException("SNS unavailable")).when(snsClient).publish(any(PublishRequest.class));
 
-        // Must not throw even if SNS publish fails
         handler.handle(sqsEvent(buildJobJson(POSTING_ID, REQUEST_TYPE)), null);
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private Map<String, Object> sqsEvent(String bodyJson) {
         return Map.of("Records", List.of(buildRecord("msg-001", bodyJson)));
@@ -206,11 +195,11 @@ class SqsHandlerTest {
         return record;
     }
 
-    private String buildJobJson(Long postingId, String requestType) throws Exception {
+    private String buildJobJson(String postingId, String requestType) throws Exception {
         return MAPPER.writeValueAsString(buildJob(postingId, requestType, RequestMode.NORM));
     }
 
-    private PostingJob buildJob(Long postingId, String requestType, RequestMode mode) {
+    private PostingJob buildJob(String postingId, String requestType, RequestMode mode) {
         IncomingPostingRequest request = new IncomingPostingRequest();
         request.setSourceName("IMX");
         request.setSourceReferenceId("SRC-" + postingId);

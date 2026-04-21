@@ -50,7 +50,7 @@ public class OBPMPostingStrategy implements PostingStrategy {
         String postedTime = obpmResponse.get("posted_time") != null
                 ? String.valueOf(obpmResponse.get("posted_time")) : null;
 
-        log.info("OBPM responded for e2e={} — status={} ref={}", request.getEndToEndReferenceId(), obpmStatus, referenceId);
+        log.info("OBPM responded for e2e={} Ã¢â‚¬â€ status={} ref={}", request.getEndToEndReferenceId(), obpmStatus, referenceId);
         log.debug("OBPM response payload: {}", responsePayloadJson);
 
         return ExternalCallResult.builder()

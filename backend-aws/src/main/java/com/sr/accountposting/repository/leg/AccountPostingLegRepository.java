@@ -35,7 +35,7 @@ public class AccountPostingLegRepository {
         table.updateItem(leg);
     }
 
-    public List<AccountPostingLegEntity> findByPostingId(Long postingId) {
+    public List<AccountPostingLegEntity> findByPostingId(String postingId) {
         QueryConditional condition = QueryConditional.keyEqualTo(
                 Key.builder().partitionValue(postingId).build()
         );
@@ -44,14 +44,14 @@ public class AccountPostingLegRepository {
         return results;
     }
 
-    public Optional<AccountPostingLegEntity> findByPostingIdAndOrder(Long postingId, Integer transactionOrder) {
+    public Optional<AccountPostingLegEntity> findByPostingIdAndOrder(String postingId, Integer transactionOrder) {
         AccountPostingLegEntity result = table.getItem(
                 Key.builder().partitionValue(postingId).sortValue(transactionOrder).build()
         );
         return Optional.ofNullable(result);
     }
 
-    public List<AccountPostingLegEntity> findNonSuccessByPostingId(Long postingId) {
+    public List<AccountPostingLegEntity> findNonSuccessByPostingId(String postingId) {
         return findByPostingId(postingId).stream()
                 .filter(leg -> !"SUCCESS".equals(leg.getStatus()))
                 .collect(Collectors.toList());

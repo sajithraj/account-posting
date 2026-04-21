@@ -17,26 +17,24 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AccountPostingLegServiceImplTest {
 
+    private static final String POSTING_ID = "11111111-1111-1111-1111-111111111111";
+
     @Mock
     private AccountPostingLegRepository legRepo;
 
     private AccountPostingLegServiceImpl service;
 
-    private static final Long POSTING_ID = 100001L;
-
     @BeforeEach
     void setUp() {
         service = new AccountPostingLegServiceImpl(legRepo);
     }
-
-    // ─── listLegs ─────────────────────────────────────────────────────────────
 
     @Test
     void listLegs_multipleLegs_returnsAllMappedToResponse() {
@@ -56,7 +54,7 @@ class AccountPostingLegServiceImplTest {
 
     @Test
     void listLegs_noLegs_returnsEmptyList() {
-        when(legRepo.findByPostingId(anyLong())).thenReturn(List.of());
+        when(legRepo.findByPostingId(anyString())).thenReturn(List.of());
 
         List<LegResponse> legs = service.listLegs(POSTING_ID);
 
@@ -88,8 +86,6 @@ class AccountPostingLegServiceImplTest {
         assertThat(response.getOperation()).isEqualTo("POSTING");
     }
 
-    // ─── getLeg ───────────────────────────────────────────────────────────────
-
     @Test
     void getLeg_existingLeg_returnsMappedResponse() {
         AccountPostingLegEntity leg = buildLeg(POSTING_ID, 1, "GL", "ACSP");
@@ -107,15 +103,13 @@ class AccountPostingLegServiceImplTest {
 
     @Test
     void getLeg_notFound_throwsResourceNotFoundException() {
-        when(legRepo.findByPostingIdAndOrder(anyLong(), anyInt())).thenReturn(Optional.empty());
+        when(legRepo.findByPostingIdAndOrder(anyString(), anyInt())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getLeg(POSTING_ID, 99))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining(String.valueOf(POSTING_ID))
+                .hasMessageContaining(POSTING_ID)
                 .hasMessageContaining("99");
     }
-
-    // ─── manualUpdateLeg ──────────────────────────────────────────────────────
 
     @Test
     void manualUpdateLeg_updatesStatusReasonModeAndRequestedBy() {
@@ -147,16 +141,16 @@ class AccountPostingLegServiceImplTest {
         ArgumentCaptor<AccountPostingLegEntity> captor = ArgumentCaptor.forClass(AccountPostingLegEntity.class);
         verify(legRepo).update(captor.capture());
 
-        assertThat(captor.getValue().getAttemptNumber()).isEqualTo(3); // unchanged
+        assertThat(captor.getValue().getAttemptNumber()).isEqualTo(3);
     }
 
     @Test
     void manualUpdateLeg_legNotFound_throwsResourceNotFoundException() {
-        when(legRepo.findByPostingIdAndOrder(anyLong(), anyInt())).thenReturn(Optional.empty());
+        when(legRepo.findByPostingIdAndOrder(anyString(), anyInt())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.manualUpdateLeg(POSTING_ID, 99, "SUCCESS", "reason", "admin"))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining(String.valueOf(POSTING_ID))
+                .hasMessageContaining(POSTING_ID)
                 .hasMessageContaining("99");
     }
 
@@ -172,15 +166,12 @@ class AccountPostingLegServiceImplTest {
         ArgumentCaptor<AccountPostingLegEntity> captor = ArgumentCaptor.forClass(AccountPostingLegEntity.class);
         verify(legRepo).update(captor.capture());
 
-        // Fields not touched by manualUpdate should remain
         assertThat(captor.getValue().getReferenceId()).isEqualTo("CBS-TXN-ORIGINAL");
         assertThat(captor.getValue().getPostedTime()).isEqualTo("2026-04-21T08:00:00Z");
         assertThat(captor.getValue().getTargetSystem()).isEqualTo("CBS");
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
-    private AccountPostingLegEntity buildLeg(Long postingId, int order, String targetSystem, String status) {
+    private AccountPostingLegEntity buildLeg(String postingId, int order, String targetSystem, String status) {
         AccountPostingLegEntity leg = new AccountPostingLegEntity();
         leg.setPostingId(postingId);
         leg.setTransactionOrder(order);

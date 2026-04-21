@@ -8,7 +8,7 @@ resource "aws_dynamodb_table" "account_posting" {
 
   attribute {
     name = "postingId"
-    type = "N"
+    type = "S"
   }
 
   attribute {
@@ -80,7 +80,7 @@ resource "aws_dynamodb_table" "account_posting_leg" {
 
   attribute {
     name = "postingId"
-    type = "N"
+    type = "S"
   }
 
   attribute {

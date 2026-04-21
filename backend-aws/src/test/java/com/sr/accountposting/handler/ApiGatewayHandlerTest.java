@@ -55,10 +55,8 @@ class ApiGatewayHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(200);
         Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
-        assertThat(body.get("success")).isEqualTo(true);
-        Map<?, ?> data = (Map<?, ?>) body.get("data");
-        assertThat(data.get("end_to_end_reference_id")).isEqualTo("E2E-001");
-        assertThat(data.get("posting_status")).isEqualTo("ACSP");
+        assertThat(body.get("end_to_end_reference_id")).isEqualTo("E2E-001");
+        assertThat(body.get("posting_status")).isEqualTo("ACSP");
         verify(postingService).create(any(IncomingPostingRequest.class));
     }
 
@@ -72,8 +70,8 @@ class ApiGatewayHandlerTest {
         APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
-        Map<?, ?> data = (Map<?, ?>) MAPPER.readValue(response.getBody(), Map.class).get("data");
-        assertThat(data.get("posting_status")).isEqualTo("ACSP");
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat(body.get("posting_status")).isEqualTo("ACSP");
     }
 
     @Test
@@ -86,8 +84,8 @@ class ApiGatewayHandlerTest {
         APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
-        Map<?, ?> data = (Map<?, ?>) MAPPER.readValue(response.getBody(), Map.class).get("data");
-        assertThat(data.get("posting_status")).isEqualTo("PNDG");
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat(body.get("posting_status")).isEqualTo("PNDG");
     }
 
     @Test
@@ -99,9 +97,7 @@ class ApiGatewayHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(422);
         Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
-        assertThat(body.get("success")).isEqualTo(false);
-        Map<?, ?> error = (Map<?, ?>) body.get("error");
-        assertThat(error.get("name")).isEqualTo("DUPLICATE_E2E_REF");
+        assertThat(body.get("name")).isEqualTo("DUPLICATE_E2E_REF");
     }
 
     @Test
@@ -112,8 +108,8 @@ class ApiGatewayHandlerTest {
         APIGatewayV2HTTPResponse response = handler.handle(apiEvent("POST", BASE, postingBody()), null);
 
         assertThat(response.getStatusCode()).isEqualTo(400);
-        Map<?, ?> error = (Map<?, ?>) MAPPER.readValue(response.getBody(), Map.class).get("error");
-        assertThat(error.get("name")).isEqualTo("UNKNOWN_REQUEST_TYPE");
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat(body.get("name")).isEqualTo("UNKNOWN_REQUEST_TYPE");
     }
 
     @Test
@@ -135,7 +131,7 @@ class ApiGatewayHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(500);
         Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
-        assertThat(body.get("success")).isEqualTo(false);
+        assertThat(body.get("name")).isEqualTo("SERVICE_UNAVAILABLE");
     }
 
     // ─── Routes not in backend-aws ────────────────────────────────────────────

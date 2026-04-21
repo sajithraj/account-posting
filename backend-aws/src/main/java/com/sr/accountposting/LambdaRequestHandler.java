@@ -13,33 +13,10 @@ import com.sr.accountposting.handler.SqsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * AWS Lambda entry point for the posting-creation Lambda (account-posting-aws).
- *
- * <p>This handler is registered as the Lambda function handler in AWS. It accepts two event types:
- * <ul>
- *   <li><b>API Gateway V2 HTTP</b> — forwarded to {@link com.sr.accountposting.handler.ApiGatewayHandler}.
- *       Only {@code POST /v3/payment/account-posting} is handled here; all other routes return 404.</li>
- *   <li><b>SQS</b> — forwarded to {@link com.sr.accountposting.handler.SqsHandler}.
- *       The Lambda is triggered by the {@code PROCESSING_QUEUE_URL} queue. Each record in the batch is
- *       processed independently so a single failure does not poison the entire batch.</li>
- * </ul>
- *
- * <p>Dagger component is initialised once (static init) so it is reused across warm invocations.
- *
- * <p>Required environment variables:
- * <pre>
- *   POSTING_TABLE_NAME       DynamoDB table for account_posting rows
- *   LEG_TABLE_NAME           DynamoDB table for account_posting_leg rows
- *   CONFIG_TABLE_NAME        DynamoDB table for posting_config rows
- *   PROCESSING_QUEUE_URL     SQS queue URL — jobs published here for async/retry processing
- *   SUPPORT_ALERT_TOPIC_ARN  SNS topic ARN — failure alerts published by SqsHandler
- *   AWS_ACCOUNT_REGION       AWS region (e.g. ap-southeast-1)
- * </pre>
- */
 public class LambdaRequestHandler implements RequestHandler<Map<String, Object>, Object> {
 
     private static final Logger log = LoggerFactory.getLogger(LambdaRequestHandler.class);
@@ -65,7 +42,8 @@ public class LambdaRequestHandler implements RequestHandler<Map<String, Object>,
                 return null;
             } else {
                 log.info("Event detected: API Gateway");
-                String json = EVENT_MAPPER.writeValueAsString(event);
+                Map<String, Object> normalizedEvent = normalizeApiGatewayEvent(event);
+                String json = EVENT_MAPPER.writeValueAsString(normalizedEvent);
                 APIGatewayV2HTTPEvent apiEvent = EVENT_MAPPER.readValue(json, APIGatewayV2HTTPEvent.class);
                 APIGatewayV2HTTPResponse response = apiGatewayHandler.handle(apiEvent, context);
                 return EVENT_MAPPER.convertValue(response, Map.class);
@@ -86,5 +64,60 @@ public class LambdaRequestHandler implements RequestHandler<Map<String, Object>,
             }
         }
         return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> normalizeApiGatewayEvent(Map<String, Object> event) {
+        Object requestContext = event.get("requestContext");
+        if (requestContext instanceof Map<?, ?> requestContextMap
+                && requestContextMap.get("http") instanceof Map<?, ?>) {
+            return event;
+        }
+
+        if (!event.containsKey("httpMethod") || !event.containsKey("path")) {
+            return event;
+        }
+
+        Map<String, Object> normalized = new HashMap<>();
+        Map<String, Object> normalizedRequestContext = new HashMap<>();
+        Map<String, Object> http = new HashMap<>();
+        Map<String, Object> headers = event.get("headers") instanceof Map<?, ?> headerMap
+                ? new HashMap<>((Map<String, Object>) headerMap)
+                : new HashMap<>();
+
+        String method = String.valueOf(event.get("httpMethod"));
+        String path = String.valueOf(event.get("path"));
+        String sourceIp = "";
+        String userAgent = "";
+
+        if (requestContext instanceof Map<?, ?> requestContextMap) {
+            Object identity = requestContextMap.get("identity");
+            if (identity instanceof Map<?, ?> identityMap) {
+                sourceIp = stringValue(identityMap.get("sourceIp"));
+                userAgent = stringValue(identityMap.get("userAgent"));
+            }
+        }
+
+        http.put("method", method);
+        http.put("path", path);
+        http.put("sourceIp", sourceIp);
+        http.put("userAgent", userAgent);
+
+        normalizedRequestContext.put("http", http);
+        normalized.put("version", "2.0");
+        normalized.put("routeKey", "$default");
+        normalized.put("rawPath", path);
+        normalized.put("rawQueryString", "");
+        normalized.put("headers", headers);
+        normalized.put("queryStringParameters", event.get("queryStringParameters"));
+        normalized.put("pathParameters", event.get("pathParameters"));
+        normalized.put("body", event.get("body"));
+        normalized.put("isBase64Encoded", Boolean.TRUE.equals(event.get("isBase64Encoded")));
+        normalized.put("requestContext", normalizedRequestContext);
+        return normalized;
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 }

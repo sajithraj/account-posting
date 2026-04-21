@@ -22,7 +22,7 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public void manualUpdateLeg(Long postingId, int transactionOrder,
+    public void manualUpdateLeg(String postingId, int transactionOrder,
                                 String status, String reason, String requestedBy) {
         AccountPostingLegEntity leg = legRepo.findByPostingIdAndOrder(postingId, transactionOrder)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -37,13 +37,13 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public List<LegResponse> listLegs(Long postingId) {
+    public List<LegResponse> listLegs(String postingId) {
         return legRepo.findByPostingId(postingId).stream()
                 .map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
-    public LegResponse getLeg(Long postingId, int transactionOrder) {
+    public LegResponse getLeg(String postingId, int transactionOrder) {
         AccountPostingLegEntity leg = legRepo.findByPostingIdAndOrder(postingId, transactionOrder)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Leg not found postingId=" + postingId + " order=" + transactionOrder));

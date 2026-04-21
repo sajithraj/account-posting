@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useMutation} from '@tanstack/react-query';
-import {postingApi} from '../api/postingApi';
+import {getErrorMessage, postingApi} from '../api/postingApi';
 import type {AccountPostingRequest, CreditDebitIndicator} from '../types/posting';
 
 const empty: AccountPostingRequest = {
@@ -25,7 +25,7 @@ export default function CreatePostingPage() {
     const mutation = useMutation({
         mutationFn: postingApi.create,
         onSuccess: () => navigate('/'),
-        onError: (err: Error) => setErrors([err.message]),
+        onError: err => setErrors([getErrorMessage(err)]),
     });
 
     const set = (field: keyof Omit<AccountPostingRequest, 'amount'>) =>

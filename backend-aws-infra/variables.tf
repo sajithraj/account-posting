@@ -4,6 +4,18 @@ variable "aws_region" {
   default     = "ap-southeast-1"
 }
 
+variable "use_localstack" {
+  description = "Use LocalStack endpoints instead of real AWS"
+  type        = bool
+  default     = false
+}
+
+variable "localstack_endpoint" {
+  description = "Base endpoint for LocalStack services"
+  type        = string
+  default     = "http://localhost:4566"
+}
+
 variable "project_name" {
   description = "Project name used as resource name prefix"
   type        = string

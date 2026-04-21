@@ -4,6 +4,7 @@ const colours: Record<PostingStatus, { bg: string; text: string }> = {
     PNDG: {bg: '#fff3cd', text: '#856404'},
     ACSP: {bg: '#d1e7dd', text: '#0a3622'},
     RJCT: {bg: '#f8d7da', text: '#58151c'},
+    RCVD: {bg: '#dbeafe', text: '#1d4ed8'},
 };
 
 export default function StatusBadge({status}: { status: PostingStatus }) {

@@ -9,7 +9,7 @@ import java.util.List;
 public class RetryRequest {
 
     @JsonProperty("posting_ids")
-    private List<Long> postingIds;
+    private List<String> postingIds;
 
     @JsonProperty("requested_by")
     private String requestedBy;

@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 @Builder
 public class ExternalCallResult {
-    private LegStatus status;      // SUCCESS or FAILED
+    private LegStatus status;
     private String referenceId;
     private String postedTime;
     private String reason;

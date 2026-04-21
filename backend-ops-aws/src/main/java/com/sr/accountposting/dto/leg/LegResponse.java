@@ -11,7 +11,7 @@ import lombok.Data;
 public class LegResponse {
 
     @JsonProperty("posting_id")
-    private Long postingId;
+    private String postingId;
 
     @JsonProperty("transaction_order")
     private Integer transactionOrder;

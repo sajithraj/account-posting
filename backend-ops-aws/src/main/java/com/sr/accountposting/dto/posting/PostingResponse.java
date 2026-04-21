@@ -14,7 +14,7 @@ import java.util.List;
 public class PostingResponse {
 
     @JsonProperty("posting_id")
-    private Long postingId;
+    private String postingId;
 
     @JsonProperty("source_reference_id")
     private String sourceReferenceId;

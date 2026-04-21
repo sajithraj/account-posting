@@ -4,6 +4,8 @@
 aws_region   = "ap-southeast-1"
 environment  = "dev"
 project_name = "account-posting"
+use_localstack = false
+localstack_endpoint = "http://localhost:4566"
 
 # Path to the fat JAR built by: cd backend-aws && mvn clean package
 lambda_jar_path = "../backend-aws/target/account-posting-aws.jar"

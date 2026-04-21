@@ -27,27 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Posting query and retry service for the backend-ops-aws Lambda.
- *
- * <p>Responsibilities:
- * <ul>
- *   <li>{@code findById} — fetch a single posting from {@code POSTING_TABLE_NAME} and join its legs
- *       from {@code LEG_TABLE_NAME}.</li>
- *   <li>{@code search} — scan {@code POSTING_TABLE_NAME} with optional filters (status, sourceName,
- *       date range, limit). Legs are joined for each result row.</li>
- *   <li>{@code retry} — for each candidate posting (explicit IDs or all PNDG/RCVD):
- *     <ol>
- *       <li>Attempt to acquire a retry lock via {@code acquireRetryLock} (DynamoDB conditional write).</li>
- *       <li>If locked: re-publish a {@link com.sr.accountposting.dto.posting.PostingJob} with mode
- *           {@code RETRY} to {@code PROCESSING_QUEUE_URL} (SQS).</li>
- *       <li>If lock already held: increment skipped count, continue.</li>
- *     </ol>
- *   </li>
- * </ul>
- *
- * <p>Note: this Lambda does NOT create new postings — that belongs to {@code backend-aws}.
- */
 @Singleton
 public class AccountPostingServiceImpl implements AccountPostingService {
 
@@ -67,7 +46,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
     }
 
     @Override
-    public PostingResponse findById(Long postingId) {
+    public PostingResponse findById(String postingId) {
         log.info("findById postingId={}", postingId);
         AccountPostingEntity posting = postingRepo.findById(postingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Posting not found: " + postingId));
@@ -94,13 +73,13 @@ public class AccountPostingServiceImpl implements AccountPostingService {
 
     @Override
     public RetryResponse retry(RetryRequest request) {
-        List<Long> candidates;
+        List<String> candidates;
 
         if (request.getPostingIds() != null && !request.getPostingIds().isEmpty()) {
             candidates = request.getPostingIds();
         } else {
             List<AccountPostingEntity> pndg = postingRepo.findByStatus(PostingStatus.PNDG.name());
-            List<AccountPostingEntity> received = postingRepo.findByStatus(PostingStatus.RCVD.name());
+            List<AccountPostingEntity> received = postingRepo.findByStatus("RCVD");
             candidates = new ArrayList<>();
             pndg.forEach(p -> candidates.add(p.getPostingId()));
             received.forEach(p -> candidates.add(p.getPostingId()));
@@ -109,7 +88,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         int queued = 0;
         int skipped = 0;
 
-        for (Long postingId : candidates) {
+        for (String postingId : candidates) {
             AccountPostingEntity posting = postingRepo.findById(postingId).orElse(null);
             if (posting == null) {
                 skipped++;
@@ -135,7 +114,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
             queued++;
         }
 
-        log.info("Retry request by '{}' — {} candidates, {} queued for processing, {} skipped (lock held)",
+        log.info("Retry request by '{}' Ã¢â‚¬â€ {} candidates, {} queued for processing, {} skipped (lock held)",
                 request.getRequestedBy(), candidates.size(), queued, skipped);
 
         return RetryResponse.builder()

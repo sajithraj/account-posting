@@ -26,6 +26,8 @@ resource "aws_cloudwatch_log_group" "api_gateway" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  count = var.use_localstack ? 0 : 1
+
   alarm_name          = "${local.name_prefix}-lambda-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
@@ -49,6 +51,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "ops_lambda_errors" {
+  count = var.use_localstack ? 0 : 1
+
   alarm_name          = "${local.name_prefix}-ops-lambda-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1

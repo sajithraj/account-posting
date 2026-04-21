@@ -26,20 +26,15 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * End-to-end integration tests for backend-ops-aws (dashboard operations).
- * <p>
- * Run via:  mvn test -Plocalstack
- * Or right-click in IDE — the static block sets all required system properties.
- * <p>
- * Seed strategy:
- * - Configs : seeded via POST /config (ops endpoint)
- * - Postings: written directly to DynamoDB (POST create lives in backend-aws)
- * - Legs    : written directly to DynamoDB
- */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LocalStackIntegrationTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String BASE = "/v3/payment/account-posting";
+    private static final String ACSP_POSTING_ID = "88800000-0000-0000-0000-000000000001";
+    private static final String PNDG_POSTING_ID = "88800000-0000-0000-0000-000000000002";
+    private static final String MISSING_POSTING_ID = "99999999-9999-9999-9999-999999999999";
 
     static {
         if (System.getenv("AWS_ACCESS_KEY_ID") == null) {
@@ -50,18 +45,9 @@ class LocalStackIntegrationTest {
             System.setProperty("POSTING_TABLE_NAME", "account-posting");
             System.setProperty("LEG_TABLE_NAME", "account-posting-leg");
             System.setProperty("CONFIG_TABLE_NAME", "account-posting-config");
-            System.setProperty("PROCESSING_QUEUE_URL",
-                    "http://localhost:4566/000000000000/posting-queue");
+            System.setProperty("PROCESSING_QUEUE_URL", "http://localhost:4566/000000000000/posting-queue");
         }
     }
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String BASE = "/v3/payment/account-posting";
-    private static final String QUEUE_URL = "http://localhost:4566/000000000000/posting-queue";
-
-    // Seeded posting IDs — stable across test run
-    private static final Long ACSP_POSTING_ID = 888_000_000_001L;
-    private static final Long PNDG_POSTING_ID = 888_000_000_002L;
 
     private LambdaRequestHandler handler;
     private SqsClient sqsClient;
@@ -93,10 +79,8 @@ class LocalStackIntegrationTest {
                         .build())
                 .build();
 
-        // Seed configs via POST /config (ops endpoint)
         seedConfigs();
 
-        // Seed postings + legs directly via DynamoDB
         DynamoDbTable<AccountPostingEntity> postingTbl =
                 enhancedClient.table(postingTable, TableSchema.fromBean(AccountPostingEntity.class));
         DynamoDbTable<AccountPostingLegEntity> legTbl =
@@ -109,8 +93,6 @@ class LocalStackIntegrationTest {
         seedLeg(legTbl, ACSP_POSTING_ID, 2, "GL", "ACSP", "GL-TXN-001");
         seedLeg(legTbl, PNDG_POSTING_ID, 1, "OBPM", "FAILED", null);
     }
-
-    // ─── Scenario 1: Config CRUD ──────────────────────────────────────────────
 
     @Test
     @Order(1)
@@ -142,7 +124,7 @@ class LocalStackIntegrationTest {
         body.put("processing_mode", "ASYNC");
 
         var r = invoke("POST", BASE + "/config", body);
-        assertThat(r.status).isIn(201, 422); // 422 = already exists from previous run
+        assertThat(r.status).isIn(201, 422);
     }
 
     @Test
@@ -172,6 +154,7 @@ class LocalStackIntegrationTest {
         var r = invoke("PUT", BASE + "/config/IMX_CBS_GL/1", body);
         assertThat(r.status).isEqualTo(200);
         assertThat(r.success).isTrue();
+        assertThat(((Map<?, ?>) r.data).get("operation")).isEqualTo("POSTING_UPDATED");
     }
 
     @Test
@@ -185,7 +168,6 @@ class LocalStackIntegrationTest {
     @Test
     @Order(7)
     void deleteConfig_existingConfig_returns204() throws Exception {
-        // Create a throwaway config first
         Map<String, Object> create = new HashMap<>();
         create.put("request_type", "TEMP_DELETE_TYPE");
         create.put("order_seq", 99);
@@ -206,8 +188,6 @@ class LocalStackIntegrationTest {
         assertThat(r.status).isEqualTo(404);
     }
 
-    // ─── Scenario 2: Find by ID ───────────────────────────────────────────────
-
     @Test
     @Order(9)
     @SuppressWarnings("unchecked")
@@ -226,12 +206,10 @@ class LocalStackIntegrationTest {
     @Test
     @Order(10)
     void findById_nonExistentPosting_returns404() throws Exception {
-        var r = invoke("GET", BASE + "/999999999999", null);
+        var r = invoke("GET", BASE + "/" + MISSING_POSTING_ID, null);
         assertThat(r.status).isEqualTo(404);
         assertThat(r.success).isFalse();
     }
-
-    // ─── Scenario 3: Search ───────────────────────────────────────────────────
 
     @Test
     @Order(11)
@@ -267,8 +245,6 @@ class LocalStackIntegrationTest {
         assertThat(r.status).isEqualTo(200);
     }
 
-    // ─── Scenario 4: Retry ────────────────────────────────────────────────────
-
     @Test
     @Order(14)
     @SuppressWarnings("unchecked")
@@ -288,7 +264,6 @@ class LocalStackIntegrationTest {
     @Order(15)
     @SuppressWarnings("unchecked")
     void retry_withSpecificPostingId_queuesOnlyThatPosting() throws Exception {
-        // Clear any residual lock by using a fresh retry
         Map<String, Object> body = new HashMap<>();
         body.put("posting_ids", List.of(PNDG_POSTING_ID));
         body.put("requested_by", "integration-test");
@@ -297,13 +272,10 @@ class LocalStackIntegrationTest {
         assertThat(r.status).isEqualTo(200);
         Map<String, Object> data = (Map<String, Object>) r.data;
         assertThat(data.get("total_postings")).isEqualTo(1);
-        // queued=1 or skippedLocked=1 (if lock acquired in previous test) — both valid
         int queued = (int) data.get("queued");
         int skipped = (int) data.get("skipped_locked");
         assertThat(queued + skipped).isEqualTo(1);
     }
-
-    // ─── Scenario 5: Legs ────────────────────────────────────────────────────
 
     @Test
     @Order(16)
@@ -367,8 +339,6 @@ class LocalStackIntegrationTest {
         assertThat(r.status).isEqualTo(404);
     }
 
-    // ─── Scenario 6: Routes not in backend-ops-aws ───────────────────────────
-
     @Test
     @Order(21)
     void createPosting_notHandledByOpsLambda_returns404() throws Exception {
@@ -380,8 +350,6 @@ class LocalStackIntegrationTest {
         var r = invoke("POST", BASE, body);
         assertThat(r.status).isEqualTo(404);
     }
-
-    // ─── Seed helpers ─────────────────────────────────────────────────────────
 
     private void seedConfigs() throws Exception {
         seedConfig("IMX_CBS_GL", 1, "IMX", "CBS", "POSTING", "ASYNC");
@@ -401,11 +369,11 @@ class LocalStackIntegrationTest {
         var r = invoke("POST", BASE + "/config", body);
         assertThat(r.status)
                 .as("Seed config %s orderSeq=%d", requestType, orderSeq)
-                .isIn(201, 422); // 422 = already exists — acceptable
+                .isIn(201, 422);
     }
 
     private void seedPosting(DynamoDbTable<AccountPostingEntity> table,
-                             Long postingId, PostingStatus status, String e2eRef, String sourceName) {
+                             String postingId, PostingStatus status, String e2eRef, String sourceName) {
         AccountPostingEntity p = new AccountPostingEntity();
         p.setPostingId(postingId);
         p.setStatus(status.name());
@@ -423,9 +391,8 @@ class LocalStackIntegrationTest {
         p.setUpdatedAt("2026-04-21T00:00:00Z");
         p.setCreatedBy("SEED");
         p.setUpdatedBy("SEED");
-        // requestPayload for retry support
         p.setRequestPayload(String.format(
-                "{\"source_name\":\"%s\",\"source_reference_id\":\"SRC-%d\","
+                "{\"source_name\":\"%s\",\"source_reference_id\":\"SRC-%s\","
                         + "\"end_to_end_reference_id\":\"%s\",\"request_type\":\"IMX_CBS_GL\","
                         + "\"credit_debit_indicator\":\"DEBIT\",\"debtor_account\":\"1000123456\","
                         + "\"creditor_account\":\"1000654321\","
@@ -435,7 +402,7 @@ class LocalStackIntegrationTest {
     }
 
     private void seedLeg(DynamoDbTable<AccountPostingLegEntity> table,
-                         Long postingId, int order, String targetSystem, String status, String refId) {
+                         String postingId, int order, String targetSystem, String status, String refId) {
         AccountPostingLegEntity leg = new AccountPostingLegEntity();
         leg.setPostingId(postingId);
         leg.setTransactionOrder(order);
@@ -452,8 +419,6 @@ class LocalStackIntegrationTest {
         table.putItem(leg);
     }
 
-    // ─── Invocation helpers ───────────────────────────────────────────────────
-
     @SuppressWarnings("unchecked")
     private ParsedResponse invoke(String method, String path, Object body) throws Exception {
         String bodyJson = body != null ? MAPPER.writeValueAsString(body) : null;
@@ -467,7 +432,9 @@ class LocalStackIntegrationTest {
         Map<String, Object> event = new HashMap<>();
         event.put("requestContext", requestContext);
         event.put("rawPath", path);
-        if (bodyJson != null) event.put("body", bodyJson);
+        if (bodyJson != null) {
+            event.put("body", bodyJson);
+        }
 
         Object raw = handler.handleRequest(event, null);
         Map<String, Object> rawMap = (Map<String, Object>) raw;
@@ -478,13 +445,18 @@ class LocalStackIntegrationTest {
         if (responseBody == null || responseBody.isEmpty()) {
             return new ParsedResponse(statusCode, true, null);
         }
-        Map<String, Object> apiResponse = MAPPER.readValue(responseBody, Map.class);
-        return new ParsedResponse(statusCode, (Boolean) apiResponse.get("success"), apiResponse.get("data"));
+        Object parsedBody = MAPPER.readValue(responseBody, Object.class);
+        if (parsedBody instanceof Map<?, ?> responseMap && responseMap.containsKey("success")) {
+            return new ParsedResponse(statusCode, (Boolean) responseMap.get("success"), responseMap.get("data"));
+        }
+        return new ParsedResponse(statusCode, statusCode < 400, parsedBody);
     }
 
     private static String resolve(String envKey, String propKey, String defaultVal) {
         String v = System.getenv(envKey);
-        if (v != null && !v.isEmpty()) return v;
+        if (v != null && !v.isEmpty()) {
+            return v;
+        }
         v = System.getProperty(propKey);
         return v != null && !v.isEmpty() ? v : defaultVal;
     }

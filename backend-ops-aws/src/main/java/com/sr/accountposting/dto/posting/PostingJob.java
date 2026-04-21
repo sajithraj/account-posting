@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 public class PostingJob {
 
     @JsonProperty("posting_id")
-    private Long postingId;
+    private String postingId;
 
     @JsonProperty("request_payload")
     private IncomingPostingRequest requestPayload;

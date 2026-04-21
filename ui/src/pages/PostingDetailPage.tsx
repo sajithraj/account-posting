@@ -9,18 +9,17 @@ export default function PostingDetailPage() {
     const {postingId} = useParams<{ postingId: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const id = Number(postingId);
 
     const [updatingLegOrder, setUpdatingLegOrder] = useState<number | null>(null);
 
     const {data: posting, isLoading, isError} = useQuery({
         queryKey: ['posting', postingId],
-        queryFn: () => postingApi.getById(id),
+        queryFn: () => postingApi.getById(postingId!),
         enabled: !!postingId,
     });
 
     const retryMutation = useMutation({
-        mutationFn: () => postingApi.retry([id]),
+        mutationFn: () => postingApi.retry(postingId ? [postingId] : undefined),
         onSuccess: () => {
             queryClient.invalidateQueries({queryKey: ['posting', postingId]});
             queryClient.invalidateQueries({queryKey: ['postings']});
@@ -30,7 +29,7 @@ export default function PostingDetailPage() {
 
     const updateLegMutation = useMutation({
         mutationFn: ({transactionOrder, status, reason}: { transactionOrder: number; status: string; reason?: string }) =>
-            postingApi.updateLegStatus(id, transactionOrder, status, reason),
+            postingApi.updateLegStatus(postingId!, transactionOrder, status, reason),
         onSuccess: () => {
             setUpdatingLegOrder(null);
             queryClient.invalidateQueries({queryKey: ['posting', postingId]});
@@ -45,7 +44,7 @@ export default function PostingDetailPage() {
     if (isLoading) return <p>Loading...</p>;
     if (isError || !posting) return <p style={{color: 'red'}}>Posting not found.</p>;
 
-    const canRetry = posting.postingStatus === 'PNDG' || posting.postingStatus === 'RECEIVED';
+    const canRetry = posting.postingStatus === 'PNDG' || posting.postingStatus === 'RCVD';
 
     const handleUpdateLegStatus = (transactionOrder: number, status: string, reason?: string) => {
         setUpdatingLegOrder(transactionOrder);

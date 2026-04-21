@@ -1,15 +1,14 @@
 package com.sr.accountposting.util;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 public class IdGenerator {
 
     private IdGenerator() {
     }
 
-    public static long nextId() {
-        return System.currentTimeMillis() * 1000L
-                + ThreadLocalRandom.current().nextLong(1000L);
+    public static String nextId() {
+        return UUID.randomUUID().toString();
     }
 
     public static long ttlEpochSeconds(int days) {

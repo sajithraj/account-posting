@@ -11,12 +11,12 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
 @DynamoDbBean
 public class PostingConfigEntity {
 
-    private String requestType;    // PK — e.g. "IMX_CBS_GL"
-    private Integer orderSeq;       // SK — execution order: 1, 2, 3
+    private String requestType;
+    private Integer orderSeq;
     private String sourceName;
-    private String targetSystem;   // "CBS", "GL", "OBPM"
-    private String operation;      // "POSTING", "ADD_HOLD", "REMOVE_HOLD"
-    private String processingMode; // "SYNC" or "ASYNC" — controls API vs SQS path
+    private String targetSystem;
+    private String operation;
+    private String processingMode;
     private String createdBy;
     private String updatedBy;
     private String createdAt;

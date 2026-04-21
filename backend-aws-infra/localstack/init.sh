@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ "${BOOTSTRAP_AWS_RESOURCES:-true}" != "true" ]; then
+  echo "==> BOOTSTRAP_AWS_RESOURCES=false, skipping LocalStack bootstrap resources"
+  exit 0
+fi
+
 create_table() {
   local name=$1
   shift
@@ -16,7 +21,7 @@ echo "==> Creating DynamoDB tables"
 
 create_table account-posting \
   --attribute-definitions \
-    AttributeName=postingId,AttributeType=N \
+    AttributeName=postingId,AttributeType=S \
     AttributeName=endToEndReferenceId,AttributeType=S \
     AttributeName=status,AttributeType=S \
     AttributeName=createdAt,AttributeType=S \
@@ -43,7 +48,7 @@ create_table account-posting \
 
 create_table account-posting-leg \
   --attribute-definitions \
-    AttributeName=postingId,AttributeType=N \
+    AttributeName=postingId,AttributeType=S \
     AttributeName=transactionOrder,AttributeType=N \
   --key-schema \
     AttributeName=postingId,KeyType=HASH \

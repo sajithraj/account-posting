@@ -12,7 +12,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecon
 @DynamoDbBean
 public class AccountPostingEntity {
 
-    private Long postingId;
+    private String postingId;
     private String sourceReferenceId;
     private String endToEndReferenceId;
     private String sourceName;
@@ -38,7 +38,7 @@ public class AccountPostingEntity {
     private Long ttl;
 
     @DynamoDbPartitionKey
-    public Long getPostingId() {
+    public String getPostingId() {
         return postingId;
     }
 
