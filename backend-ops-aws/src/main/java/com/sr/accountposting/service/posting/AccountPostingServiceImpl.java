@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  *       from {@code LEG_TABLE_NAME}.</li>
  *   <li>{@code search} — scan {@code POSTING_TABLE_NAME} with optional filters (status, sourceName,
  *       date range, limit). Legs are joined for each result row.</li>
- *   <li>{@code retry} — for each candidate posting (explicit IDs or all PNDG/RECEIVED):
+ *   <li>{@code retry} — for each candidate posting (explicit IDs or all PNDG/RCVD):
  *     <ol>
  *       <li>Attempt to acquire a retry lock via {@code acquireRetryLock} (DynamoDB conditional write).</li>
  *       <li>If locked: re-publish a {@link com.sr.accountposting.dto.posting.PostingJob} with mode
@@ -100,7 +100,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
             candidates = request.getPostingIds();
         } else {
             List<AccountPostingEntity> pndg = postingRepo.findByStatus(PostingStatus.PNDG.name());
-            List<AccountPostingEntity> received = postingRepo.findByStatus(PostingStatus.RECEIVED.name());
+            List<AccountPostingEntity> received = postingRepo.findByStatus(PostingStatus.RCVD.name());
             candidates = new ArrayList<>();
             pndg.forEach(p -> candidates.add(p.getPostingId()));
             received.forEach(p -> candidates.add(p.getPostingId()));
@@ -156,10 +156,24 @@ public class AccountPostingServiceImpl implements AccountPostingService {
 
     private PostingResponse toResponse(AccountPostingEntity p, List<AccountPostingLegEntity> legs) {
         return PostingResponse.builder()
+                .postingId(p.getPostingId())
                 .sourceReferenceId(p.getSourceReferenceId())
                 .endToEndReferenceId(p.getEndToEndReferenceId())
+                .sourceName(p.getSourceName())
+                .requestType(p.getRequestType())
+                .amount(p.getAmount())
+                .currency(p.getCurrency())
+                .creditDebitIndicator(p.getCreditDebitIndicator())
+                .debtorAccount(p.getDebtorAccount())
+                .creditorAccount(p.getCreditorAccount())
+                .requestedExecutionDate(p.getRequestedExecutionDate())
+                .remittanceInformation(p.getRemittanceInformation())
                 .postingStatus(p.getStatus())
+                .targetSystems(p.getTargetSystems())
+                .reason(p.getReason())
                 .processedAt(p.getUpdatedAt())
+                .createdAt(p.getCreatedAt())
+                .updatedAt(p.getUpdatedAt())
                 .legs(legs.stream().map(this::toLegResponse).collect(Collectors.toList()))
                 .build();
     }

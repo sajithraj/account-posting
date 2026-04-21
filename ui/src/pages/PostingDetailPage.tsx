@@ -11,7 +11,7 @@ export default function PostingDetailPage() {
     const queryClient = useQueryClient();
     const id = Number(postingId);
 
-    const [updatingLegId, setUpdatingLegId] = useState<number | null>(null);
+    const [updatingLegOrder, setUpdatingLegOrder] = useState<number | null>(null);
 
     const {data: posting, isLoading, isError} = useQuery({
         queryKey: ['posting', postingId],
@@ -29,15 +29,15 @@ export default function PostingDetailPage() {
     });
 
     const updateLegMutation = useMutation({
-        mutationFn: ({legId, status, reason}: { legId: number; status: string; reason?: string }) =>
-            postingApi.updateLegStatus(id, legId, status, reason),
+        mutationFn: ({transactionOrder, status, reason}: { transactionOrder: number; status: string; reason?: string }) =>
+            postingApi.updateLegStatus(id, transactionOrder, status, reason),
         onSuccess: () => {
-            setUpdatingLegId(null);
+            setUpdatingLegOrder(null);
             queryClient.invalidateQueries({queryKey: ['posting', postingId]});
             queryClient.invalidateQueries({queryKey: ['postings']});
         },
         onError: (err) => {
-            setUpdatingLegId(null);
+            setUpdatingLegOrder(null);
             alert(`Status update failed: ${getErrorMessage(err)}`);
         },
     });
@@ -45,18 +45,20 @@ export default function PostingDetailPage() {
     if (isLoading) return <p>Loading...</p>;
     if (isError || !posting) return <p style={{color: 'red'}}>Posting not found.</p>;
 
-    const canRetry = posting.postingStatus === 'PNDG';
+    const canRetry = posting.postingStatus === 'PNDG' || posting.postingStatus === 'RECEIVED';
 
-    const handleUpdateLegStatus = (legId: number, status: string, reason?: string) => {
-        setUpdatingLegId(legId);
-        updateLegMutation.mutate({legId, status, reason});
+    const handleUpdateLegStatus = (transactionOrder: number, status: string, reason?: string) => {
+        setUpdatingLegOrder(transactionOrder);
+        updateLegMutation.mutate({transactionOrder, status, reason});
     };
 
     return (
         <div style={{fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20}}>
                 <button onClick={() => navigate(-1)} style={s.backBtn}>← Back</button>
-                <h2 style={{margin: 0, fontSize: 20, fontWeight: 600}}>Posting #{posting.postingId}</h2>
+                <h2 style={{margin: 0, fontSize: 20, fontWeight: 600}}>
+                    Posting — {posting.endToEndReferenceId}
+                </h2>
                 {canRetry && (
                     <button
                         style={{...s.retryBtn, ...(retryMutation.isPending ? s.disabled : {})}}
@@ -93,9 +95,9 @@ export default function PostingDetailPage() {
 
             <h3 style={{marginTop: 28, marginBottom: 12, fontSize: 15, fontWeight: 600}}>Posting Legs</h3>
             <LegTable
-                legs={posting.responses ?? []}
+                legs={posting.legs ?? []}
                 onUpdateStatus={handleUpdateLegStatus}
-                updatingLegId={updatingLegId}
+                updatingLegOrder={updatingLegOrder}
             />
         </div>
     );
@@ -105,11 +107,8 @@ function Field({label, children}: { label: string; children: React.ReactNode }) 
     return (
         <div>
             <div style={{
-                fontSize: 11,
-                color: '#888',
-                marginBottom: 2,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5
+                fontSize: 11, color: '#888', marginBottom: 2,
+                textTransform: 'uppercase', letterSpacing: 0.5,
             }}>{label}</div>
             <div style={{fontWeight: 500}}>{children}</div>
         </div>

@@ -95,7 +95,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         long postingId = IdGenerator.nextId();
         String now = Instant.now().toString();
         AccountPostingEntity posting = buildPosting(postingId, request,
-                isAsync ? PostingStatus.RECEIVED : PostingStatus.PNDG, now);
+                isAsync ? PostingStatus.RCVD : PostingStatus.PNDG, now);
 
         try {
             postingRepo.save(posting);

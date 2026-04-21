@@ -4,18 +4,18 @@ import type {LegResponse} from '../types/posting';
 interface Props {
     legs: LegResponse[];
     /** When provided, a "Manual Update" action column is shown for non-SUCCESS legs. */
-    onUpdateStatus?: (transactionId: number, status: string, reason?: string) => void;
-    updatingLegId?: number | null;
+    onUpdateStatus?: (transactionOrder: number, status: string, reason?: string) => void;
+    updatingLegOrder?: number | null;
 }
 
 interface PopupState {
-    legId: number;
+    transactionOrder: number;
     currentStatus: string;
     selectedStatus: string;
     reason: string;
 }
 
-export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
+export default function LegTable({legs, onUpdateStatus, updatingLegOrder}: Props) {
     const [popup, setPopup] = useState<PopupState | null>(null);
 
     if (legs.length === 0) {
@@ -25,9 +25,8 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
     const showActions = !!onUpdateStatus;
 
     const openPopup = (leg: LegResponse) => {
-        if (!leg.transactionId) return;
         setPopup({
-            legId: leg.transactionId,
+            transactionOrder: leg.transactionOrder,
             currentStatus: leg.status,
             selectedStatus: leg.status === 'SUCCESS' ? 'FAILED' : 'SUCCESS',
             reason: '',
@@ -36,7 +35,7 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
 
     const handleApply = () => {
         if (!popup) return;
-        onUpdateStatus!(popup.legId, popup.selectedStatus, popup.reason || undefined);
+        onUpdateStatus!(popup.transactionOrder, popup.selectedStatus, popup.reason || undefined);
         setPopup(null);
     };
 
@@ -74,12 +73,12 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
                             <button
                                 style={{
                                     ...applyBtn,
-                                    ...(updatingLegId === popup.legId ? disabledStyle : {}),
+                                    ...(updatingLegOrder === popup.transactionOrder ? disabledStyle : {}),
                                 }}
-                                disabled={updatingLegId === popup.legId || popup.selectedStatus === popup.currentStatus}
+                                disabled={updatingLegOrder === popup.transactionOrder || popup.selectedStatus === popup.currentStatus}
                                 onClick={handleApply}
                             >
-                                {updatingLegId === popup.legId ? 'Saving…' : 'Apply'}
+                                {updatingLegOrder === popup.transactionOrder ? 'Saving…' : 'Apply'}
                             </button>
                         </div>
                     </div>
@@ -105,7 +104,7 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
                 <tbody>
                 {legs.map((leg, i) => {
                     const isSuccess = leg.status === 'SUCCESS';
-                    const isUpdating = updatingLegId === leg.transactionId;
+                    const isUpdating = updatingLegOrder === leg.transactionOrder;
 
                     return (
                         <tr key={i}>
@@ -150,7 +149,7 @@ export default function LegTable({legs, onUpdateStatus, updatingLegId}: Props) {
                                                 ...updateBtn,
                                                 ...(isUpdating ? disabledStyle : {}),
                                             }}
-                                            disabled={isUpdating || !leg.transactionId}
+                                            disabled={isUpdating}
                                             onClick={() => openPopup(leg)}
                                         >
                                             {isUpdating ? '…' : 'Update'}

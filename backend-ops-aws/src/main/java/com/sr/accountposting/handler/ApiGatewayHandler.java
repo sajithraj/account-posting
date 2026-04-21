@@ -29,20 +29,20 @@ import java.util.Map;
  *
  * <p>Routes supported:
  * <pre>
- *   POST   /v2/payment/account-posting/search              Search postings by status, source, date range
- *   POST   /v2/payment/account-posting/retry               Re-queue PNDG/RECEIVED postings to SQS
- *   GET    /v2/payment/account-posting/{id}                Fetch posting by ID (with legs)
- *   GET    /v2/payment/account-posting/{id}/transaction    List all legs for a posting
- *   GET    /v2/payment/account-posting/{id}/transaction/{order}  Get a single leg
- *   PATCH  /v2/payment/account-posting/{id}/transaction/{order}  Manual leg status override
- *   GET    /v2/payment/account-posting/config              List all routing configs
- *   GET    /v2/payment/account-posting/config/{requestType}      Configs by request type
- *   POST   /v2/payment/account-posting/config              Create a routing config entry
- *   PUT    /v2/payment/account-posting/config/{type}/{order}     Update a routing config entry
- *   DELETE /v2/payment/account-posting/config/{type}/{order}     Delete a routing config entry
+ *   POST   /v3/payment/account-posting/search              Search postings by status, source, date range
+ *   POST   /v3/payment/account-posting/retry               Re-queue PNDG/RCVD postings to SQS
+ *   GET    /v3/payment/account-posting/{id}                Fetch posting by ID (with legs)
+ *   GET    /v3/payment/account-posting/{id}/transaction    List all legs for a posting
+ *   GET    /v3/payment/account-posting/{id}/transaction/{order}  Get a single leg
+ *   PATCH  /v3/payment/account-posting/{id}/transaction/{order}  Manual leg status override
+ *   GET    /v3/payment/account-posting/config              List all routing configs
+ *   GET    /v3/payment/account-posting/config/{requestType}      Configs by request type
+ *   POST   /v3/payment/account-posting/config              Create a routing config entry
+ *   PUT    /v3/payment/account-posting/config/{type}/{order}     Update a routing config entry
+ *   DELETE /v3/payment/account-posting/config/{type}/{order}     Delete a routing config entry
  * </pre>
  *
- * <p>{@code POST /v2/payment/account-posting} (posting creation) is NOT handled here — it lives in
+ * <p>{@code POST /v3/payment/account-posting} (posting creation) is NOT handled here — it lives in
  * the {@code backend-aws} Lambda. Requests to that route return HTTP 404.
  *
  * <p>Error mapping:

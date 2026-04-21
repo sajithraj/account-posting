@@ -9,6 +9,7 @@ const EMPTY_FORM: PostingConfigRequest = {
     targetSystem: '',
     operation: '',
     orderSeq: 1,
+    processingMode: 'ASYNC',
 };
 
 export default function ConfigPage() {
@@ -17,7 +18,7 @@ export default function ConfigPage() {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState<PostingConfigResponse | null>(null);
     const [form, setForm] = useState<PostingConfigRequest>(EMPTY_FORM);
-    const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ requestType: string; orderSeq: number } | null>(null);
 
     const {data, isLoading, isError} = useQuery({
         queryKey: ['configs'],
@@ -34,8 +35,8 @@ export default function ConfigPage() {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({id, req}: { id: number; req: PostingConfigRequest }) =>
-            postingApi.updateConfig(id, req),
+        mutationFn: ({requestType, orderSeq, req}: { requestType: string; orderSeq: number; req: PostingConfigRequest }) =>
+            postingApi.updateConfig(requestType, orderSeq, req),
         onSuccess: () => {
             queryClient.invalidateQueries({queryKey: ['configs']});
             closeForm();
@@ -44,7 +45,8 @@ export default function ConfigPage() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id: number) => postingApi.deleteConfig(id),
+        mutationFn: ({requestType, orderSeq}: { requestType: string; orderSeq: number }) =>
+            postingApi.deleteConfig(requestType, orderSeq),
         onSuccess: () => {
             queryClient.invalidateQueries({queryKey: ['configs']});
             setDeleteConfirm(null);
@@ -66,6 +68,7 @@ export default function ConfigPage() {
             targetSystem: cfg.targetSystem,
             operation: cfg.operation,
             orderSeq: cfg.orderSeq,
+            processingMode: cfg.processingMode,
         });
         setShowForm(true);
     };
@@ -79,7 +82,7 @@ export default function ConfigPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (editing) {
-            updateMutation.mutate({id: editing.configId, req: form});
+            updateMutation.mutate({requestType: editing.requestType, orderSeq: editing.orderSeq, req: form});
         } else {
             createMutation.mutate(form);
         }
@@ -104,44 +107,48 @@ export default function ConfigPage() {
                 <table style={s.table}>
                     <thead>
                     <tr style={s.theadRow}>
-                        <th style={s.th}>Config ID</th>
-                        <th style={s.th}>Source Name</th>
                         <th style={s.th}>Request Type</th>
+                        <th style={s.th}>Order</th>
+                        <th style={s.th}>Source Name</th>
                         <th style={s.th}>Target System</th>
                         <th style={s.th}>Operation</th>
-                        <th style={s.th}>Order</th>
+                        <th style={s.th}>Processing Mode</th>
                         <th style={{...s.th, width: 110}}>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
-                    {data.map(cfg => (
-                        <tr key={cfg.configId} style={s.tbodyRow}>
-                            <td style={s.td}>{cfg.configId}</td>
-                            <td style={s.td}>{cfg.sourceName}</td>
-                            <td style={s.td}>{cfg.requestType}</td>
-                            <td style={s.td}>{cfg.targetSystem}</td>
-                            <td style={s.td}>{cfg.operation}</td>
-                            <td style={s.td}>{cfg.orderSeq}</td>
-                            <td style={s.td}>
-                                <button style={s.editBtn} onClick={() => openEdit(cfg)}>Edit</button>
-                                {deleteConfirm === cfg.configId ? (
-                                    <>
-                                        <button
-                                            style={s.confirmBtn}
-                                            onClick={() => deleteMutation.mutate(cfg.configId)}
-                                            disabled={deleteMutation.isPending}
-                                        >
-                                            Confirm
-                                        </button>
-                                        <button style={s.cancelBtn} onClick={() => setDeleteConfirm(null)}>✕</button>
-                                    </>
-                                ) : (
-                                    <button style={s.deleteBtn}
-                                            onClick={() => setDeleteConfirm(cfg.configId)}>Delete</button>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
+                    {data.map(cfg => {
+                        const key = `${cfg.requestType}-${cfg.orderSeq}`;
+                        const isConfirming = deleteConfirm?.requestType === cfg.requestType && deleteConfirm?.orderSeq === cfg.orderSeq;
+                        return (
+                            <tr key={key} style={s.tbodyRow}>
+                                <td style={s.td}>{cfg.requestType}</td>
+                                <td style={s.td}>{cfg.orderSeq}</td>
+                                <td style={s.td}>{cfg.sourceName}</td>
+                                <td style={s.td}>{cfg.targetSystem}</td>
+                                <td style={s.td}>{cfg.operation}</td>
+                                <td style={s.td}>{cfg.processingMode}</td>
+                                <td style={s.td}>
+                                    <button style={s.editBtn} onClick={() => openEdit(cfg)}>Edit</button>
+                                    {isConfirming ? (
+                                        <>
+                                            <button
+                                                style={s.confirmBtn}
+                                                onClick={() => deleteMutation.mutate({requestType: cfg.requestType, orderSeq: cfg.orderSeq})}
+                                                disabled={deleteMutation.isPending}
+                                            >
+                                                Confirm
+                                            </button>
+                                            <button style={s.cancelBtn} onClick={() => setDeleteConfirm(null)}>✕</button>
+                                        </>
+                                    ) : (
+                                        <button style={s.deleteBtn}
+                                                onClick={() => setDeleteConfirm({requestType: cfg.requestType, orderSeq: cfg.orderSeq})}>Delete</button>
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    })}
                     </tbody>
                 </table>
             )}
@@ -158,6 +165,7 @@ export default function ConfigPage() {
                                     ['requestType', 'Request Type'],
                                     ['targetSystem', 'Target System'],
                                     ['operation', 'Operation'],
+                                    ['processingMode', 'Processing Mode (SYNC / ASYNC)'],
                                 ] as [keyof PostingConfigRequest, string][]
                             ).map(([field, label]) => (
                                 <div key={field} style={s.formRow}>

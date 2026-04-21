@@ -53,6 +53,7 @@ public class PostingConfigServiceImpl implements PostingConfigService {
         existing.setTargetSystem(updated.getTargetSystem());
         existing.setOperation(updated.getOperation());
         existing.setSourceName(updated.getSourceName());
+        existing.setProcessingMode(updated.getProcessingMode());
         existing.setUpdatedAt(Instant.now().toString());
         existing.setUpdatedBy(updated.getUpdatedBy());
         configRepo.save(existing);

@@ -187,14 +187,14 @@ class AccountPostingServiceImplTest {
     void retry_withNoIds_scansAllPndgAndReceived() {
         AccountPostingEntity pndg1 = buildPosting(100001L, PostingStatus.PNDG, "E2E-001", "IMX");
         AccountPostingEntity pndg2 = buildPosting(100002L, PostingStatus.PNDG, "E2E-002", "IMX");
-        AccountPostingEntity received = buildPosting(100003L, PostingStatus.RECEIVED, "E2E-003", "RMS");
+        AccountPostingEntity received = buildPosting(100003L, PostingStatus.RCVD, "E2E-003", "RMS");
 
         for (AccountPostingEntity p : List.of(pndg1, pndg2, received)) {
             p.setRequestPayload(JsonUtil.toJson(buildRequest("IMX_CBS_GL", p.getEndToEndReferenceId())));
         }
 
         when(postingRepo.findByStatus(PostingStatus.PNDG.name())).thenReturn(List.of(pndg1, pndg2));
-        when(postingRepo.findByStatus(PostingStatus.RECEIVED.name())).thenReturn(List.of(received));
+        when(postingRepo.findByStatus(PostingStatus.RCVD.name())).thenReturn(List.of(received));
         when(postingRepo.findById(anyLong())).thenAnswer(inv -> {
             Long id = inv.getArgument(0);
             if (id.equals(100001L)) return Optional.of(pndg1);

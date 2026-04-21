@@ -9,8 +9,7 @@ const empty: AccountPostingRequest = {
     endToEndReferenceId: '',
     sourceName: '',
     requestType: '',
-    amount: 0,
-    currency: '',
+    amount: {value: '', currencyCode: ''},
     creditDebitIndicator: 'CREDIT',
     debtorAccount: '',
     creditorAccount: '',
@@ -25,18 +24,18 @@ export default function CreatePostingPage() {
 
     const mutation = useMutation({
         mutationFn: postingApi.create,
-        onSuccess: (data) => navigate(`/postings/${data.postingId}`),
+        onSuccess: () => navigate('/'),
         onError: (err: Error) => setErrors([err.message]),
     });
 
-    const set = (field: keyof AccountPostingRequest) =>
+    const set = (field: keyof Omit<AccountPostingRequest, 'amount'>) =>
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
             setForm(f => ({...f, [field]: e.target.value}));
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setErrors([]);
-        mutation.mutate({...form, amount: Number(form.amount)});
+        mutation.mutate(form);
     };
 
     return (
@@ -56,22 +55,25 @@ export default function CreatePostingPage() {
                 </FormField>
                 <FormField label="Source Name *">
                     <input required value={form.sourceName} onChange={set('sourceName')}
-                           placeholder="e.g. ONLINE_BANKING"/>
+                           placeholder="e.g. IMX"/>
                 </FormField>
                 <FormField label="Request Type *">
-                    <input required value={form.requestType} onChange={set('requestType')} placeholder="e.g. PAYMENT"/>
+                    <input required value={form.requestType} onChange={set('requestType')}
+                           placeholder="e.g. IMX_CBS_GL"/>
                 </FormField>
                 <FormField label="Amount *">
-                    <input required type="number" step="0.0001" min="0.0001" value={form.amount}
-                           onChange={set('amount')}/>
+                    <input required type="number" step="0.0001" min="0.0001"
+                           value={form.amount.value}
+                           onChange={e => setForm(f => ({...f, amount: {...f.amount, value: e.target.value}}))}/>
                 </FormField>
                 <FormField label="Currency *">
-                    <input required value={form.currency} onChange={set('currency')} maxLength={3} placeholder="USD"/>
+                    <input required value={form.amount.currencyCode} maxLength={3} placeholder="USD"
+                           onChange={e => setForm(f => ({...f, amount: {...f.amount, currencyCode: e.target.value}}))}/>
                 </FormField>
                 <FormField label="Credit / Debit *">
                     <select value={form.creditDebitIndicator} onChange={e => setForm(f => ({
                         ...f,
-                        creditDebitIndicator: e.target.value as CreditDebitIndicator
+                        creditDebitIndicator: e.target.value as CreditDebitIndicator,
                     }))}>
                         <option value="CREDIT">CREDIT</option>
                         <option value="DEBIT">DEBIT</option>
@@ -98,7 +100,7 @@ export default function CreatePostingPage() {
                             color: 'white',
                             border: 'none',
                             borderRadius: 4,
-                            cursor: 'pointer'
+                            cursor: 'pointer',
                         }}>
                     {mutation.isPending ? 'Submitting...' : 'Submit Posting'}
                 </button>

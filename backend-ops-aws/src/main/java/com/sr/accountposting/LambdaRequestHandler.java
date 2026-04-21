@@ -23,7 +23,7 @@ import java.util.Map;
  * <p>Routes handled:
  * <pre>
  *   POST   /v2/payment/account-posting/search              Search postings (DynamoDB scan)
- *   POST   /v2/payment/account-posting/retry               Re-queue PNDG/RECEIVED postings to SQS
+ *   POST   /v2/payment/account-posting/retry               Re-queue PNDG/RCVD postings to SQS
  *   GET    /v2/payment/account-posting/{id}                Fetch posting by ID with legs
  *   GET    /v2/payment/account-posting/{id}/transaction    List all legs for a posting
  *   GET    /v2/payment/account-posting/{id}/transaction/{order}   Get a single leg

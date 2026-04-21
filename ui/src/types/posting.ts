@@ -1,31 +1,45 @@
-export type PostingStatus = 'PNDG' | 'ACSP' | 'RJCT';
+export type PostingStatus = 'PNDG' | 'ACSP' | 'RJCT' | 'RECEIVED';
 export type CreditDebitIndicator = 'CREDIT' | 'DEBIT';
+
+export interface Amount {
+    value: string;
+    currencyCode: string;  // camelToSnake transformer sends this as currency_code
+}
 
 export interface AccountPostingRequest {
     sourceReferenceId: string;
     endToEndReferenceId: string;
     sourceName: string;
     requestType: string;
-    amount: number;
-    currency: string;
+    amount: Amount;
     creditDebitIndicator: CreditDebitIndicator;
     debtorAccount: string;
     creditorAccount: string;
-    requestedExecutionDate: string; // ISO date yyyy-MM-dd
+    requestedExecutionDate: string;
     remittanceInformation?: string;
 }
 
+export interface PostingCreateResponse {
+    postingStatus: string;
+    endToEndReferenceId: string;
+    sourceReferenceId: string;
+    processedAt: string;
+}
+
 export interface LegResponse {
-    transactionId: number;
+    postingId: number;
     transactionOrder: number;
-    targetSystem: string;   // CBS / GL / OBPM
-    operation: string;      // POSTING / ADD_HOLD / CANCEL_HOLD
+    targetSystem: string;
+    operation: string;
     account: string;
     referenceId?: string;
     postedTime?: string;
     status: string;
     reason?: string;
     mode: string;
+    attemptNumber?: number;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface AccountPostingResponse {
@@ -34,7 +48,7 @@ export interface AccountPostingResponse {
     endToEndReferenceId: string;
     sourceName: string;
     requestType: string;
-    amount: number;
+    amount: string;
     currency: string;
     creditDebitIndicator: string;
     debtorAccount: string;
@@ -47,60 +61,39 @@ export interface AccountPostingResponse {
     processedAt?: string;
     createdAt: string;
     updatedAt: string;
-    responses?: LegResponse[];
-}
-
-// ── Governance-compliant search types ────────────────────────────────────────
-
-export interface SearchCondition {
-    property: string;
-    operator: string;
-    values: string[];
-}
-
-export interface SearchOrderBy {
-    property: string;
-    sortOrder: string;
-}
-
-export interface SearchPagination {
-    offset: number;
-    limit: number;
+    legs?: LegResponse[];
 }
 
 export interface PostingSearchRequest {
-    projectedProperties?: string[];
-    conditions?: SearchCondition[];
-    orderBy?: SearchOrderBy[];
-    pagination?: SearchPagination;
+    status?: string;
+    sourceName?: string;
+    requestType?: string;
+    endToEndReferenceId?: string;
+    sourceReferenceId?: string;
+    fromDate?: string;
+    toDate?: string;
+    limit?: number;
 }
 
-export interface PostingSearchResponse<T> {
-    items: T[];
-    totalItems: number;
-    offset: number;
-    limit: number;
-}
-
-// UI-internal filter draft (flat, for form inputs)
 export interface PostingFilterDraft {
     status?: PostingStatus;
     endToEndReferenceId?: string;
     sourceReferenceId?: string;
     sourceName?: string;
     requestType?: string;
-    targetSystem?: string;
     fromDate?: string;
     toDate?: string;
 }
 
 export interface PostingConfigResponse {
-    configId: number;
-    sourceName: string;
     requestType: string;
+    orderSeq: number;
+    sourceName: string;
     targetSystem: string;
     operation: string;
-    orderSeq: number;
+    processingMode: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface PostingConfigRequest {
@@ -109,11 +102,10 @@ export interface PostingConfigRequest {
     targetSystem: string;
     operation: string;
     orderSeq: number;
+    processingMode: string;
 }
 
 export interface ApiErrorResponse {
-    id: string;
     name: string;
     message: string;
-    errors?: { field: string; message: string; rejectedValue?: unknown }[];
 }

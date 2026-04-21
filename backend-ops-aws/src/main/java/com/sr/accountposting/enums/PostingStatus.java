@@ -1,7 +1,7 @@
 package com.sr.accountposting.enums;
 
 public enum PostingStatus {
-    RECEIVED,
+    RCVD,
     PNDG,
     ACSP,
     RJCT
