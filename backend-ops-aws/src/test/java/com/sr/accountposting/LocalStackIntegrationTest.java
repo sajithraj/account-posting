@@ -18,7 +18,6 @@ import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
-import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -29,14 +28,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * End-to-end integration tests for backend-ops-aws (dashboard operations).
- *
+ * <p>
  * Run via:  mvn test -Plocalstack
  * Or right-click in IDE — the static block sets all required system properties.
- *
+ * <p>
  * Seed strategy:
- *  - Configs : seeded via POST /config (ops endpoint)
- *  - Postings: written directly to DynamoDB (POST create lives in backend-aws)
- *  - Legs    : written directly to DynamoDB
+ * - Configs : seeded via POST /config (ops endpoint)
+ * - Postings: written directly to DynamoDB (POST create lives in backend-aws)
+ * - Legs    : written directly to DynamoDB
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -57,7 +56,7 @@ class LocalStackIntegrationTest {
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String BASE = "/v2/payment/account-posting";
+    private static final String BASE = "/v3/payment/account-posting";
     private static final String QUEUE_URL = "http://localhost:4566/000000000000/posting-queue";
 
     // Seeded posting IDs — stable across test run
@@ -391,7 +390,7 @@ class LocalStackIntegrationTest {
     }
 
     private void seedConfig(String requestType, int orderSeq, String sourceName,
-                             String targetSystem, String operation, String processingMode) throws Exception {
+                            String targetSystem, String operation, String processingMode) throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("request_type", requestType);
         body.put("order_seq", orderSeq);
@@ -406,7 +405,7 @@ class LocalStackIntegrationTest {
     }
 
     private void seedPosting(DynamoDbTable<AccountPostingEntity> table,
-                              Long postingId, PostingStatus status, String e2eRef, String sourceName) {
+                             Long postingId, PostingStatus status, String e2eRef, String sourceName) {
         AccountPostingEntity p = new AccountPostingEntity();
         p.setPostingId(postingId);
         p.setStatus(status.name());
@@ -436,7 +435,7 @@ class LocalStackIntegrationTest {
     }
 
     private void seedLeg(DynamoDbTable<AccountPostingLegEntity> table,
-                          Long postingId, int order, String targetSystem, String status, String refId) {
+                         Long postingId, int order, String targetSystem, String status, String refId) {
         AccountPostingLegEntity leg = new AccountPostingLegEntity();
         leg.setPostingId(postingId);
         leg.setTransactionOrder(order);

@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ApiGatewayHandlerTest {
 
-    private static final String BASE = "/v2/payment/account-posting";
+    private static final String BASE = "/v3/payment/account-posting";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Mock

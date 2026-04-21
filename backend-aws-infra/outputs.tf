@@ -1,6 +1,6 @@
 output "api_gateway_url" {
   description = "Base URL of the API Gateway endpoint"
-  value       = "${aws_apigatewayv2_stage.main.invoke_url}/v2/payment/account-posting"
+  value       = "${aws_apigatewayv2_stage.main.invoke_url}/v3/payment/account-posting"
 }
 
 output "api_gateway_id" {

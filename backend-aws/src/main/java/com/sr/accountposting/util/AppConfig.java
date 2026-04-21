@@ -18,7 +18,7 @@ public final class AppConfig {
     }
 
     public static final long RETRY_LOCK_TTL_MS = 5 * 60 * 1000L;
-    public static final String API_BASE_PATH = "/v2/payment/account-posting";
+    public static final String API_BASE_PATH = "/v3/payment/account-posting";
 
     private AppConfig() {
     }

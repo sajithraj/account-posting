@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "backend-aws-collection",
     "name": "backend-aws — Account Posting Creation",
-    "description": "API collection for the backend-aws Lambda.\n\nHandles:\n  POST /v2/payment/account-posting  — create a new account posting (sync or async)\n\nAll other routes (search, retry, config, legs) return 404 from this Lambda — they belong to backend-ops-aws.\n\n**Variables:**\n- `base_url` — API Gateway stage URL, e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev\n\nFor LocalStack set `base_url` to http://localhost:4566 (and note the Lambda must be deployed or invoked directly via test harness).",
+    "description": "API collection for the backend-aws Lambda.\n\nHandles:\n  POST /v3/payment/account-posting  — create a new account posting (sync or async)\n\nAll other routes (search, retry, config, legs) return 404 from this Lambda — they belong to backend-ops-aws.\n\nVariables:\n- base_url — API Gateway stage URL, e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,7 +14,7 @@
     },
     {
       "key": "api_path",
-      "value": "/v2/payment/account-posting",
+      "value": "/v3/payment/account-posting",
       "type": "string"
     }
   ],
@@ -24,22 +24,31 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "url": {
           "raw": "{{base_url}}{{api_path}}",
-          "host": ["{{base_url}}{{api_path}}"]
+          "host": [
+            "{{base_url}}{{api_path}}"
+          ]
         },
         "body": {
           "mode": "raw",
           "raw": "{\n  \"source_name\": \"IMX\",\n  \"source_reference_id\": \"SRC-001\",\n  \"end_to_end_reference_id\": \"E2E-001\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1000123456\",\n  \"creditor_account\": \"1000654321\",\n  \"requested_execution_date\": \"2026-04-21\",\n  \"remittance_information\": \"Invoice payment\",\n  \"amount\": {\n    \"value\": \"5000.00\",\n    \"currency_code\": \"USD\"\n  }\n}",
-          "options": { "raw": { "language": "json" } }
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "description": "Creates an async posting for IMX_CBS_GL request type. All configs for this type have processingMode=ASYNC, so the posting is queued to SQS and response carries status ACSP."
       },
       "response": [
         {
-          "name": "201 Created — ACSP (async accepted)",
+          "name": "200 OK — ACSP (async accepted)",
           "status": "OK",
           "code": 200,
           "body": "{\n  \"success\": true,\n  \"data\": {\n    \"posting_status\": \"ACSP\",\n    \"end_to_end_reference_id\": \"E2E-001\",\n    \"source_reference_id\": \"SRC-001\",\n    \"processed_at\": \"2026-04-21T10:00:00Z\"\n  },\n  \"error\": null\n}"
@@ -51,16 +60,25 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "url": {
           "raw": "{{base_url}}{{api_path}}",
-          "host": ["{{base_url}}{{api_path}}"]
+          "host": [
+            "{{base_url}}{{api_path}}"
+          ]
         },
         "body": {
           "mode": "raw",
           "raw": "{\n  \"source_name\": \"STABLECOIN\",\n  \"source_reference_id\": \"SRC-HOLD-001\",\n  \"end_to_end_reference_id\": \"E2E-HOLD-001\",\n  \"request_type\": \"ADD_ACCOUNT_HOLD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"9000111222\",\n  \"creditor_account\": \"9000333444\",\n  \"requested_execution_date\": \"2026-04-21\",\n  \"amount\": {\n    \"value\": \"1000.00\",\n    \"currency_code\": \"USD\"\n  }\n}",
-          "options": { "raw": { "language": "json" } }
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "description": "Creates a sync posting for ADD_ACCOUNT_HOLD. Processed inline — CBS ADD_HOLD leg is executed before the response is returned."
       }
@@ -70,16 +88,25 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "url": {
           "raw": "{{base_url}}{{api_path}}",
-          "host": ["{{base_url}}{{api_path}}"]
+          "host": [
+            "{{base_url}}{{api_path}}"
+          ]
         },
         "body": {
           "mode": "raw",
           "raw": "{\n  \"source_name\": \"RMS\",\n  \"source_reference_id\": \"SRC-RMS-001\",\n  \"end_to_end_reference_id\": \"E2E-RMS-001\",\n  \"request_type\": \"FED_RETURN\",\n  \"credit_debit_indicator\": \"CREDIT\",\n  \"debtor_account\": \"2000100200\",\n  \"creditor_account\": \"2000300400\",\n  \"requested_execution_date\": \"2026-04-21\",\n  \"amount\": {\n    \"value\": \"250.00\",\n    \"currency_code\": \"USD\"\n  }\n}",
-          "options": { "raw": { "language": "json" } }
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         }
       }
     },
@@ -88,16 +115,25 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "url": {
           "raw": "{{base_url}}{{api_path}}",
-          "host": ["{{base_url}}{{api_path}}"]
+          "host": [
+            "{{base_url}}{{api_path}}"
+          ]
         },
         "body": {
           "mode": "raw",
           "raw": "{\n  \"source_name\": \"IMX\",\n  \"source_reference_id\": \"SRC-ERR-001\",\n  \"end_to_end_reference_id\": \"E2E-ERR-001\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1000123456\",\n  \"creditor_account\": \"1000654321\",\n  \"requested_execution_date\": \"2026-04-21\"\n}",
-          "options": { "raw": { "language": "json" } }
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "description": "Missing amount object — expects HTTP 400 VALIDATION_ERROR."
       },
@@ -115,16 +151,25 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "url": {
           "raw": "{{base_url}}{{api_path}}",
-          "host": ["{{base_url}}{{api_path}}"]
+          "host": [
+            "{{base_url}}{{api_path}}"
+          ]
         },
         "body": {
           "mode": "raw",
           "raw": "{\n  \"source_name\": \"IMX\",\n  \"source_reference_id\": \"SRC-001\",\n  \"end_to_end_reference_id\": \"E2E-001\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1000123456\",\n  \"creditor_account\": \"1000654321\",\n  \"requested_execution_date\": \"2026-04-21\",\n  \"amount\": {\n    \"value\": \"5000.00\",\n    \"currency_code\": \"USD\"\n  }\n}",
-          "options": { "raw": { "language": "json" } }
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "description": "Re-submit the same end_to_end_reference_id — expects HTTP 422 DUPLICATE_E2E_REF."
       },
@@ -142,37 +187,27 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "url": {
           "raw": "{{base_url}}{{api_path}}",
-          "host": ["{{base_url}}{{api_path}}"]
+          "host": [
+            "{{base_url}}{{api_path}}"
+          ]
         },
         "body": {
           "mode": "raw",
           "raw": "{\n  \"source_name\": \"IMX\",\n  \"source_reference_id\": \"SRC-UNK-001\",\n  \"end_to_end_reference_id\": \"E2E-UNK-001\",\n  \"request_type\": \"UNKNOWN_TYPE\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1000123456\",\n  \"creditor_account\": \"1000654321\",\n  \"requested_execution_date\": \"2026-04-21\",\n  \"amount\": {\n    \"value\": \"100.00\",\n    \"currency_code\": \"USD\"\n  }\n}",
-          "options": { "raw": { "language": "json" } }
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "description": "requestType not in config table — expects HTTP 400 UNKNOWN_REQUEST_TYPE."
-      }
-    },
-    {
-      "name": "Route Not Handled (search → 404)",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "url": {
-          "raw": "{{base_url}}{{api_path}}/search",
-          "host": ["{{base_url}}{{api_path}}/search"]
-        },
-        "body": {
-          "mode": "raw",
-          "raw": "{}",
-          "options": { "raw": { "language": "json" } }
-        },
-        "description": "backend-aws returns 404 for /search — that route belongs to backend-ops-aws. With the Terraform routing this request will be directed to the ops Lambda instead, but when calling backend-aws directly (e.g. in unit tests) it returns 404."
       }
     }
   ]

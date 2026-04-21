@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "backend-ops-aws-collection",
     "name": "backend-ops-aws — Account Posting Operations",
-    "description": "API collection for the backend-ops-aws Lambda (ops dashboard).\n\nHandles: search, retry, fetch by ID, leg management, routing config CRUD.\n\n**Variables:**\n- `base_url` — API Gateway stage URL, e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev\n\nSet `posting_id` after creating a posting via backend-aws.",
+    "description": "API collection for the backend-ops-aws Lambda (ops dashboard).\n\nHandles: search, retry, fetch by ID, leg management, routing config CRUD.\n\nVariables:\n- base_url — API Gateway stage URL, e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev\n- posting_id — replace with actual ID from create response",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,7 +14,7 @@
     },
     {
       "key": "api_path",
-      "value": "/v2/payment/account-posting",
+      "value": "/v3/payment/account-posting",
       "type": "string"
     },
     {
@@ -32,12 +32,26 @@
           "name": "Search — All (no filters)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/search",
+              "host": [
+                "{{base_url}}{{api_path}}/search"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"limit\": 20\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "description": "Returns up to 20 postings with no filters."
           }
@@ -46,12 +60,26 @@
           "name": "Search — By Status (PNDG)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/search",
+              "host": [
+                "{{base_url}}{{api_path}}/search"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"PNDG\",\n  \"limit\": 20\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "description": "Filter by posting status. Valid values: RECEIVED, PNDG, ACSP."
           }
@@ -60,12 +88,26 @@
           "name": "Search — By Source Name",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/search",
+              "host": [
+                "{{base_url}}{{api_path}}/search"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"source_name\": \"IMX\",\n  \"limit\": 10\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
@@ -73,12 +115,26 @@
           "name": "Search — By Date Range",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/search",
+              "host": [
+                "{{base_url}}{{api_path}}/search"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"from_date\": \"2026-04-01T00:00:00Z\",\n  \"to_date\": \"2026-04-30T23:59:59Z\",\n  \"limit\": 50\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }
@@ -91,14 +147,28 @@
           "name": "Retry — All PNDG/RECEIVED",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}{{api_path}}/retry", "host": ["{{base_url}}{{api_path}}/retry"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/retry",
+              "host": [
+                "{{base_url}}{{api_path}}/retry"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"requested_by\": \"ops-team\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "description": "Re-queues all postings with status PNDG or RECEIVED that are not retry-locked. Returns count of queued and skipped."
+            "description": "Re-queues all postings with status PNDG or RECEIVED that are not retry-locked."
           },
           "response": [
             {
@@ -113,12 +183,26 @@
           "name": "Retry — Specific IDs",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}{{api_path}}/retry", "host": ["{{base_url}}{{api_path}}/retry"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/retry",
+              "host": [
+                "{{base_url}}{{api_path}}/retry"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"posting_ids\": [{{posting_id}}],\n  \"requested_by\": \"ops-user\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }
@@ -134,7 +218,9 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}{{api_path}}/{{posting_id}}",
-              "host": ["{{base_url}}{{api_path}}/{{posting_id}}"]
+              "host": [
+                "{{base_url}}{{api_path}}/{{posting_id}}"
+              ]
             },
             "description": "Fetch a single posting with all its legs."
           },
@@ -165,7 +251,9 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction",
-              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction"]
+              "host": [
+                "{{base_url}}{{api_path}}/{{posting_id}}/transaction"
+              ]
             }
           }
         },
@@ -176,7 +264,9 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction/1",
-              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction/1"]
+              "host": [
+                "{{base_url}}{{api_path}}/{{posting_id}}/transaction/1"
+              ]
             },
             "description": "Fetch leg at transactionOrder=1."
           }
@@ -185,15 +275,26 @@
           "name": "Manual Leg Status Override",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction/1",
-              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction/1"]
+              "host": [
+                "{{base_url}}{{api_path}}/{{posting_id}}/transaction/1"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"ACSP\",\n  \"reason\": \"Manually confirmed by ops team\",\n  \"requested_by\": \"ops-user\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "description": "Manually overrides leg status. Sets mode=MANUAL, does NOT increment attemptNumber."
           }
@@ -210,9 +311,10 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}{{api_path}}/config",
-              "host": ["{{base_url}}{{api_path}}/config"]
-            },
-            "description": "Returns all routing config entries across all requestTypes."
+              "host": [
+                "{{base_url}}{{api_path}}/config"
+              ]
+            }
           }
         },
         {
@@ -222,7 +324,9 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL",
-              "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL"]
+              "host": [
+                "{{base_url}}{{api_path}}/config/IMX_CBS_GL"
+              ]
             }
           }
         },
@@ -230,15 +334,26 @@
           "name": "Create Config — IMX_CBS_GL leg 1 (CBS)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}{{api_path}}/config",
-              "host": ["{{base_url}}{{api_path}}/config"]
+              "host": [
+                "{{base_url}}{{api_path}}/config"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"requestType\": \"IMX_CBS_GL\",\n  \"orderSeq\": 1,\n  \"sourceName\": \"IMX\",\n  \"targetSystem\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"processingMode\": \"ASYNC\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
@@ -246,15 +361,26 @@
           "name": "Create Config — IMX_CBS_GL leg 2 (GL)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}{{api_path}}/config",
-              "host": ["{{base_url}}{{api_path}}/config"]
+              "host": [
+                "{{base_url}}{{api_path}}/config"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"requestType\": \"IMX_CBS_GL\",\n  \"orderSeq\": 2,\n  \"sourceName\": \"IMX\",\n  \"targetSystem\": \"GL\",\n  \"operation\": \"POSTING\",\n  \"processingMode\": \"ASYNC\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
@@ -262,15 +388,26 @@
           "name": "Create Config — ADD_ACCOUNT_HOLD (SYNC)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}{{api_path}}/config",
-              "host": ["{{base_url}}{{api_path}}/config"]
+              "host": [
+                "{{base_url}}{{api_path}}/config"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"requestType\": \"ADD_ACCOUNT_HOLD\",\n  \"orderSeq\": 1,\n  \"sourceName\": \"STABLECOIN\",\n  \"targetSystem\": \"CBS\",\n  \"operation\": \"ADD_HOLD\",\n  \"processingMode\": \"SYNC\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
@@ -278,17 +415,28 @@
           "name": "Update Config",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL/1",
-              "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL/1"]
+              "host": [
+                "{{base_url}}{{api_path}}/config/IMX_CBS_GL/1"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"requestType\": \"IMX_CBS_GL\",\n  \"orderSeq\": 1,\n  \"sourceName\": \"IMX\",\n  \"targetSystem\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"processingMode\": \"SYNC\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "description": "Update an existing config entry. path: {type}/{order}"
+            "description": "Update an existing config entry. Path: {type}/{order}"
           }
         },
         {
@@ -298,7 +446,9 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL/1",
-              "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL/1"]
+              "host": [
+                "{{base_url}}{{api_path}}/config/IMX_CBS_GL/1"
+              ]
             },
             "description": "Deletes a config entry. Returns HTTP 204 No Content."
           },

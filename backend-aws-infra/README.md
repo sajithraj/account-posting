@@ -11,7 +11,7 @@ HTTP API Gateway v2, IAM roles, and CloudWatch alarms.
 ```
                         ┌─────────────────────────────────────┐
                         │          API Gateway v2 (HTTP)       │
-                        │   /v2/payment/account-posting/...    │
+                        │   /v3/payment/account-posting/...    │
                         └────────────┬────────────────┬────────┘
                                      │                │
                       POST /  only   │                │  All other routes
@@ -65,18 +65,18 @@ HTTP API Gateway v2, IAM roles, and CloudWatch alarms.
 
 | Method | Path | Lambda |
 |--------|------|--------|
-| `POST` | `/v2/payment/account-posting` | **backend-aws** |
-| `POST` | `/v2/payment/account-posting/search` | **backend-ops-aws** |
-| `POST` | `/v2/payment/account-posting/retry` | **backend-ops-aws** |
-| `GET` | `/v2/payment/account-posting/{id}` | **backend-ops-aws** |
-| `GET` | `/v2/payment/account-posting/{id}/transaction` | **backend-ops-aws** |
-| `GET` | `/v2/payment/account-posting/{id}/transaction/{order}` | **backend-ops-aws** |
-| `PATCH` | `/v2/payment/account-posting/{id}/transaction/{order}` | **backend-ops-aws** |
-| `GET` | `/v2/payment/account-posting/config` | **backend-ops-aws** |
-| `GET` | `/v2/payment/account-posting/config/{requestType}` | **backend-ops-aws** |
-| `POST` | `/v2/payment/account-posting/config` | **backend-ops-aws** |
-| `PUT` | `/v2/payment/account-posting/config/{type}/{order}` | **backend-ops-aws** |
-| `DELETE` | `/v2/payment/account-posting/config/{type}/{order}` | **backend-ops-aws** |
+| `POST` | `/v3/payment/account-posting` | **backend-aws** |
+| `POST` | `/v3/payment/account-posting/search` | **backend-ops-aws** |
+| `POST` | `/v3/payment/account-posting/retry` | **backend-ops-aws** |
+| `GET` | `/v3/payment/account-posting/{id}` | **backend-ops-aws** |
+| `GET` | `/v3/payment/account-posting/{id}/transaction` | **backend-ops-aws** |
+| `GET` | `/v3/payment/account-posting/{id}/transaction/{order}` | **backend-ops-aws** |
+| `PATCH` | `/v3/payment/account-posting/{id}/transaction/{order}` | **backend-ops-aws** |
+| `GET` | `/v3/payment/account-posting/config` | **backend-ops-aws** |
+| `GET` | `/v3/payment/account-posting/config/{requestType}` | **backend-ops-aws** |
+| `POST` | `/v3/payment/account-posting/config` | **backend-ops-aws** |
+| `PUT` | `/v3/payment/account-posting/config/{type}/{order}` | **backend-ops-aws** |
+| `DELETE` | `/v3/payment/account-posting/config/{type}/{order}` | **backend-ops-aws** |
 
 ---
 
@@ -338,7 +338,7 @@ AWS sends a confirmation email to `support_email`. Click **Confirm subscription*
 
 ```bash
 BASE_URL=$(terraform output -raw api_gateway_url)
-# e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev/v2/payment/account-posting
+# e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev/v3/payment/account-posting
 ```
 
 Config is managed via the **ops Lambda** (`backend-ops-aws`):
@@ -584,7 +584,7 @@ Values printed after `terraform apply` and accessible via `terraform output <nam
 
 | Output | Description |
 |--------|-------------|
-| `api_gateway_url` | Full base URL: `https://<id>.execute-api.<region>.amazonaws.com/<env>/v2/payment/account-posting` |
+| `api_gateway_url` | Full base URL: `https://<id>.execute-api.<region>.amazonaws.com/<env>/v3/payment/account-posting` |
 | `api_gateway_id` | API Gateway resource ID |
 | `lambda_function_name` | backend-aws Lambda name |
 | `lambda_arn` | backend-aws Lambda ARN |
@@ -740,18 +740,18 @@ Protocol: `HTTP` (not REST). Payload format: `2.0`.
 
 | Route key | Integration |
 |-----------|-------------|
-| `POST /v2/payment/account-posting` | `posting_lambda` |
-| `POST /v2/payment/account-posting/search` | `ops_lambda` |
-| `POST /v2/payment/account-posting/retry` | `ops_lambda` |
-| `GET /v2/payment/account-posting/{id}` | `ops_lambda` |
-| `GET /v2/payment/account-posting/{id}/transaction` | `ops_lambda` |
-| `GET /v2/payment/account-posting/{id}/transaction/{order}` | `ops_lambda` |
-| `PATCH /v2/payment/account-posting/{id}/transaction/{order}` | `ops_lambda` |
-| `GET /v2/payment/account-posting/config` | `ops_lambda` |
-| `GET /v2/payment/account-posting/config/{requestType}` | `ops_lambda` |
-| `POST /v2/payment/account-posting/config` | `ops_lambda` |
-| `PUT /v2/payment/account-posting/config/{type}/{order}` | `ops_lambda` |
-| `DELETE /v2/payment/account-posting/config/{type}/{order}` | `ops_lambda` |
+| `POST /v3/payment/account-posting` | `posting_lambda` |
+| `POST /v3/payment/account-posting/search` | `ops_lambda` |
+| `POST /v3/payment/account-posting/retry` | `ops_lambda` |
+| `GET /v3/payment/account-posting/{id}` | `ops_lambda` |
+| `GET /v3/payment/account-posting/{id}/transaction` | `ops_lambda` |
+| `GET /v3/payment/account-posting/{id}/transaction/{order}` | `ops_lambda` |
+| `PATCH /v3/payment/account-posting/{id}/transaction/{order}` | `ops_lambda` |
+| `GET /v3/payment/account-posting/config` | `ops_lambda` |
+| `GET /v3/payment/account-posting/config/{requestType}` | `ops_lambda` |
+| `POST /v3/payment/account-posting/config` | `ops_lambda` |
+| `PUT /v3/payment/account-posting/config/{type}/{order}` | `ops_lambda` |
+| `DELETE /v3/payment/account-posting/config/{type}/{order}` | `ops_lambda` |
 
 #### Stage
 

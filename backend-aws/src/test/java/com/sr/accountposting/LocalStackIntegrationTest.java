@@ -29,10 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * End-to-end integration tests for backend-aws (SQS consumer + POST create).
- *
+ * <p>
  * Run via:  mvn test -Plocalstack
  * Or right-click in IDE — the static block sets all required system properties.
- *
+ * <p>
  * Configs are seeded directly to DynamoDB since POST /config lives in backend-ops-aws.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -56,7 +56,7 @@ class LocalStackIntegrationTest {
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String BASE = "/v2/payment/account-posting";
+    private static final String BASE = "/v3/payment/account-posting";
     private static final String QUEUE_URL = "http://localhost:4566/000000000000/posting-queue";
 
     private LambdaRequestHandler handler;
@@ -153,6 +153,8 @@ class LocalStackIntegrationTest {
     @Test
     @Order(4)
     void createPosting_sync_returnsImmediateResult() throws Exception {
+        drainQueue();
+
         String syncE2eRef = "E2E-SYNC-" + System.currentTimeMillis();
         var r = invoke("POST", BASE, postingBody("STABLECOIN", syncE2eRef, "ADD_ACCOUNT_HOLD"));
 
@@ -162,7 +164,6 @@ class LocalStackIntegrationTest {
         assertThat(data.get("posting_status")).isIn("ACSP", "PNDG");
         assertThat(data.get("processed_at")).isNotNull();
 
-        // Sync posting must NOT enqueue an SQS message
         List<Message> messages = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
                 .queueUrl(QUEUE_URL)
                 .maxNumberOfMessages(1)
@@ -228,7 +229,7 @@ class LocalStackIntegrationTest {
     }
 
     private void upsertConfig(String requestType, int orderSeq, String sourceName,
-                               String targetSystem, String operation, String processingMode) {
+                              String targetSystem, String operation, String processingMode) {
         PostingConfigEntity config = new PostingConfigEntity();
         config.setRequestType(requestType);
         config.setOrderSeq(orderSeq);
@@ -280,6 +281,22 @@ class LocalStackIntegrationTest {
 
         Map<String, Object> apiResponse = MAPPER.readValue(responseBody, Map.class);
         return new ParsedResponse(statusCode, (Boolean) apiResponse.get("success"), apiResponse.get("data"));
+    }
+
+    private void drainQueue() {
+        while (true) {
+            List<Message> msgs = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
+                    .queueUrl(QUEUE_URL)
+                    .maxNumberOfMessages(10)
+                    .waitTimeSeconds(0)
+                    .build()).messages();
+            if (msgs.isEmpty()) break;
+            msgs.forEach(m -> sqsClient.deleteMessage(
+                    software.amazon.awssdk.services.sqs.model.DeleteMessageRequest.builder()
+                            .queueUrl(QUEUE_URL)
+                            .receiptHandle(m.receiptHandle())
+                            .build()));
+        }
     }
 
     private static String resolve(String envKey, String propKey, String defaultVal) {

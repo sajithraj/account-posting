@@ -9,45 +9,46 @@ No Spring Boot — Dagger 2 for compile-time DI, AWS SDK v2 for DynamoDB / SQS /
 
 This project is split across three modules:
 
-| Module | Purpose |
-|--------|---------|
-| **`backend-aws`** ← you are here | Posting creation (`POST /`) and SQS consumer |
-| [`backend-ops-aws`](../backend-ops-aws/README.md) | Ops dashboard — search, retry, legs, config CRUD |
+| Module                                                | Purpose                                                              |
+|-------------------------------------------------------|----------------------------------------------------------------------|
+| **`backend-aws`** ← you are here                      | Posting creation (`POST /`) and SQS consumer                         |
+| [`backend-ops-aws`](../backend-ops-aws/README.md)     | Ops dashboard — search, retry, legs, config CRUD                     |
 | [`backend-aws-infra`](../backend-aws-infra/README.md) | Terraform — provisions both Lambdas, DynamoDB, SQS, SNS, API Gateway |
 
 ---
 
 ## Routes handled
 
-| Trigger | Route | What it does |
-|---------|-------|-------------|
-| API Gateway | `POST /v2/payment/account-posting` | Validate → persist → sync-process or queue to SQS |
-| SQS | `PROCESSING_QUEUE_URL` | Consume `PostingJob` messages, run legs, alert SNS on failure |
+| Trigger     | Route                              | What it does                                                  |
+|-------------|------------------------------------|---------------------------------------------------------------|
+| API Gateway | `POST /v3/payment/account-posting` | Validate → persist → sync-process or queue to SQS             |
+| SQS         | `PROCESSING_QUEUE_URL`             | Consume `PostingJob` messages, run legs, alert SNS on failure |
 
-All other routes (`/search`, `/retry`, `/{id}`, `/config`, `/transaction`) return **404** here — they belong to `backend-ops-aws`.
+All other routes (`/search`, `/retry`, `/{id}`, `/config`, `/transaction`) return **404** here — they belong to
+`backend-ops-aws`.
 
 ---
 
 ## AWS Services
 
-| Service | Role | Env var |
-|---------|------|---------|
-| **DynamoDB** | Read/write postings, legs, routing configs | `POSTING_TABLE_NAME`, `LEG_TABLE_NAME`, `CONFIG_TABLE_NAME` |
-| **SQS** | Publish async jobs; Lambda triggered by same queue | `PROCESSING_QUEUE_URL` |
-| **SNS** | Failure alerts published by `SqsHandler` | `SUPPORT_ALERT_TOPIC_ARN` |
+| Service      | Role                                               | Env var                                                     |
+|--------------|----------------------------------------------------|-------------------------------------------------------------|
+| **DynamoDB** | Read/write postings, legs, routing configs         | `POSTING_TABLE_NAME`, `LEG_TABLE_NAME`, `CONFIG_TABLE_NAME` |
+| **SQS**      | Publish async jobs; Lambda triggered by same queue | `PROCESSING_QUEUE_URL`                                      |
+| **SNS**      | Failure alerts published by `SqsHandler`           | `SUPPORT_ALERT_TOPIC_ARN`                                   |
 
 ---
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `AWS_ACCOUNT_REGION` | AWS region | `ap-southeast-1` |
-| `POSTING_TABLE_NAME` | DynamoDB posting table | `account-posting` |
-| `LEG_TABLE_NAME` | DynamoDB leg table | `account-posting-leg` |
-| `CONFIG_TABLE_NAME` | DynamoDB config table | `account-posting-config` |
-| `PROCESSING_QUEUE_URL` | SQS queue URL for async job publishing | `https://sqs.ap-southeast-1.amazonaws.com/...` |
-| `SUPPORT_ALERT_TOPIC_ARN` | SNS topic ARN for failure alerts | `arn:aws:sns:ap-southeast-1:...:posting-alerts` |
+| Variable                  | Description                            | Example                                         |
+|---------------------------|----------------------------------------|-------------------------------------------------|
+| `AWS_ACCOUNT_REGION`      | AWS region                             | `ap-southeast-1`                                |
+| `POSTING_TABLE_NAME`      | DynamoDB posting table                 | `account-posting`                               |
+| `LEG_TABLE_NAME`          | DynamoDB leg table                     | `account-posting-leg`                           |
+| `CONFIG_TABLE_NAME`       | DynamoDB config table                  | `account-posting-config`                        |
+| `PROCESSING_QUEUE_URL`    | SQS queue URL for async job publishing | `https://sqs.ap-southeast-1.amazonaws.com/...`  |
+| `SUPPORT_ALERT_TOPIC_ARN` | SNS topic ARN for failure alerts       | `arn:aws:sns:ap-southeast-1:...:posting-alerts` |
 
 ---
 
@@ -57,7 +58,7 @@ All other routes (`/search`, `/retry`, `/{id}`, `/config`, `/transaction`) retur
 com.sr.accountposting
 ├── LambdaRequestHandler              Entry point — routes SQS vs API Gateway events
 ├── handler/
-│   ├── ApiGatewayHandler             POST /v2/payment/account-posting only (all others → 404)
+│   ├── ApiGatewayHandler             POST /v3/payment/account-posting only (all others → 404)
 │   └── SqsHandler                    SQS consumer — processes PostingJob, alerts SNS on failure
 ├── service/
 │   ├── posting/
@@ -92,7 +93,8 @@ com.sr.accountposting
 
 ## Key Design Notes
 
-- **Sync vs async** — if all routing configs for the `requestType` have `processingMode=ASYNC`, the posting is queued to SQS and returns `ACSP` immediately. Otherwise `PostingProcessorService` is called inline.
+- **Sync vs async** — if all routing configs for the `requestType` have `processingMode=ASYNC`, the posting is queued to
+  SQS and returns `ACSP` immediately. Otherwise `PostingProcessorService` is called inline.
 - **Idempotency** — `endToEndReferenceId` uniqueness checked before persisting.
 - **SQS batch isolation** — each SQS record wrapped in try/catch; one bad message does not block the rest of the batch.
 - **SNS swallowed** — `SqsHandler.alertSupportTeam` catches publish failures so they don't cause an unwanted SQS retry.

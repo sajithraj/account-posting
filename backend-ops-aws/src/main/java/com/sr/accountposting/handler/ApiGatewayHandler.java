@@ -58,7 +58,7 @@ public class ApiGatewayHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiGatewayHandler.class);
 
-    private static final String BASE = "/v2/payment/account-posting";
+    private static final String BASE = "/v3/payment/account-posting";
 
     private final AccountPostingService postingService;
     private final AccountPostingLegService legService;

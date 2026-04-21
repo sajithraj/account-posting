@@ -22,7 +22,7 @@ import java.util.Map;
  * <p>This handler is registered as the Lambda function handler in AWS. It accepts two event types:
  * <ul>
  *   <li><b>API Gateway V2 HTTP</b> — forwarded to {@link com.sr.accountposting.handler.ApiGatewayHandler}.
- *       Only {@code POST /v2/payment/account-posting} is handled here; all other routes return 404.</li>
+ *       Only {@code POST /v3/payment/account-posting} is handled here; all other routes return 404.</li>
  *   <li><b>SQS</b> — forwarded to {@link com.sr.accountposting.handler.SqsHandler}.
  *       The Lambda is triggered by the {@code PROCESSING_QUEUE_URL} queue. Each record in the batch is
  *       processed independently so a single failure does not poison the entire batch.</li>
