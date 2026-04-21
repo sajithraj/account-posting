@@ -113,7 +113,7 @@ All endpoints are served at `http://localhost:8080` (no `/api` prefix).
 | `DELETE` | `/v2/payment/account-posting/config/{configId}`  | Delete routing config entry     |
 | `POST`   | `/v2/payment/account-posting/config/cache/flush` | Flush config cache              |
 
-Full spec: [`openapi.yml`](openapi.yml)
+Full spec: [`openapi.yml`](backend/contract/openapi.yml)
 
 ---
 

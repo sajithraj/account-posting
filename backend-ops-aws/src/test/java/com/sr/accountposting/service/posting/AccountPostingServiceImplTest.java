@@ -29,6 +29,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -129,7 +130,7 @@ class AccountPostingServiceImplTest {
     void search_bySourceName_returnsMatchingPostings() {
         AccountPostingEntity p = buildPosting(100001L, PostingStatus.ACSP, "E2E-001", "RMS");
 
-        when(postingRepo.search(any(), eq("RMS"), any(), any(), any()))
+        when(postingRepo.search(any(), eq("RMS"), any(), any(), anyInt()))
                 .thenReturn(List.of(p));
         when(legRepo.findByPostingId(100001L)).thenReturn(List.of());
 
@@ -153,7 +154,7 @@ class AccountPostingServiceImplTest {
 
     @Test
     void search_noResults_returnsEmptyList() {
-        when(postingRepo.search(any(), any(), any(), any(), any())).thenReturn(List.of());
+        when(postingRepo.search(any(), any(), any(), any(), anyInt())).thenReturn(List.of());
 
         List<PostingResponse> results = service.search(new PostingSearchRequest());
 
@@ -218,7 +219,7 @@ class AccountPostingServiceImplTest {
         assertThat(response.getTotalPostings()).isEqualTo(3);
         assertThat(response.getQueued()).isEqualTo(3);
         assertThat(response.getSkippedLocked()).isEqualTo(0);
-        verify(sqsClient, times(3)).sendMessage(any());
+        verify(sqsClient, times(3)).sendMessage(any(SendMessageRequest.class));
     }
 
     @Test
@@ -236,7 +237,7 @@ class AccountPostingServiceImplTest {
 
         assertThat(response.getQueued()).isEqualTo(0);
         assertThat(response.getSkippedLocked()).isEqualTo(1);
-        verify(sqsClient, never()).sendMessage(any());
+        verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
     }
 
     @Test
@@ -251,7 +252,7 @@ class AccountPostingServiceImplTest {
 
         assertThat(response.getQueued()).isEqualTo(0);
         assertThat(response.getSkippedLocked()).isEqualTo(1);
-        verify(sqsClient, never()).sendMessage(any());
+        verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

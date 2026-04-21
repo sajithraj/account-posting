@@ -19,6 +19,29 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.Map;
 
+/**
+ * Handles API Gateway V2 HTTP events for the posting-creation Lambda.
+ *
+ * <p>Routes supported:
+ * <pre>
+ *   POST /v2/payment/account-posting   Create a new account posting
+ * </pre>
+ *
+ * <p>All other routes return HTTP 404. Search, retry, config CRUD, and leg management
+ * live in the {@code backend-ops-aws} Lambda.
+ *
+ * <p>Sync vs async: determined by {@link com.sr.accountposting.service.posting.AccountPostingServiceImpl}.
+ * If all configs for the request type have {@code processingMode=ASYNC}, the posting is queued to SQS
+ * and the response carries status {@code ACSP}. Otherwise processing is synchronous.
+ *
+ * <p>Error mapping:
+ * <ul>
+ *   <li>{@link com.sr.accountposting.exception.ResourceNotFoundException} → 404</li>
+ *   <li>{@link com.sr.accountposting.exception.ValidationException} → 400</li>
+ *   <li>{@link com.sr.accountposting.exception.BusinessException} → 422</li>
+ *   <li>{@link com.sr.accountposting.exception.TechnicalException} → 500</li>
+ * </ul>
+ */
 @Singleton
 public class ApiGatewayHandler {
 
@@ -62,8 +85,6 @@ public class ApiGatewayHandler {
         log.info("<-- {} {} status={}", method, path, response.getStatusCode());
         return response;
     }
-
-    // ─── Router ───────────────────────────────────────────────────────────────
 
     private APIGatewayV2HTTPResponse route(String method, String path, APIGatewayV2HTTPEvent event) {
         String body = event.getBody();

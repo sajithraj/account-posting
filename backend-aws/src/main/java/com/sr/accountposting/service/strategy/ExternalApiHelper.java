@@ -1,6 +1,8 @@
 package com.sr.accountposting.service.strategy;
 
 import com.sr.accountposting.dto.posting.IncomingPostingRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -13,6 +15,8 @@ import java.util.UUID;
 
 @Singleton
 public class ExternalApiHelper {
+
+    private static final Logger log = LoggerFactory.getLogger(ExternalApiHelper.class);
 
     @Inject
     public ExternalApiHelper() {
@@ -33,9 +37,11 @@ public class ExternalApiHelper {
     }
 
     public Map<String, Object> callCbs(Map<String, Object> cbsRequest, String transactionIndex) {
+        log.info("callCbs transactionIndex={} request={}", transactionIndex, cbsRequest);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
         response.put("status", "SUCCESS");
+        log.info("callCbs transactionIndex={} response={}", transactionIndex, response);
         return response;
     }
 
@@ -51,9 +57,11 @@ public class ExternalApiHelper {
     }
 
     public Map<String, Object> callCbsAddHold(Map<String, Object> cbsRequest, String transactionIndex) {
+        log.info("callCbsAddHold transactionIndex={} request={}", transactionIndex, cbsRequest);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
         response.put("status", "SUCCESS");
+        log.info("callCbsAddHold transactionIndex={} response={}", transactionIndex, response);
         return response;
     }
 
@@ -69,9 +77,11 @@ public class ExternalApiHelper {
     }
 
     public Map<String, Object> callCbsRemoveHold(Map<String, Object> cbsRequest, String transactionIndex) {
+        log.info("callCbsRemoveHold transactionIndex={} request={}", transactionIndex, cbsRequest);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_index", transactionIndex);
         response.put("status", "SUCCESS");
+        log.info("callCbsRemoveHold transactionIndex={} response={}", transactionIndex, response);
         return response;
     }
 
@@ -88,9 +98,11 @@ public class ExternalApiHelper {
     }
 
     public Map<String, Object> callGl(Map<String, Object> glRequest) {
+        log.info("callGl request={}", glRequest);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("responder_ref_id", UUID.randomUUID().toString());
         response.put("status", "SUCCESS");
+        log.info("callGl response={}", response);
         return response;
     }
 
@@ -108,11 +120,13 @@ public class ExternalApiHelper {
     }
 
     public Map<String, Object> callObpm(Map<String, Object> obpmRequest) {
+        log.info("callObpm request={}", obpmRequest);
         String transactionId = "TRAN" + DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")
                 .format(LocalDateTime.now());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("transaction_id", transactionId);
         response.put("status", "SUCCESS");
+        log.info("callObpm response={}", response);
         return response;
     }
 }

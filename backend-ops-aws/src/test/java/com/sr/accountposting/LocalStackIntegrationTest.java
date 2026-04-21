@@ -476,6 +476,9 @@ class LocalStackIntegrationTest {
         String responseBody = (String) rawMap.get("body");
         System.out.printf("[OPS-TEST] <-- %d  body=%s%n", statusCode, responseBody);
 
+        if (responseBody == null || responseBody.isEmpty()) {
+            return new ParsedResponse(statusCode, true, null);
+        }
         Map<String, Object> apiResponse = MAPPER.readValue(responseBody, Map.class);
         return new ParsedResponse(statusCode, (Boolean) apiResponse.get("success"), apiResponse.get("data"));
     }

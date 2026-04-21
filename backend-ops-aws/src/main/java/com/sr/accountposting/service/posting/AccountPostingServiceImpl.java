@@ -27,6 +27,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Posting query and retry service for the backend-ops-aws Lambda.
+ *
+ * <p>Responsibilities:
+ * <ul>
+ *   <li>{@code findById} — fetch a single posting from {@code POSTING_TABLE_NAME} and join its legs
+ *       from {@code LEG_TABLE_NAME}.</li>
+ *   <li>{@code search} — scan {@code POSTING_TABLE_NAME} with optional filters (status, sourceName,
+ *       date range, limit). Legs are joined for each result row.</li>
+ *   <li>{@code retry} — for each candidate posting (explicit IDs or all PNDG/RECEIVED):
+ *     <ol>
+ *       <li>Attempt to acquire a retry lock via {@code acquireRetryLock} (DynamoDB conditional write).</li>
+ *       <li>If locked: re-publish a {@link com.sr.accountposting.dto.posting.PostingJob} with mode
+ *           {@code RETRY} to {@code PROCESSING_QUEUE_URL} (SQS).</li>
+ *       <li>If lock already held: increment skipped count, continue.</li>
+ *     </ol>
+ *   </li>
+ * </ul>
+ *
+ * <p>Note: this Lambda does NOT create new postings — that belongs to {@code backend-aws}.
+ */
 @Singleton
 public class AccountPostingServiceImpl implements AccountPostingService {
 
@@ -47,22 +68,28 @@ public class AccountPostingServiceImpl implements AccountPostingService {
 
     @Override
     public PostingResponse findById(Long postingId) {
+        log.info("findById postingId={}", postingId);
         AccountPostingEntity posting = postingRepo.findById(postingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Posting not found: " + postingId));
         List<AccountPostingLegEntity> legs = legRepo.findByPostingId(postingId);
+        log.info("findById postingId={} status={} legCount={}", postingId, posting.getStatus(), legs.size());
         return toResponse(posting, legs);
     }
 
     @Override
     public List<PostingResponse> search(PostingSearchRequest req) {
+        log.info("search status={} sourceName={} fromDate={} toDate={} limit={}",
+                req.getStatus(), req.getSourceName(), req.getFromDate(), req.getToDate(), req.getLimit());
         List<AccountPostingEntity> postings = postingRepo.search(
                 req.getStatus(), req.getSourceName(),
                 req.getFromDate(), req.getToDate(),
                 req.getLimit() != null ? req.getLimit() : 20);
 
-        return postings.stream()
+        List<PostingResponse> results = postings.stream()
                 .map(p -> toResponse(p, legRepo.findByPostingId(p.getPostingId())))
                 .collect(Collectors.toList());
+        log.info("search returned {} results", results.size());
+        return results;
     }
 
     @Override

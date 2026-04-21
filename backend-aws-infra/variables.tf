@@ -16,9 +16,15 @@ variable "environment" {
 }
 
 variable "lambda_jar_path" {
-  description = "Path to the compiled Lambda fat JAR (relative to infra folder)"
+  description = "Path to the compiled backend-aws Lambda fat JAR (relative to infra folder)"
   type        = string
   default     = "../backend-aws/target/account-posting-aws.jar"
+}
+
+variable "ops_lambda_jar_path" {
+  description = "Path to the compiled backend-ops-aws Lambda fat JAR (relative to infra folder)"
+  type        = string
+  default     = "../backend-ops-aws/target/account-posting-ops-aws.jar"
 }
 
 variable "support_email" {

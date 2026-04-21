@@ -158,6 +158,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/LocalStackIntegrationTest.java</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
 
             <!-- Fat JAR for Lambda deployment -->
@@ -201,6 +206,10 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.2.5</version>
                         <configuration>
+                            <includes>
+                                <include>**/LocalStackIntegrationTest.java</include>
+                            </includes>
+                            <excludes/>
                             <environmentVariables>
                                 <AWS_ACCESS_KEY_ID>test</AWS_ACCESS_KEY_ID>
                                 <AWS_SECRET_ACCESS_KEY>test</AWS_SECRET_ACCESS_KEY>

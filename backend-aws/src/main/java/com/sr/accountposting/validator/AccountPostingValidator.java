@@ -3,6 +3,8 @@ package com.sr.accountposting.validator;
 import com.sr.accountposting.dto.posting.IncomingPostingRequest;
 import com.sr.accountposting.entity.config.PostingConfigEntity;
 import com.sr.accountposting.exception.ValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -14,6 +16,7 @@ import java.util.Set;
 @Singleton
 public class AccountPostingValidator {
 
+    private static final Logger log = LoggerFactory.getLogger(AccountPostingValidator.class);
     private static final Set<String> VALID_CDI = Set.of("CREDIT", "DEBIT");
 
     @Inject
@@ -21,6 +24,8 @@ public class AccountPostingValidator {
     }
 
     public void validate(IncomingPostingRequest req, List<PostingConfigEntity> configs) {
+        log.info("Validating posting request requestType={} sourceName={} e2eRef={}",
+                req.getRequestType(), req.getSourceName(), req.getEndToEndReferenceId());
         List<String> errors = new ArrayList<>();
 
         if (blank(req.getSourceReferenceId())) errors.add("source_reference_id is required");
@@ -69,9 +74,11 @@ public class AccountPostingValidator {
         }
 
         if (!errors.isEmpty()) {
+            log.warn("Validation failed requestType={} errors={}", req.getRequestType(), errors);
             throw new ValidationException("VALIDATION_ERROR",
                     "Request validation failed: " + String.join("; ", errors));
         }
+        log.info("Validation passed requestType={}", req.getRequestType());
     }
 
     private boolean blank(String s) {

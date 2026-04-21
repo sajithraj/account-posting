@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-cd "$(dirname "$0")/../../backend-aws"
+
+SCRIPT_DIR="$(dirname "$0")"
 
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
@@ -12,4 +13,12 @@ export CONFIG_TABLE_NAME=account-posting-config
 export PROCESSING_QUEUE_URL=http://localhost:4566/000000000000/posting-queue
 export SUPPORT_ALERT_TOPIC_ARN=arn:aws:sns:ap-southeast-1:000000000000:posting-alerts
 
-mvn test -Dtest=LocalStackIntegrationTest -DfailIfNoTests=false
+echo "==> Running backend-aws integration tests"
+cd "$SCRIPT_DIR/../../backend-aws"
+mvn test -Plocalstack
+
+echo "==> Running backend-ops-aws integration tests"
+cd "$SCRIPT_DIR/../../backend-ops-aws"
+mvn test -Plocalstack
+
+echo "==> All integration tests passed"

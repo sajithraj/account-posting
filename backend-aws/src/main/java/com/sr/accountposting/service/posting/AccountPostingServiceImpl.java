@@ -31,6 +31,21 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Posting creation service for the backend-aws Lambda.
+ *
+ * <p>Responsibilities:
+ * <ol>
+ *   <li>Validate the incoming request against {@code CONFIG_TABLE_NAME} routing configs.</li>
+ *   <li>Guard against duplicate submissions using {@code endToEndReferenceId}.</li>
+ *   <li>Persist the posting to {@code POSTING_TABLE_NAME} (DynamoDB).</li>
+ *   <li>If all configs are {@code ASYNC}: publish a {@link com.sr.accountposting.dto.posting.PostingJob}
+ *       to {@code PROCESSING_QUEUE_URL} (SQS) and return immediately with status {@code ACSP}.</li>
+ *   <li>If any config is {@code SYNC}: call
+ *       {@link com.sr.accountposting.service.processor.PostingProcessorService#process} inline
+ *       and return the final status.</li>
+ * </ol>
+ */
 @Singleton
 public class AccountPostingServiceImpl implements AccountPostingService {
 

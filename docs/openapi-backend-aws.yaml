@@ -1,0 +1,268 @@
+openapi: 3.0.3
+info:
+  title: backend-aws — Account Posting Creation API
+  description: |
+    AWS Lambda API for **posting creation and async job processing**.
+
+    Handles a single route:
+    - `POST /v2/payment/account-posting` — validate, persist, and process (sync) or queue (async) a posting.
+
+    All other routes return HTTP 404 from this Lambda. Search, retry, config CRUD, and leg management
+    are handled by **backend-ops-aws**.
+
+    ### Sync vs Async
+    - If **all** routing configs for the `request_type` have `processingMode=ASYNC`, the posting is
+      queued to SQS and the response carries `posting_status: ACSP`.
+    - If any config has `processingMode=SYNC`, the posting is processed inline before responding.
+  version: "1.0.0"
+  contact:
+    name: Account Posting Team
+
+servers:
+  - url: https://{api_id}.execute-api.ap-southeast-1.amazonaws.com/{stage}
+    description: AWS API Gateway
+    variables:
+      api_id:
+        default: "xxxxxxxxxx"
+        description: API Gateway ID from Terraform output
+      stage:
+        default: dev
+        enum: [dev, staging, prod]
+  - url: http://localhost:4566
+    description: LocalStack (integration tests)
+
+paths:
+  /v2/payment/account-posting:
+    post:
+      operationId: createPosting
+      summary: Create an account posting
+      description: |
+        Validates the request, checks idempotency on `end_to_end_reference_id`, persists the posting,
+        then either processes it inline (SYNC) or queues it to SQS (ASYNC).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncomingPostingRequest'
+            examples:
+              imx_async:
+                summary: IMX async posting (CBS + GL legs)
+                value:
+                  source_name: IMX
+                  source_reference_id: SRC-001
+                  end_to_end_reference_id: E2E-001
+                  request_type: IMX_CBS_GL
+                  credit_debit_indicator: DEBIT
+                  debtor_account: "1000123456"
+                  creditor_account: "1000654321"
+                  requested_execution_date: "2026-04-21"
+                  remittance_information: Invoice payment
+                  amount:
+                    value: "5000.00"
+                    currency_code: USD
+              stablecoin_sync:
+                summary: STABLECOIN sync posting (CBS ADD_HOLD)
+                value:
+                  source_name: STABLECOIN
+                  source_reference_id: SRC-HOLD-001
+                  end_to_end_reference_id: E2E-HOLD-001
+                  request_type: ADD_ACCOUNT_HOLD
+                  credit_debit_indicator: DEBIT
+                  debtor_account: "9000111222"
+                  creditor_account: "9000333444"
+                  requested_execution_date: "2026-04-21"
+                  amount:
+                    value: "1000.00"
+                    currency_code: USD
+      responses:
+        "200":
+          description: Posting accepted or processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePostingResponse'
+              examples:
+                async_accepted:
+                  summary: Async — queued to SQS
+                  value:
+                    success: true
+                    data:
+                      posting_status: ACSP
+                      end_to_end_reference_id: E2E-001
+                      source_reference_id: SRC-001
+                      processed_at: "2026-04-21T10:00:00Z"
+                    error: null
+                sync_success:
+                  summary: Sync — processed inline
+                  value:
+                    success: true
+                    data:
+                      posting_status: PNDG
+                      end_to_end_reference_id: E2E-HOLD-001
+                      source_reference_id: SRC-HOLD-001
+                      processed_at: "2026-04-21T10:01:00Z"
+                    error: null
+        "400":
+          description: Validation error or unknown request type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+              examples:
+                missing_amount:
+                  value:
+                    success: false
+                    data: null
+                    error:
+                      name: VALIDATION_ERROR
+                      message: "Request validation failed: amount is required"
+                unknown_type:
+                  value:
+                    success: false
+                    data: null
+                    error:
+                      name: UNKNOWN_REQUEST_TYPE
+                      message: "Unknown or unconfigured requestType: FOOBAR"
+        "422":
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+              examples:
+                duplicate:
+                  value:
+                    success: false
+                    data: null
+                    error:
+                      name: DUPLICATE_E2E_REF
+                      message: "Posting already exists for endToEndReferenceId: E2E-001"
+        "500":
+          description: Technical error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+
+components:
+  schemas:
+    IncomingPostingRequest:
+      type: object
+      required:
+        - source_name
+        - source_reference_id
+        - end_to_end_reference_id
+        - request_type
+        - credit_debit_indicator
+        - debtor_account
+        - creditor_account
+        - requested_execution_date
+        - amount
+      properties:
+        source_name:
+          type: string
+          description: Upstream system name. Must match the `sourceName` in routing config.
+          example: IMX
+        source_reference_id:
+          type: string
+          description: Reference ID assigned by the upstream system.
+          example: SRC-001
+        end_to_end_reference_id:
+          type: string
+          description: End-to-end unique reference. Used for idempotency — duplicate submissions are rejected.
+          example: E2E-001
+        request_type:
+          type: string
+          description: Identifies which routing config to use. Must be present in the config table.
+          example: IMX_CBS_GL
+        credit_debit_indicator:
+          type: string
+          enum: [CREDIT, DEBIT]
+          example: DEBIT
+        debtor_account:
+          type: string
+          description: Account to debit.
+          example: "1000123456"
+        creditor_account:
+          type: string
+          description: Account to credit.
+          example: "1000654321"
+        requested_execution_date:
+          type: string
+          format: date
+          description: Requested execution date (ISO 8601 date).
+          example: "2026-04-21"
+        remittance_information:
+          type: string
+          description: Optional payment description.
+          example: Invoice payment
+        amount:
+          $ref: '#/components/schemas/Amount'
+
+    Amount:
+      type: object
+      required: [value, currency_code]
+      properties:
+        value:
+          type: string
+          description: Decimal amount as string. Must be > 0.0001.
+          example: "5000.00"
+        currency_code:
+          type: string
+          description: ISO 4217 3-letter currency code.
+          minLength: 3
+          maxLength: 3
+          example: USD
+
+    PostingResponse:
+      type: object
+      properties:
+        posting_status:
+          type: string
+          enum: [RECEIVED, PNDG, ACSP]
+          description: |
+            ACSP — async accepted (queued to SQS).
+            PNDG — sync processing started.
+            RECEIVED — received but not yet processed.
+        end_to_end_reference_id:
+          type: string
+        source_reference_id:
+          type: string
+        processed_at:
+          type: string
+          format: date-time
+
+    ApiError:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Error code.
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: "Request validation failed: amount is required"
+
+    ApiResponsePostingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/PostingResponse'
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponseError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          nullable: true
+          example: null
+        error:
+          $ref: '#/components/schemas/ApiError'

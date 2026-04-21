@@ -1,0 +1,613 @@
+openapi: 3.0.3
+info:
+  title: backend-ops-aws — Account Posting Operations API
+  description: |
+    AWS Lambda API for the **operations / dashboard**: search, retry, leg management,
+    and routing config CRUD.
+
+    Does **not** handle `POST /v2/payment/account-posting` (posting creation) — that belongs to **backend-aws**.
+
+    ### Error format
+    All error responses use the same `ApiResponse` envelope with `success: false` and an `error` object
+    carrying a `name` (error code) and `message`.
+  version: "1.0.0"
+  contact:
+    name: Account Posting Team
+
+servers:
+  - url: https://{api_id}.execute-api.ap-southeast-1.amazonaws.com/{stage}
+    description: AWS API Gateway
+    variables:
+      api_id:
+        default: "xxxxxxxxxx"
+        description: API Gateway ID from Terraform output
+      stage:
+        default: dev
+        enum: [dev, staging, prod]
+  - url: http://localhost:4566
+    description: LocalStack (integration tests)
+
+paths:
+
+  /v2/payment/account-posting/search:
+    post:
+      operationId: searchPostings
+      summary: Search postings
+      description: |
+        Scan the posting table with optional filters. All filter fields are optional.
+        Results include legs for each posting.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostingSearchRequest'
+            examples:
+              all:
+                summary: No filters — latest 20
+                value:
+                  limit: 20
+              by_status:
+                summary: Filter by PNDG status
+                value:
+                  status: PNDG
+                  limit: 20
+              by_source:
+                summary: Filter by source name
+                value:
+                  source_name: IMX
+                  limit: 10
+              by_date:
+                summary: Filter by date range
+                value:
+                  from_date: "2026-04-01T00:00:00Z"
+                  to_date: "2026-04-30T23:59:59Z"
+                  limit: 50
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePostingList'
+
+  /v2/payment/account-posting/retry:
+    post:
+      operationId: retryPostings
+      summary: Retry pending postings
+      description: |
+        Re-queues postings to SQS for reprocessing.
+
+        - If `posting_ids` is omitted, all postings with status `PNDG` or `RECEIVED` are retried.
+        - Retry locking: a DynamoDB conditional write acquires a lock on each posting before
+          publishing to SQS. Postings already locked are counted as `skipped_locked`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryRequest'
+            examples:
+              all_pending:
+                summary: Retry all PNDG/RECEIVED
+                value:
+                  requested_by: ops-team
+              specific:
+                summary: Retry specific IDs
+                value:
+                  posting_ids: [1234567890123, 9876543210987]
+                  requested_by: ops-user
+      responses:
+        "200":
+          description: Retry summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRetryResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    data:
+                      total_postings: 5
+                      queued: 4
+                      skipped_locked: 1
+                      message: "Retry processing submitted. Check dashboard for status updates."
+                    error: null
+
+  /v2/payment/account-posting/{id}:
+    get:
+      operationId: getPostingById
+      summary: Get posting by ID
+      description: Fetches a single posting and all its legs.
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+      responses:
+        "200":
+          description: Posting found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePostingResponse'
+        "404":
+          description: Posting not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+
+  /v2/payment/account-posting/{id}/transaction:
+    get:
+      operationId: listLegs
+      summary: List all legs for a posting
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+      responses:
+        "200":
+          description: Leg list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseLegList'
+
+  /v2/payment/account-posting/{id}/transaction/{order}:
+    get:
+      operationId: getLeg
+      summary: Get a single leg
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+        - $ref: '#/components/parameters/TransactionOrder'
+      responses:
+        "200":
+          description: Leg found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseLegResponse'
+        "404":
+          description: Leg not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+    patch:
+      operationId: manualUpdateLeg
+      summary: Manual leg status override
+      description: |
+        Overrides the leg status manually. Sets `mode=MANUAL` and records `requestedBy`.
+        `attemptNumber` is **not** incremented — this is a manual correction, not a retry.
+      parameters:
+        - $ref: '#/components/parameters/PostingId'
+        - $ref: '#/components/parameters/TransactionOrder'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualUpdateRequest'
+            examples:
+              approve:
+                summary: Manually mark as ACSP
+                value:
+                  status: ACSP
+                  reason: Confirmed by ops team — external system responded via phone
+                  requested_by: ops-user
+      responses:
+        "200":
+          description: Updated leg
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseLegResponse'
+        "404":
+          description: Leg not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+
+  /v2/payment/account-posting/config:
+    get:
+      operationId: listConfigs
+      summary: List all routing configs
+      description: Returns all routing config entries across all request types.
+      responses:
+        "200":
+          description: Config list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigList'
+    post:
+      operationId: createConfig
+      summary: Create a routing config entry
+      description: |
+        Adds a routing config row. Each `requestType` can have multiple ordered entries
+        (one per `orderSeq`) — each entry routes to a different `targetSystem`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostingConfig'
+            examples:
+              imx_cbs:
+                summary: IMX → CBS (order 1, async)
+                value:
+                  requestType: IMX_CBS_GL
+                  orderSeq: 1
+                  sourceName: IMX
+                  targetSystem: CBS
+                  operation: POSTING
+                  processingMode: ASYNC
+              hold_sync:
+                summary: STABLECOIN → CBS ADD_HOLD (sync)
+                value:
+                  requestType: ADD_ACCOUNT_HOLD
+                  orderSeq: 1
+                  sourceName: STABLECOIN
+                  targetSystem: CBS
+                  operation: ADD_HOLD
+                  processingMode: SYNC
+      responses:
+        "201":
+          description: Config created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfig'
+
+  /v2/payment/account-posting/config/{requestType}:
+    get:
+      operationId: getConfigByRequestType
+      summary: Get configs by request type
+      parameters:
+        - name: requestType
+          in: path
+          required: true
+          schema:
+            type: string
+          example: IMX_CBS_GL
+      responses:
+        "200":
+          description: Config entries for this request type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigList'
+
+  /v2/payment/account-posting/config/{type}/{order}:
+    put:
+      operationId: updateConfig
+      summary: Update a routing config entry
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+          example: IMX_CBS_GL
+        - name: order
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostingConfig'
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfig'
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+    delete:
+      operationId: deleteConfig
+      summary: Delete a routing config entry
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+          example: IMX_CBS_GL
+        - name: order
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "204":
+          description: Deleted — no content
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+
+components:
+  parameters:
+    PostingId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: Posting ID (Snowflake-style long)
+      example: 1234567890123
+
+    TransactionOrder:
+      name: order
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Leg sequence number (1-based)
+      example: 1
+
+  schemas:
+    PostingSearchRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [RECEIVED, PNDG, ACSP]
+          description: Filter by posting status.
+        source_name:
+          type: string
+          description: Filter by source system name.
+          example: IMX
+        from_date:
+          type: string
+          format: date-time
+          description: Inclusive start of createdAt range.
+          example: "2026-04-01T00:00:00Z"
+        to_date:
+          type: string
+          format: date-time
+          description: Inclusive end of createdAt range.
+          example: "2026-04-30T23:59:59Z"
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 20
+          description: Max results to return.
+
+    RetryRequest:
+      type: object
+      required: [requested_by]
+      properties:
+        posting_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+          description: Specific posting IDs to retry. Omit to retry all PNDG/RECEIVED.
+        requested_by:
+          type: string
+          description: Operator identity — stored for audit.
+          example: ops-team
+
+    RetryResponse:
+      type: object
+      properties:
+        total_postings:
+          type: integer
+          description: Number of candidates evaluated.
+        queued:
+          type: integer
+          description: Postings successfully queued to SQS.
+        skipped_locked:
+          type: integer
+          description: Postings skipped because retry lock was already held.
+        message:
+          type: string
+
+    PostingResponse:
+      type: object
+      properties:
+        source_reference_id:
+          type: string
+        end_to_end_reference_id:
+          type: string
+        posting_status:
+          type: string
+          enum: [RECEIVED, PNDG, ACSP]
+        processed_at:
+          type: string
+          format: date-time
+        legs:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegResponse'
+
+    LegResponse:
+      type: object
+      properties:
+        posting_id:
+          type: integer
+          format: int64
+        transaction_order:
+          type: integer
+        target_system:
+          type: string
+          enum: [CBS, GL, OBPM]
+        account:
+          type: string
+        status:
+          type: string
+          enum: [PNDG, ACSP, RJCT]
+        reference_id:
+          type: string
+        reason:
+          type: string
+        attempt_number:
+          type: integer
+        posted_time:
+          type: string
+          format: date-time
+        mode:
+          type: string
+          enum: [NORM, RETRY, MANUAL]
+        operation:
+          type: string
+          enum: [POSTING, ADD_HOLD, REMOVE_HOLD]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ManualUpdateRequest:
+      type: object
+      required: [status, requested_by]
+      properties:
+        status:
+          type: string
+          enum: [ACSP, RJCT, PNDG]
+          description: New status to set on the leg.
+        reason:
+          type: string
+          description: Justification for the manual override.
+        requested_by:
+          type: string
+          description: Operator identity.
+          example: ops-user
+
+    PostingConfig:
+      type: object
+      required: [requestType, orderSeq, targetSystem, operation, processingMode]
+      properties:
+        requestType:
+          type: string
+          description: Posting type (DynamoDB PK).
+          example: IMX_CBS_GL
+        orderSeq:
+          type: integer
+          description: Execution order within the requestType (DynamoDB SK).
+          example: 1
+        sourceName:
+          type: string
+          description: Expected upstream system name. Blank = any source allowed.
+          example: IMX
+        targetSystem:
+          type: string
+          enum: [CBS, GL, OBPM]
+          description: External system this leg routes to.
+        operation:
+          type: string
+          enum: [POSTING, ADD_HOLD, REMOVE_HOLD]
+        processingMode:
+          type: string
+          enum: [SYNC, ASYNC]
+          description: |
+            ASYNC — posting is queued to SQS; caller gets ACSP immediately.
+            SYNC — posting is processed inline before the API response is returned.
+
+    ApiError:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Error code.
+          example: NOT_FOUND
+        message:
+          type: string
+          example: "Posting not found: 9999999"
+
+    ApiResponsePostingResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { $ref: '#/components/schemas/PostingResponse' }
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponsePostingList:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PostingResponse' }
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponseLegResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { $ref: '#/components/schemas/LegResponse' }
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponseLegList:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/LegResponse' }
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponseRetryResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { $ref: '#/components/schemas/RetryResponse' }
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponseConfig:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { $ref: '#/components/schemas/PostingConfig' }
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponseConfigList:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PostingConfig' }
+        error:
+          $ref: '#/components/schemas/ApiError'
+          nullable: true
+
+    ApiResponseError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          nullable: true
+          example: null
+        error:
+          $ref: '#/components/schemas/ApiError'

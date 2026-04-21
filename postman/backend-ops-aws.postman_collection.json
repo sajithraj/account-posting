@@ -1,0 +1,317 @@
+{
+  "info": {
+    "_postman_id": "backend-ops-aws-collection",
+    "name": "backend-ops-aws — Account Posting Operations",
+    "description": "API collection for the backend-ops-aws Lambda (ops dashboard).\n\nHandles: search, retry, fetch by ID, leg management, routing config CRUD.\n\n**Variables:**\n- `base_url` — API Gateway stage URL, e.g. https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev\n\nSet `posting_id` after creating a posting via backend-aws.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://{{api_id}}.execute-api.ap-southeast-1.amazonaws.com/dev",
+      "type": "string",
+      "description": "API Gateway stage base URL"
+    },
+    {
+      "key": "api_path",
+      "value": "/v2/payment/account-posting",
+      "type": "string"
+    },
+    {
+      "key": "posting_id",
+      "value": "1234567890",
+      "type": "string",
+      "description": "Posting ID — replace with actual ID from create response"
+    }
+  ],
+  "item": [
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Search — All (no filters)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 20\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Returns up to 20 postings with no filters."
+          }
+        },
+        {
+          "name": "Search — By Status (PNDG)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PNDG\",\n  \"limit\": 20\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Filter by posting status. Valid values: RECEIVED, PNDG, ACSP."
+          }
+        },
+        {
+          "name": "Search — By Source Name",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_name\": \"IMX\",\n  \"limit\": 10\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Search — By Date Range",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{api_path}}/search", "host": ["{{base_url}}{{api_path}}/search"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_date\": \"2026-04-01T00:00:00Z\",\n  \"to_date\": \"2026-04-30T23:59:59Z\",\n  \"limit\": 50\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Retry",
+      "item": [
+        {
+          "name": "Retry — All PNDG/RECEIVED",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{api_path}}/retry", "host": ["{{base_url}}{{api_path}}/retry"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requested_by\": \"ops-team\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Re-queues all postings with status PNDG or RECEIVED that are not retry-locked. Returns count of queued and skipped."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"total_postings\": 3,\n    \"queued\": 2,\n    \"skipped_locked\": 1,\n    \"message\": \"Retry processing submitted. Check dashboard for status updates.\"\n  },\n  \"error\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Retry — Specific IDs",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{api_path}}/retry", "host": ["{{base_url}}{{api_path}}/retry"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posting_ids\": [{{posting_id}}],\n  \"requested_by\": \"ops-user\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Postings",
+      "item": [
+        {
+          "name": "Get Posting by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/{{posting_id}}",
+              "host": ["{{base_url}}{{api_path}}/{{posting_id}}"]
+            },
+            "description": "Fetch a single posting with all its legs."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"source_reference_id\": \"SRC-001\",\n    \"end_to_end_reference_id\": \"E2E-001\",\n    \"posting_status\": \"PNDG\",\n    \"processed_at\": \"2026-04-21T10:00:00Z\",\n    \"legs\": []\n  },\n  \"error\": null\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"data\": null,\n  \"error\": {\n    \"name\": \"NOT_FOUND\",\n    \"message\": \"Posting not found: 9999999\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Legs",
+      "item": [
+        {
+          "name": "List Legs for Posting",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction",
+              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction"]
+            }
+          }
+        },
+        {
+          "name": "Get Single Leg",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction/1",
+              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction/1"]
+            },
+            "description": "Fetch leg at transactionOrder=1."
+          }
+        },
+        {
+          "name": "Manual Leg Status Override",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction/1",
+              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction/1"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACSP\",\n  \"reason\": \"Manually confirmed by ops team\",\n  \"requested_by\": \"ops-user\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Manually overrides leg status. Sets mode=MANUAL, does NOT increment attemptNumber."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Config",
+      "item": [
+        {
+          "name": "List All Configs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/config",
+              "host": ["{{base_url}}{{api_path}}/config"]
+            },
+            "description": "Returns all routing config entries across all requestTypes."
+          }
+        },
+        {
+          "name": "Get Config by Request Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL",
+              "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL"]
+            }
+          }
+        },
+        {
+          "name": "Create Config — IMX_CBS_GL leg 1 (CBS)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/config",
+              "host": ["{{base_url}}{{api_path}}/config"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestType\": \"IMX_CBS_GL\",\n  \"orderSeq\": 1,\n  \"sourceName\": \"IMX\",\n  \"targetSystem\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"processingMode\": \"ASYNC\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Create Config — IMX_CBS_GL leg 2 (GL)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/config",
+              "host": ["{{base_url}}{{api_path}}/config"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestType\": \"IMX_CBS_GL\",\n  \"orderSeq\": 2,\n  \"sourceName\": \"IMX\",\n  \"targetSystem\": \"GL\",\n  \"operation\": \"POSTING\",\n  \"processingMode\": \"ASYNC\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Create Config — ADD_ACCOUNT_HOLD (SYNC)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/config",
+              "host": ["{{base_url}}{{api_path}}/config"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestType\": \"ADD_ACCOUNT_HOLD\",\n  \"orderSeq\": 1,\n  \"sourceName\": \"STABLECOIN\",\n  \"targetSystem\": \"CBS\",\n  \"operation\": \"ADD_HOLD\",\n  \"processingMode\": \"SYNC\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update Config",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL/1",
+              "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL/1"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestType\": \"IMX_CBS_GL\",\n  \"orderSeq\": 1,\n  \"sourceName\": \"IMX\",\n  \"targetSystem\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"processingMode\": \"SYNC\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Update an existing config entry. path: {type}/{order}"
+          }
+        },
+        {
+          "name": "Delete Config",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL/1",
+              "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL/1"]
+            },
+            "description": "Deletes a config entry. Returns HTTP 204 No Content."
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "body": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

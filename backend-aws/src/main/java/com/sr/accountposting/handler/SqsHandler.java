@@ -20,6 +20,30 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Consumes {@link com.sr.accountposting.dto.posting.PostingJob} messages from the SQS processing queue.
+ *
+ * <p>Triggered by the SQS queue configured at {@code PROCESSING_QUEUE_URL}. Each record in the batch
+ * is processed independently — an exception in one record is caught and logged so the remaining
+ * records continue. The failed message will be retried by SQS (visibility timeout / DLQ policy applies).
+ *
+ * <p>Processing flow per message:
+ * <ol>
+ *   <li>Deserialise the message body into a {@code PostingJob}.</li>
+ *   <li>Look up routing configs from DynamoDB ({@code CONFIG_TABLE_NAME}) by request type.</li>
+ *   <li>If no configs found — publish a failure alert to SNS and skip processing.</li>
+ *   <li>Invoke {@link com.sr.accountposting.service.processor.PostingProcessorService#process} for each leg.</li>
+ *   <li>If any legs fail — publish one SNS alert per failed leg to {@code SUPPORT_ALERT_TOPIC_ARN}.</li>
+ * </ol>
+ *
+ * <p>SNS publish failures are swallowed (logged only) so they do not cause the message to be retried.
+ *
+ * <p>Required environment variables (resolved via {@link com.sr.accountposting.util.AppConfig}):
+ * <pre>
+ *   CONFIG_TABLE_NAME        DynamoDB config table
+ *   SUPPORT_ALERT_TOPIC_ARN  SNS topic for failure alerts
+ * </pre>
+ */
 @Singleton
 public class SqsHandler {
 

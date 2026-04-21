@@ -16,6 +16,30 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AWS Lambda entry point for the posting-creation Lambda (account-posting-aws).
+ *
+ * <p>This handler is registered as the Lambda function handler in AWS. It accepts two event types:
+ * <ul>
+ *   <li><b>API Gateway V2 HTTP</b> — forwarded to {@link com.sr.accountposting.handler.ApiGatewayHandler}.
+ *       Only {@code POST /v2/payment/account-posting} is handled here; all other routes return 404.</li>
+ *   <li><b>SQS</b> — forwarded to {@link com.sr.accountposting.handler.SqsHandler}.
+ *       The Lambda is triggered by the {@code PROCESSING_QUEUE_URL} queue. Each record in the batch is
+ *       processed independently so a single failure does not poison the entire batch.</li>
+ * </ul>
+ *
+ * <p>Dagger component is initialised once (static init) so it is reused across warm invocations.
+ *
+ * <p>Required environment variables:
+ * <pre>
+ *   POSTING_TABLE_NAME       DynamoDB table for account_posting rows
+ *   LEG_TABLE_NAME           DynamoDB table for account_posting_leg rows
+ *   CONFIG_TABLE_NAME        DynamoDB table for posting_config rows
+ *   PROCESSING_QUEUE_URL     SQS queue URL — jobs published here for async/retry processing
+ *   SUPPORT_ALERT_TOPIC_ARN  SNS topic ARN — failure alerts published by SqsHandler
+ *   AWS_ACCOUNT_REGION       AWS region (e.g. ap-southeast-1)
+ * </pre>
+ */
 public class LambdaRequestHandler implements RequestHandler<Map<String, Object>, Object> {
 
     private static final Logger log = LoggerFactory.getLogger(LambdaRequestHandler.class);

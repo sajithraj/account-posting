@@ -9,13 +9,23 @@ output "api_gateway_id" {
 }
 
 output "lambda_arn" {
-  description = "ARN of the unified Lambda function"
+  description = "ARN of the posting-creation Lambda (backend-aws)"
   value       = aws_lambda_function.main.arn
 }
 
 output "lambda_function_name" {
-  description = "Name of the unified Lambda function"
+  description = "Name of the posting-creation Lambda (backend-aws)"
   value       = aws_lambda_function.main.function_name
+}
+
+output "ops_lambda_arn" {
+  description = "ARN of the ops-dashboard Lambda (backend-ops-aws)"
+  value       = aws_lambda_function.ops.arn
+}
+
+output "ops_lambda_function_name" {
+  description = "Name of the ops-dashboard Lambda (backend-ops-aws)"
+  value       = aws_lambda_function.ops.function_name
 }
 
 output "sqs_queue_url" {
