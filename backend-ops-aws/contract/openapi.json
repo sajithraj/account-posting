@@ -35,7 +35,7 @@
       "post": {
         "operationId": "searchPostings",
         "summary": "Search postings",
-        "description": "Scan the posting table with optional filters. All filter fields are optional. Results include legs for each posting.",
+        "description": "Search the posting table with optional filters. All filter fields are optional. Results are sorted by updated_at descending before pagination and include legs for each posting. Use next_page_token as page_token on the next request. Filters may be supplied in the POST JSON body or as query parameters; GET /search is also exposed for query-string searches.",
         "requestBody": {
           "required": true,
           "content": {
@@ -48,7 +48,11 @@
                 },
                 "by_status": {
                   "summary": "Filter by PNDG status",
-                  "value": { "status": "PNDG", "limit": 20 }
+                  "value": { "posting_status": "PNDG", "limit": 20 }
+                },
+                "next_page": {
+                  "summary": "Fetch the next page",
+                  "value": { "posting_status": "PNDG", "limit": 20, "page_token": "eyJvZmZzZXQiOjIwfQ" }
                 },
                 "by_source": {
                   "summary": "Filter by source name",
@@ -60,11 +64,11 @@
                 },
                 "by_e2e_ref": {
                   "summary": "Filter by end-to-end reference",
-                  "value": { "end_to_end_reference_id": "E2E-001", "limit": 1 }
+                  "value": { "end_to_end_id": "E2E-001", "limit": 1 }
                 },
                 "by_source_ref": {
                   "summary": "Filter by source reference",
-                  "value": { "source_reference_id": "SRC-001", "limit": 1 }
+                  "value": { "source_ref_id": "SRC-001", "limit": 1 }
                 },
                 "by_date": {
                   "summary": "Filter by date range",
@@ -80,13 +84,10 @@
         },
         "responses": {
           "200": {
-            "description": "Array of matching postings (may be empty)",
+            "description": "Page of matching postings (items may be empty)",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/PostingResponse" }
-                }
+                "schema": { "$ref": "#/components/schemas/PostingSearchResponse" }
               }
             }
           }
@@ -551,7 +552,7 @@
           "status": {
             "type": "string",
             "enum": ["RCVD", "PNDG", "ACSP", "RJCT"],
-            "description": "Filter by posting status."
+            "description": "Filter by posting status. Alias accepted: posting_status."
           },
           "source_name": {
             "type": "string",
@@ -566,24 +567,24 @@
           },
           "end_to_end_reference_id": {
             "type": "string",
-            "description": "Filter by end-to-end reference ID (exact match via GSI).",
+            "description": "Filter by end-to-end reference ID (exact match via GSI). Alias accepted: end_to_end_id.",
             "example": "E2E-001"
           },
           "source_reference_id": {
             "type": "string",
-            "description": "Filter by source reference ID.",
+            "description": "Filter by source reference ID. Alias accepted: source_ref_id.",
             "example": "SRC-001"
           },
           "from_date": {
             "type": "string",
             "format": "date-time",
-            "description": "Inclusive start of createdAt range.",
+            "description": "Inclusive start of updated_at range.",
             "example": "2026-04-01T00:00:00Z"
           },
           "to_date": {
             "type": "string",
             "format": "date-time",
-            "description": "Inclusive end of createdAt range.",
+            "description": "Inclusive end of updated_at range.",
             "example": "2026-04-30T23:59:59Z"
           },
           "limit": {
@@ -615,6 +616,19 @@
             "type": "string",
             "description": "Operator identity — stored for audit.",
             "example": "OPS-USER"
+          }
+        }
+      },
+      "PostingSearchResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PostingResponse" }
+          },
+          "next_page_token": {
+            "type": "string",
+            "description": "Opaque token to pass as page_token on the next request. Omitted when there are no more results."
           }
         }
       },

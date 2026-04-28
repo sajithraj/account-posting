@@ -73,6 +73,12 @@ export interface PostingSearchRequest {
     fromDate?: string;
     toDate?: string;
     limit?: number;
+    pageToken?: string;
+}
+
+export interface PostingSearchResponse {
+    items: AccountPostingResponse[];
+    nextPageToken?: string;
 }
 
 export interface PostingFilterDraft {

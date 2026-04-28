@@ -1,5 +1,6 @@
 package com.sr.accountposting.dto.posting;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -7,6 +8,7 @@ import lombok.Data;
 public class PostingSearchRequest {
 
     @JsonProperty("status")
+    @JsonAlias("posting_status")
     private String status;
 
     @JsonProperty("source_name")
@@ -16,9 +18,11 @@ public class PostingSearchRequest {
     private String requestType;
 
     @JsonProperty("end_to_end_reference_id")
+    @JsonAlias("end_to_end_id")
     private String endToEndReferenceId;
 
     @JsonProperty("source_reference_id")
+    @JsonAlias("source_ref_id")
     private String sourceReferenceId;
 
     @JsonProperty("from_date")

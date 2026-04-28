@@ -60,7 +60,7 @@ function useCount(params) {
         queryFn: () => postingApi.search(params),
         staleTime: 30000,
     });
-    return data?.length;
+    return data?.items.length;
 }
 function Counter({ label, value, color, bg }) {
     return (_jsxs("div", { style: { ...s.counter, background: bg, color }, children: [_jsx("div", { style: s.counterValue, children: value ?? '—' }), _jsx("div", { style: s.counterLabel, children: label })] }));

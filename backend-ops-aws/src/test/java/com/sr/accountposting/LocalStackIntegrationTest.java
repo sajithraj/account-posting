@@ -221,8 +221,8 @@ class LocalStackIntegrationTest {
         var r = invoke("POST", BASE + "/search", body);
         assertThat(r.status).isEqualTo(200);
         assertThat(r.success).isTrue();
-        List<?> results = (List<?>) r.data;
-        assertThat(results).isNotEmpty();
+        Map<String, Object> results = (Map<String, Object>) r.data;
+        assertThat((List<?>) results.get("items")).isNotEmpty();
     }
 
     @Test
@@ -234,8 +234,8 @@ class LocalStackIntegrationTest {
 
         var r = invoke("POST", BASE + "/search", body);
         assertThat(r.status).isEqualTo(200);
-        List<?> results = (List<?>) r.data;
-        assertThat(results).isNotEmpty();
+        Map<String, Object> results = (Map<String, Object>) r.data;
+        assertThat((List<?>) results.get("items")).isNotEmpty();
     }
 
     @Test

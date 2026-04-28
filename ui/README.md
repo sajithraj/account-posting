@@ -15,8 +15,14 @@ npm run build     # production build (output: dist/)
 npm run preview   # preview the production build locally
 ```
 
-Vite proxies all `/api` requests to `http://localhost:8080` in dev mode — no CORS configuration needed. Make sure the
-Spring Boot API is running before starting the UI.
+Vite proxies `/v3` requests to LocalStack API Gateway in dev mode. Set the proxy target from the Terraform output:
+
+```powershell
+$env:VITE_LOCALSTACK_PROXY_TARGET = (terraform -chdir=../backend-aws-infra output -raw localstack_api_gateway_url) -replace '/v3/payment/account-posting$',''
+npm run dev
+```
+
+The search page fetches postings 10 at a time using `next_page_token`.
 
 ---
 

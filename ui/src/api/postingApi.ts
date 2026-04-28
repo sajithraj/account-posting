@@ -6,6 +6,7 @@ import type {
     PostingConfigResponse,
     PostingCreateResponse,
     PostingSearchRequest,
+    PostingSearchResponse,
 } from '../types/posting';
 
 function snakeToCamel(str: string): string {
@@ -64,8 +65,8 @@ export const postingApi = {
         return res.data;
     },
 
-    search: async (request: PostingSearchRequest): Promise<AccountPostingResponse[]> => {
-        const res = await http.post<AccountPostingResponse[]>(`${BASE}/search`, request);
+    search: async (request: PostingSearchRequest): Promise<PostingSearchResponse> => {
+        const res = await http.post<PostingSearchResponse>(`${BASE}/search`, request);
         return res.data;
     },
 

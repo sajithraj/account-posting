@@ -21,7 +21,8 @@ This project is split across three modules:
 
 | Method   | Route                                                  | What it does                                  |
 |----------|--------------------------------------------------------|-----------------------------------------------|
-| `POST`   | `/v3/payment/account-posting/search`                   | Search postings by status, source, date range |
+| `POST`   | `/v3/payment/account-posting/search`                   | Search postings by status, source, date range with pagination |
+| `GET`    | `/v3/payment/account-posting/search`                   | Search postings using query-string filters    |
 | `POST`   | `/v3/payment/account-posting/retry`                    | Re-queue PNDG/RECEIVED postings to SQS        |
 | `GET`    | `/v3/payment/account-posting/{id}`                     | Fetch posting with all legs                   |
 | `GET`    | `/v3/payment/account-posting/{id}/transaction`         | List all legs for a posting                   |
@@ -98,6 +99,10 @@ com.sr.accountposting
 
 ## Key Design Notes
 
+- **Search pagination** — `POST /search` accepts `limit` and optional `page_token`, and returns
+  `{ "items": [...], "next_page_token": "..." }`. Pass `next_page_token` back as `page_token` to fetch the next page.
+  Results are filtered first, sorted by `updated_at` descending, then paginated. Supported filters are
+  `end_to_end_id`, `source_ref_id`, `source_name`, `posting_status`, `request_type`, `from_date`, and `to_date`.
 - **Retry locking** — `acquireRetryLock` performs a DynamoDB conditional write setting `retryLockedUntil`. If the lock
   is already held, that posting is skipped (`skippedLocked++`) to prevent duplicate concurrent retries.
 - **Retry flow** — each candidate posting re-publishes its `requestPayload` to SQS with `requestMode=RETRY`.

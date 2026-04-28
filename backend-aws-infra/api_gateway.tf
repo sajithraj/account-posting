@@ -46,6 +46,13 @@ resource "aws_apigatewayv2_route" "ops_search" {
   target    = "integrations/${aws_apigatewayv2_integration.ops_lambda[0].id}"
 }
 
+resource "aws_apigatewayv2_route" "ops_search_get" {
+  count     = var.use_localstack ? 0 : 1
+  api_id    = aws_apigatewayv2_api.main[0].id
+  route_key = "GET /v3/payment/account-posting/search"
+  target    = "integrations/${aws_apigatewayv2_integration.ops_lambda[0].id}"
+}
+
 resource "aws_apigatewayv2_route" "ops_retry" {
   count     = var.use_localstack ? 0 : 1
   api_id    = aws_apigatewayv2_api.main[0].id
@@ -256,6 +263,24 @@ resource "aws_api_gateway_integration" "localstack_ops_search" {
   rest_api_id             = aws_api_gateway_rest_api.localstack[0].id
   resource_id             = aws_api_gateway_resource.localstack_search[0].id
   http_method             = aws_api_gateway_method.localstack_ops_search[0].http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.ops.invoke_arn
+}
+
+resource "aws_api_gateway_method" "localstack_ops_search_get" {
+  count         = var.use_localstack ? 1 : 0
+  rest_api_id   = aws_api_gateway_rest_api.localstack[0].id
+  resource_id   = aws_api_gateway_resource.localstack_search[0].id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "localstack_ops_search_get" {
+  count                   = var.use_localstack ? 1 : 0
+  rest_api_id             = aws_api_gateway_rest_api.localstack[0].id
+  resource_id             = aws_api_gateway_resource.localstack_search[0].id
+  http_method             = aws_api_gateway_method.localstack_ops_search_get[0].http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = aws_lambda_function.ops.invoke_arn
@@ -481,6 +506,7 @@ resource "aws_api_gateway_deployment" "localstack" {
     redeployment = sha1(jsonencode([
       aws_api_gateway_integration.localstack_create_posting[0].id,
       aws_api_gateway_integration.localstack_ops_search[0].id,
+      aws_api_gateway_integration.localstack_ops_search_get[0].id,
       aws_api_gateway_integration.localstack_ops_retry[0].id,
       aws_api_gateway_integration.localstack_ops_get_posting[0].id,
       aws_api_gateway_integration.localstack_ops_list_legs[0].id,

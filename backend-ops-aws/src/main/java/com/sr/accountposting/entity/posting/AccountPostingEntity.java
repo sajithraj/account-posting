@@ -47,7 +47,7 @@ public class AccountPostingEntity {
         return endToEndReferenceId;
     }
 
-    @DynamoDbSecondaryPartitionKey(indexNames = "gsi-status-createdAt")
+    @DynamoDbSecondaryPartitionKey(indexNames = {"gsi-status-createdAt", "gsi-status-updatedAt"})
     public String getStatus() {
         return status;
     }
@@ -57,9 +57,29 @@ public class AccountPostingEntity {
         return createdAt;
     }
 
-    @DynamoDbSecondaryPartitionKey(indexNames = "gsi-sourceName-createdAt")
+    @DynamoDbSecondarySortKey(indexNames = {
+            "gsi-status-updatedAt",
+            "gsi-sourceName-updatedAt",
+            "gsi-requestType-updatedAt",
+            "gsi-sourceReferenceId-updatedAt"
+    })
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @DynamoDbSecondaryPartitionKey(indexNames = {"gsi-sourceName-createdAt", "gsi-sourceName-updatedAt"})
     public String getSourceName() {
         return sourceName;
+    }
+
+    @DynamoDbSecondaryPartitionKey(indexNames = "gsi-requestType-updatedAt")
+    public String getRequestType() {
+        return requestType;
+    }
+
+    @DynamoDbSecondaryPartitionKey(indexNames = "gsi-sourceReferenceId-updatedAt")
+    public String getSourceReferenceId() {
+        return sourceReferenceId;
     }
 
     public Long getVersion() {

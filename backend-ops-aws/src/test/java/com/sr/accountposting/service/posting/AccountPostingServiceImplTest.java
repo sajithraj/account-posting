@@ -4,6 +4,7 @@ import com.sr.accountposting.dto.posting.IncomingPostingRequest;
 import com.sr.accountposting.dto.posting.PostingJob;
 import com.sr.accountposting.dto.posting.PostingResponse;
 import com.sr.accountposting.dto.posting.PostingSearchRequest;
+import com.sr.accountposting.dto.posting.PostingSearchResponse;
 import com.sr.accountposting.dto.posting.RetryRequest;
 import com.sr.accountposting.dto.posting.RetryResponse;
 import com.sr.accountposting.entity.leg.AccountPostingLegEntity;
@@ -109,8 +110,8 @@ class AccountPostingServiceImplTest {
         AccountPostingEntity p1 = buildPosting(POSTING_ID, PostingStatus.PNDG, "E2E-001", "IMX");
         AccountPostingEntity p2 = buildPosting(POSTING_ID_2, PostingStatus.PNDG, "E2E-002", "IMX");
 
-        when(postingRepo.search(eq("PNDG"), any(), any(), any(), eq(10)))
-                .thenReturn(List.of(p1, p2));
+        when(postingRepo.search(eq("PNDG"), any(), any(), any(), any(), any(), any(), eq(10), any()))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(p1, p2), "NEXT"));
         when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of());
         when(legRepo.findByPostingId(POSTING_ID_2)).thenReturn(List.of());
 
@@ -118,10 +119,11 @@ class AccountPostingServiceImplTest {
         req.setStatus("PNDG");
         req.setLimit(10);
 
-        List<PostingResponse> results = service.search(req);
+        PostingSearchResponse results = service.search(req);
 
-        assertThat(results).hasSize(2);
-        assertThat(results).extracting(PostingResponse::getPostingStatus)
+        assertThat(results.getItems()).hasSize(2);
+        assertThat(results.getNextPageToken()).isEqualTo("NEXT");
+        assertThat(results.getItems()).extracting(PostingResponse::getPostingStatus)
                 .containsOnly(PostingStatus.PNDG.name());
     }
 
@@ -129,35 +131,82 @@ class AccountPostingServiceImplTest {
     void search_bySourceName_returnsMatchingPostings() {
         AccountPostingEntity p = buildPosting(POSTING_ID, PostingStatus.ACSP, "E2E-001", "RMS");
 
-        when(postingRepo.search(any(), eq("RMS"), any(), any(), anyInt()))
-                .thenReturn(List.of(p));
+        when(postingRepo.search(any(), eq("RMS"), any(), any(), any(), any(), any(), anyInt(), any()))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(p), null));
         when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of());
 
         PostingSearchRequest req = new PostingSearchRequest();
         req.setSourceName("RMS");
 
-        List<PostingResponse> results = service.search(req);
+        PostingSearchResponse results = service.search(req);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getSourceReferenceId()).isEqualTo("SRC-" + POSTING_ID);
+        assertThat(results.getItems()).hasSize(1);
+        assertThat(results.getItems().get(0).getSourceReferenceId()).isEqualTo("SRC-" + POSTING_ID);
     }
 
     @Test
     void search_defaultLimit_uses20WhenNotSpecified() {
-        when(postingRepo.search(any(), any(), any(), any(), eq(20))).thenReturn(List.of());
+        when(postingRepo.search(any(), any(), any(), any(), any(), any(), any(), eq(20), any()))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
 
         service.search(new PostingSearchRequest());
 
-        verify(postingRepo).search(any(), any(), any(), any(), eq(20));
+        verify(postingRepo).search(any(), any(), any(), any(), any(), any(), any(), eq(20), any());
+    }
+
+    @Test
+    void search_pageToken_passedToRepository() {
+        when(postingRepo.search(any(), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN")))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
+
+        PostingSearchRequest req = new PostingSearchRequest();
+        req.setPageToken("TOKEN");
+
+        service.search(req);
+
+        verify(postingRepo).search(any(), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN"));
+    }
+
+    @Test
+    void search_allFilters_passedToRepository() {
+        when(postingRepo.search(eq("ACSP"), eq("IMX"), eq("IMX_CBS_GL"), eq("E2E-001"),
+                eq("SRC-001"), eq("2026-04-01T00:00:00Z"), eq("2026-04-30T23:59:59Z"), eq(15), any()))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
+
+        PostingSearchRequest req = new PostingSearchRequest();
+        req.setStatus("ACSP");
+        req.setSourceName("IMX");
+        req.setRequestType("IMX_CBS_GL");
+        req.setEndToEndReferenceId("E2E-001");
+        req.setSourceReferenceId("SRC-001");
+        req.setFromDate("2026-04-01T00:00:00Z");
+        req.setToDate("2026-04-30T23:59:59Z");
+        req.setLimit(15);
+
+        service.search(req);
+
+        verify(postingRepo).search(eq("ACSP"), eq("IMX"), eq("IMX_CBS_GL"), eq("E2E-001"),
+                eq("SRC-001"), eq("2026-04-01T00:00:00Z"), eq("2026-04-30T23:59:59Z"), eq(15), any());
+    }
+
+    @Test
+    void search_invalidLimit_throwsValidationException() {
+        PostingSearchRequest req = new PostingSearchRequest();
+        req.setLimit(0);
+
+        assertThatThrownBy(() -> service.search(req))
+                .hasMessageContaining("limit must be between 1 and 200");
     }
 
     @Test
     void search_noResults_returnsEmptyList() {
-        when(postingRepo.search(any(), any(), any(), any(), anyInt())).thenReturn(List.of());
+        when(postingRepo.search(any(), any(), any(), any(), any(), any(), any(), anyInt(), any()))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
 
-        List<PostingResponse> results = service.search(new PostingSearchRequest());
+        PostingSearchResponse results = service.search(new PostingSearchRequest());
 
-        assertThat(results).isEmpty();
+        assertThat(results.getItems()).isEmpty();
+        assertThat(results.getNextPageToken()).isNull();
     }
 
     @Test

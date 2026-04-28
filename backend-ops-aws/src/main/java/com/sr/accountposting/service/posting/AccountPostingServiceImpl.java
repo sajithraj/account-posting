@@ -5,6 +5,7 @@ import com.sr.accountposting.dto.posting.IncomingPostingRequest;
 import com.sr.accountposting.dto.posting.PostingJob;
 import com.sr.accountposting.dto.posting.PostingResponse;
 import com.sr.accountposting.dto.posting.PostingSearchRequest;
+import com.sr.accountposting.dto.posting.PostingSearchResponse;
 import com.sr.accountposting.dto.posting.RetryRequest;
 import com.sr.accountposting.dto.posting.RetryResponse;
 import com.sr.accountposting.entity.leg.AccountPostingLegEntity;
@@ -12,6 +13,7 @@ import com.sr.accountposting.entity.posting.AccountPostingEntity;
 import com.sr.accountposting.enums.PostingStatus;
 import com.sr.accountposting.enums.RequestMode;
 import com.sr.accountposting.exception.ResourceNotFoundException;
+import com.sr.accountposting.exception.ValidationException;
 import com.sr.accountposting.repository.leg.AccountPostingLegRepository;
 import com.sr.accountposting.repository.posting.AccountPostingRepository;
 import com.sr.accountposting.util.AppConfig;
@@ -56,19 +58,29 @@ public class AccountPostingServiceImpl implements AccountPostingService {
     }
 
     @Override
-    public List<PostingResponse> search(PostingSearchRequest req) {
-        log.info("search status={} sourceName={} fromDate={} toDate={} limit={}",
-                req.getStatus(), req.getSourceName(), req.getFromDate(), req.getToDate(), req.getLimit());
-        List<AccountPostingEntity> postings = postingRepo.search(
-                req.getStatus(), req.getSourceName(),
+    public PostingSearchResponse search(PostingSearchRequest req) {
+        int limit = req.getLimit() != null ? req.getLimit() : 20;
+        if (limit < 1 || limit > 200) {
+            throw new ValidationException("INVALID_LIMIT", "limit must be between 1 and 200");
+        }
+        log.info("search status={} sourceName={} requestType={} e2eRef={} sourceRef={} fromDate={} toDate={} limit={} pageTokenPresent={}",
+                req.getStatus(), req.getSourceName(), req.getRequestType(), req.getEndToEndReferenceId(),
+                req.getSourceReferenceId(), req.getFromDate(), req.getToDate(), limit, req.getPageToken() != null);
+        AccountPostingRepository.SearchResult postings = postingRepo.search(
+                req.getStatus(), req.getSourceName(), req.getRequestType(),
+                req.getEndToEndReferenceId(), req.getSourceReferenceId(),
                 req.getFromDate(), req.getToDate(),
-                req.getLimit() != null ? req.getLimit() : 20);
+                limit, req.getPageToken());
 
-        List<PostingResponse> results = postings.stream()
+        List<PostingResponse> results = postings.getItems().stream()
                 .map(p -> toResponse(p, legRepo.findByPostingId(p.getPostingId())))
                 .collect(Collectors.toList());
-        log.info("search returned {} results", results.size());
-        return results;
+        log.info("search returned {} results nextPageTokenPresent={}",
+                results.size(), postings.getNextPageToken() != null);
+        return PostingSearchResponse.builder()
+                .items(results)
+                .nextPageToken(postings.getNextPageToken())
+                .build();
     }
 
     @Override

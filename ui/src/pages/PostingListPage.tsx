@@ -6,13 +6,21 @@ import type {PostingFilterDraft, PostingSearchRequest, PostingStatus} from '../t
 import StatusBadge from '../components/StatusBadge';
 import LegTable from '../components/LegTable';
 
+const PAGE_SIZE = 10;
+
 export default function PostingListPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    const [searchRequest, setSearchRequest] = useState<PostingSearchRequest>({limit: 20});
+    const [baseSearchRequest, setBaseSearchRequest] = useState<PostingSearchRequest>({limit: PAGE_SIZE});
+    const [pageTokens, setPageTokens] = useState<(string | undefined)[]>([undefined]);
+    const [pageIndex, setPageIndex] = useState(0);
     const [draft, setDraft] = useState<PostingFilterDraft>({});
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const searchRequest: PostingSearchRequest = {
+        ...baseSearchRequest,
+        pageToken: pageTokens[pageIndex],
+    };
 
     const {data, isLoading, isError} = useQuery({
         queryKey: ['postings', searchRequest],
@@ -39,18 +47,23 @@ export default function PostingListPage() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        const req: PostingSearchRequest = {limit: 50};
+        const req: PostingSearchRequest = {limit: PAGE_SIZE};
         if (draft.endToEndReferenceId) req.endToEndReferenceId = draft.endToEndReferenceId;
         if (draft.sourceReferenceId) req.sourceReferenceId = draft.sourceReferenceId;
         if (draft.sourceName) req.sourceName = draft.sourceName;
         if (draft.status) req.status = draft.status;
         if (draft.requestType) req.requestType = draft.requestType;
-        if (draft.fromDate) req.fromDate = draft.fromDate;
-        if (draft.toDate) req.toDate = draft.toDate;
-        setSearchRequest(req);
+        if (draft.fromDate) req.fromDate = startOfDayUtc(draft.fromDate);
+        if (draft.toDate) req.toDate = endOfDayUtc(draft.toDate);
+        setBaseSearchRequest(req);
+        setPageTokens([undefined]);
+        setPageIndex(0);
+        setSelected(new Set());
     };
 
-    const items = data ?? [];
+    const items = data?.items ?? [];
+    const hasNextPage = !!data?.nextPageToken;
+    const hasPreviousPage = pageIndex > 0;
     const pendingIds = items.filter(p => p.postingStatus === 'PNDG').map(p => p.postingId);
     const hasPending = pendingIds.length > 0;
 
@@ -86,6 +99,23 @@ export default function PostingListPage() {
         setSelected(allSelected ? new Set() : new Set(allIds));
     };
 
+    const goNext = () => {
+        if (!data?.nextPageToken) return;
+        setPageTokens(prev => {
+            const next = prev.slice(0, pageIndex + 1);
+            next.push(data.nextPageToken);
+            return next;
+        });
+        setPageIndex(prev => prev + 1);
+        setSelected(new Set());
+    };
+
+    const goPrevious = () => {
+        if (pageIndex === 0) return;
+        setPageIndex(prev => prev - 1);
+        setSelected(new Set());
+    };
+
     return (
         <div style={s.page}>
             {/* Header */}
@@ -99,7 +129,10 @@ export default function PostingListPage() {
                         }}
                         onClick={() => {
                             setDraft({});
-                            setSearchRequest({limit: 20});
+                            setBaseSearchRequest({limit: PAGE_SIZE});
+                            setPageTokens([undefined]);
+                            setPageIndex(0);
+                            setSelected(new Set());
                         }}
                         disabled={Object.values(draft).every(v => v === undefined || v === '')}
                     >
@@ -197,7 +230,29 @@ export default function PostingListPage() {
             {/* Table */}
             {data && (
                 <>
-                    <div style={s.resultCount}>{items.length} result{items.length !== 1 ? 's' : ''}</div>
+                    <div style={s.resultBar}>
+                        <div style={s.resultCount}>
+                            Page {pageIndex + 1} · {items.length} result{items.length !== 1 ? 's' : ''}
+                        </div>
+                        <div style={s.pager}>
+                            <button
+                                type="button"
+                                style={{...s.pagerBtn, ...(!hasPreviousPage ? s.disabledBtn : {})}}
+                                onClick={goPrevious}
+                                disabled={!hasPreviousPage}
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                style={{...s.pagerBtn, ...(!hasNextPage ? s.disabledBtn : {})}}
+                                onClick={goNext}
+                                disabled={!hasNextPage}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
                     <table style={s.table}>
                         <thead>
                         <tr style={s.theadRow}>
@@ -314,7 +369,13 @@ const s: Record<string, React.CSSProperties> = {
         borderRadius: 4, cursor: 'pointer', fontSize: 15, height: 30,
     },
     statusMsg: {padding: 24, textAlign: 'center', color: '#666'},
+    resultBar: {display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6},
     resultCount: {fontSize: 12, color: '#888', marginBottom: 6},
+    pager: {display: 'flex', gap: 8},
+    pagerBtn: {
+        padding: '5px 10px', border: '1px solid #c5cdd8', borderRadius: 4,
+        background: 'white', color: '#003b5c', cursor: 'pointer', fontSize: 12,
+    },
     table: {
         width: '100%', borderCollapse: 'collapse', fontSize: 13,
         border: '1px solid #dde2ea', borderRadius: 4, overflow: 'hidden',
@@ -342,3 +403,11 @@ const s: Record<string, React.CSSProperties> = {
         whiteSpace: 'nowrap' as const, color: '#555', fontSize: 12,
     },
 };
+
+function startOfDayUtc(date: string): string {
+    return `${date}T00:00:00Z`;
+}
+
+function endOfDayUtc(date: string): string {
+    return `${date}T23:59:59Z`;
+}

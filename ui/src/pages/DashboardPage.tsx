@@ -127,7 +127,7 @@ function useCount(params: PostingSearchRequest): number | undefined {
         queryFn: () => postingApi.search(params),
         staleTime: 30_000,
     });
-    return data?.length;
+    return data?.items.length;
 }
 
 function Counter({label, value, color, bg}: { label: string; value: number | undefined; color: string; bg: string }) {

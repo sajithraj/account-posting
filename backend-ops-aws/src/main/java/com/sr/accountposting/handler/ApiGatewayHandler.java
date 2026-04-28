@@ -75,8 +75,11 @@ public class ApiGatewayHandler {
     private APIGatewayV2HTTPResponse route(String method, String path, APIGatewayV2HTTPEvent event) {
         String body = event.getBody();
 
-        if ("POST".equals(method) && path.equals(BASE + "/search")) {
-            PostingSearchRequest req = JsonUtil.fromJson(body, PostingSearchRequest.class);
+        if (("POST".equals(method) || "GET".equals(method)) && path.equals(BASE + "/search")) {
+            PostingSearchRequest req = "GET".equals(method)
+                    ? new PostingSearchRequest()
+                    : JsonUtil.fromJson(body != null && !body.isBlank() ? body : "{}", PostingSearchRequest.class);
+            applySearchQueryParams(req, event.getQueryStringParameters());
             return rawJson(200, postingService.search(req));
         }
         if ("POST".equals(method) && path.equals(BASE + "/retry")) {
@@ -161,6 +164,42 @@ public class ApiGatewayHandler {
     private String extractPathSegment(String path, int offsetFromEnd) {
         String[] parts = path.split("/");
         return parts[parts.length + offsetFromEnd];
+    }
+
+    private void applySearchQueryParams(PostingSearchRequest req, Map<String, String> queryParams) {
+        if (queryParams == null || queryParams.isEmpty()) {
+            return;
+        }
+
+        applyIfPresent(firstNonBlank(queryParams, "end_to_end_id", "end_to_end_reference_id"), req::setEndToEndReferenceId);
+        applyIfPresent(firstNonBlank(queryParams, "source_ref_id", "source_reference_id"), req::setSourceReferenceId);
+        applyIfPresent(firstNonBlank(queryParams, "source_name"), req::setSourceName);
+        applyIfPresent(firstNonBlank(queryParams, "posting_status", "status"), req::setStatus);
+        applyIfPresent(firstNonBlank(queryParams, "request_type"), req::setRequestType);
+        applyIfPresent(firstNonBlank(queryParams, "from_date"), req::setFromDate);
+        applyIfPresent(firstNonBlank(queryParams, "to_date"), req::setToDate);
+        applyIfPresent(firstNonBlank(queryParams, "page_token"), req::setPageToken);
+
+        String limit = firstNonBlank(queryParams, "limit");
+        if (limit != null) {
+            req.setLimit(Integer.parseInt(limit));
+        }
+    }
+
+    private void applyIfPresent(String value, java.util.function.Consumer<String> setter) {
+        if (value != null) {
+            setter.accept(value);
+        }
+    }
+
+    private String firstNonBlank(Map<String, String> values, String... keys) {
+        for (String key : keys) {
+            String value = values.get(key);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
 }

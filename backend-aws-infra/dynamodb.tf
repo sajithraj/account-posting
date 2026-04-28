@@ -27,7 +27,22 @@ resource "aws_dynamodb_table" "account_posting" {
   }
 
   attribute {
+    name = "updatedAt"
+    type = "S"
+  }
+
+  attribute {
     name = "sourceName"
+    type = "S"
+  }
+
+  attribute {
+    name = "sourceReferenceId"
+    type = "S"
+  }
+
+  attribute {
+    name = "requestType"
     type = "S"
   }
 
@@ -51,6 +66,38 @@ resource "aws_dynamodb_table" "account_posting" {
     name            = "gsi-sourceName-createdAt"
     hash_key        = "sourceName"
     range_key       = "createdAt"
+    projection_type = "ALL"
+  }
+
+  # GSI4: search by status sorted by last update
+  global_secondary_index {
+    name            = "gsi-status-updatedAt"
+    hash_key        = "status"
+    range_key       = "updatedAt"
+    projection_type = "ALL"
+  }
+
+  # GSI5: search by source sorted by last update
+  global_secondary_index {
+    name            = "gsi-sourceName-updatedAt"
+    hash_key        = "sourceName"
+    range_key       = "updatedAt"
+    projection_type = "ALL"
+  }
+
+  # GSI6: search by request type sorted by last update
+  global_secondary_index {
+    name            = "gsi-requestType-updatedAt"
+    hash_key        = "requestType"
+    range_key       = "updatedAt"
+    projection_type = "ALL"
+  }
+
+  # GSI7: search by source reference sorted by last update
+  global_secondary_index {
+    name            = "gsi-sourceReferenceId-updatedAt"
+    hash_key        = "sourceReferenceId"
+    range_key       = "updatedAt"
     projection_type = "ALL"
   }
 

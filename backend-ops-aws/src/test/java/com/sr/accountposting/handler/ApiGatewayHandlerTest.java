@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sr.accountposting.dto.leg.LegResponse;
 import com.sr.accountposting.dto.posting.PostingResponse;
 import com.sr.accountposting.dto.posting.PostingSearchRequest;
+import com.sr.accountposting.dto.posting.PostingSearchResponse;
 import com.sr.accountposting.dto.posting.RetryRequest;
 import com.sr.accountposting.dto.posting.RetryResponse;
 import com.sr.accountposting.entity.config.PostingConfigEntity;
@@ -20,6 +21,7 @@ import com.sr.accountposting.service.posting.AccountPostingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -64,26 +66,56 @@ class ApiGatewayHandlerTest {
                 .endToEndReferenceId("E2E-001")
                 .postingStatus(PostingStatus.PNDG.name())
                 .build();
-        when(postingService.search(any(PostingSearchRequest.class))).thenReturn(List.of(p));
+        when(postingService.search(any(PostingSearchRequest.class))).thenReturn(
+                PostingSearchResponse.builder().items(List.of(p)).nextPageToken("NEXT").build());
 
         APIGatewayV2HTTPResponse response = handler.handle(
                 apiEvent("POST", BASE + "/search", "{\"status\":\"PNDG\",\"limit\":10}"), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
-        List<?> body = MAPPER.readValue(response.getBody(), List.class);
-        assertThat(body).hasSize(1);
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat((List<?>) body.get("items")).hasSize(1);
+        assertThat(body.get("next_page_token")).isEqualTo("NEXT");
         verify(postingService).search(any());
     }
 
     @Test
     void search_noResults_returns200WithEmptyList() throws Exception {
-        when(postingService.search(any())).thenReturn(List.of());
+        when(postingService.search(any())).thenReturn(
+                PostingSearchResponse.builder().items(List.of()).build());
 
         APIGatewayV2HTTPResponse response = handler.handle(
                 apiEvent("POST", BASE + "/search", "{\"source_name\":\"UNKNOWN\"}"), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
-        assertThat(MAPPER.readValue(response.getBody(), List.class)).isEmpty();
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat((List<?>) body.get("items")).isEmpty();
+    }
+
+    @Test
+    void search_getQueryParams_mapsSupportedAliases() throws Exception {
+        when(postingService.search(any())).thenReturn(
+                PostingSearchResponse.builder().items(List.of()).build());
+
+        APIGatewayV2HTTPResponse response = handler.handle(
+                apiEvent("GET", BASE + "/search", null, Map.of(
+                        "end_to_end_id", "E2E-001",
+                        "source_ref_id", "SRC-001",
+                        "source_name", "IMX",
+                        "posting_status", "ACSP",
+                        "request_type", "IMX_CBS_GL",
+                        "from_date", "2026-04-01T00:00:00Z",
+                        "to_date", "2026-04-30T23:59:59Z",
+                        "limit", "10"
+                )), null);
+
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        ArgumentCaptor<PostingSearchRequest> captor = ArgumentCaptor.forClass(PostingSearchRequest.class);
+        verify(postingService).search(captor.capture());
+        assertThat(captor.getValue().getEndToEndReferenceId()).isEqualTo("E2E-001");
+        assertThat(captor.getValue().getSourceReferenceId()).isEqualTo("SRC-001");
+        assertThat(captor.getValue().getStatus()).isEqualTo("ACSP");
+        assertThat(captor.getValue().getLimit()).isEqualTo(10);
     }
 
     @Test
@@ -377,6 +409,11 @@ class ApiGatewayHandlerTest {
     }
 
     private static APIGatewayV2HTTPEvent apiEvent(String method, String path, String body) {
+        return apiEvent(method, path, body, null);
+    }
+
+    private static APIGatewayV2HTTPEvent apiEvent(String method, String path, String body,
+                                                  Map<String, String> queryParams) {
         APIGatewayV2HTTPEvent.RequestContext.Http http = APIGatewayV2HTTPEvent.RequestContext.Http.builder()
                 .withMethod(method)
                 .withPath(path)
@@ -387,6 +424,7 @@ class ApiGatewayHandlerTest {
         return APIGatewayV2HTTPEvent.builder()
                 .withRequestContext(requestContext)
                 .withRawPath(path)
+                .withQueryStringParameters(queryParams)
                 .withBody(body)
                 .build();
     }
