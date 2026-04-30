@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 @Data
@@ -13,6 +14,7 @@ public class AccountPostingLegEntity {
 
     private String postingId;
     private Integer transactionOrder;
+    private String transactionId;
     private String targetSystem;
     private String account;
     private String status;
@@ -39,6 +41,11 @@ public class AccountPostingLegEntity {
     @DynamoDbSortKey
     public Integer getTransactionOrder() {
         return transactionOrder;
+    }
+
+    @DynamoDbSecondaryPartitionKey(indexNames = {"gsi-transactionId"})
+    public String getTransactionId() {
+        return transactionId;
     }
 
     public Long getVersion() {

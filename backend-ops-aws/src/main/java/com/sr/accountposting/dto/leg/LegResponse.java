@@ -13,6 +13,9 @@ public class LegResponse {
     @JsonProperty("posting_id")
     private String postingId;
 
+    @JsonProperty("transaction_id")
+    private String transactionId;
+
     @JsonProperty("transaction_order")
     private Integer transactionOrder;
 

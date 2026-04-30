@@ -97,18 +97,13 @@ public class ApiGatewayHandler {
             PostingConfigEntity config = JsonUtil.fromJson(body, PostingConfigEntity.class);
             return rawJson(201, configService.create(config));
         }
-        if ("PUT".equals(method) && path.matches(BASE + "/config/.+/\\d+")) {
-            String[] segments = path.split("/");
-            String requestType = segments[segments.length - 2];
-            Integer orderSeq = Integer.parseInt(segments[segments.length - 1]);
+        if ("PUT".equals(method) && path.equals(BASE + "/config")) {
             PostingConfigEntity updated = JsonUtil.fromJson(body, PostingConfigEntity.class);
-            return rawJson(200, configService.update(requestType, orderSeq, updated));
+            return rawJson(200, configService.update(updated.getConfigId(), updated));
         }
-        if ("DELETE".equals(method) && path.matches(BASE + "/config/.+/\\d+")) {
-            String[] segments = path.split("/");
-            String requestType = segments[segments.length - 2];
-            Integer orderSeq = Integer.parseInt(segments[segments.length - 1]);
-            configService.delete(requestType, orderSeq);
+        if ("DELETE".equals(method) && path.equals(BASE + "/config")) {
+            PostingConfigEntity req = JsonUtil.fromJson(body, PostingConfigEntity.class);
+            configService.delete(req.getConfigId());
             return noContent();
         }
         if ("GET".equals(method) && path.matches(BASE + "/[^/]+")) {
@@ -119,18 +114,18 @@ public class ApiGatewayHandler {
             String postingId = extractPathSegment(path, -2);
             return rawJson(200, legService.listLegs(postingId));
         }
-        if ("GET".equals(method) && path.matches(BASE + "/[^/]+/transaction/\\d+")) {
+        if ("GET".equals(method) && path.matches(BASE + "/[^/]+/transaction/[^/]+")) {
             String postingId = extractPathSegment(path, -3);
-            int transactionOrder = Integer.parseInt(extractPathSegment(path, -1));
-            return rawJson(200, legService.getLeg(postingId, transactionOrder));
+            String transactionId = extractPathSegment(path, -1);
+            return rawJson(200, legService.getLeg(postingId, transactionId));
         }
-        if ("PATCH".equals(method) && path.matches(BASE + "/[^/]+/transaction/\\d+")) {
+        if ("PATCH".equals(method) && path.matches(BASE + "/[^/]+/transaction/[^/]+")) {
             String postingId = extractPathSegment(path, -3);
-            int transactionOrder = Integer.parseInt(extractPathSegment(path, -1));
+            String transactionId = extractPathSegment(path, -1);
             ManualUpdateRequest req = JsonUtil.fromJson(body, ManualUpdateRequest.class);
-            legService.manualUpdateLeg(postingId, transactionOrder,
+            legService.manualUpdateLeg(postingId, transactionId,
                     req.getStatus(), req.getReason(), req.getRequestedBy());
-            return rawJson(200, legService.getLeg(postingId, transactionOrder));
+            return rawJson(200, legService.getLeg(postingId, transactionId));
         }
 
         log.warn("ROUTE_NOT_FOUND: no handler for {} {}", method, path);

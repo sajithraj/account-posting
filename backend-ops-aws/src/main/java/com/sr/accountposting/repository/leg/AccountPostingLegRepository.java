@@ -4,6 +4,7 @@ import com.sr.accountposting.entity.leg.AccountPostingLegEntity;
 import com.sr.accountposting.infra.AwsClientFactory;
 import com.sr.accountposting.util.AppConfig;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
@@ -20,11 +21,13 @@ import java.util.stream.Collectors;
 public class AccountPostingLegRepository {
 
     private final DynamoDbTable<AccountPostingLegEntity> table;
+    private final DynamoDbIndex<AccountPostingLegEntity> transactionIdIndex;
 
     @Inject
     public AccountPostingLegRepository() {
         DynamoDbEnhancedClient enhanced = AwsClientFactory.enhancedClient();
         this.table = enhanced.table(AppConfig.LEG_TABLE, TableSchema.fromBean(AccountPostingLegEntity.class));
+        this.transactionIdIndex = table.index("gsi-transactionId");
     }
 
     public void update(AccountPostingLegEntity leg) {
@@ -45,6 +48,15 @@ public class AccountPostingLegRepository {
                 Key.builder().partitionValue(postingId).sortValue(transactionOrder).build()
         );
         return Optional.ofNullable(result);
+    }
+
+    public Optional<AccountPostingLegEntity> findByTransactionId(String transactionId) {
+        QueryConditional condition = QueryConditional.keyEqualTo(
+                Key.builder().partitionValue(transactionId).build()
+        );
+        List<AccountPostingLegEntity> results = new ArrayList<>();
+        transactionIdIndex.query(condition).forEach(page -> results.addAll(page.items()));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public List<AccountPostingLegEntity> findNonSuccessByPostingId(String postingId) {

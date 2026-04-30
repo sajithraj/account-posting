@@ -146,25 +146,28 @@ class AccountPostingServiceImplTest {
 
     @Test
     void search_defaultLimit_uses20WhenNotSpecified() {
-        when(postingRepo.search(any(), any(), any(), any(), any(), any(), any(), eq(20), any()))
+        when(postingRepo.search(eq("PNDG"), any(), any(), any(), any(), any(), any(), eq(20), any()))
                 .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
 
-        service.search(new PostingSearchRequest());
+        PostingSearchRequest req = new PostingSearchRequest();
+        req.setStatus("PNDG");
+        service.search(req);
 
-        verify(postingRepo).search(any(), any(), any(), any(), any(), any(), any(), eq(20), any());
+        verify(postingRepo).search(eq("PNDG"), any(), any(), any(), any(), any(), any(), eq(20), any());
     }
 
     @Test
     void search_pageToken_passedToRepository() {
-        when(postingRepo.search(any(), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN")))
+        when(postingRepo.search(eq("PNDG"), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN")))
                 .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
 
         PostingSearchRequest req = new PostingSearchRequest();
+        req.setStatus("PNDG");
         req.setPageToken("TOKEN");
 
         service.search(req);
 
-        verify(postingRepo).search(any(), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN"));
+        verify(postingRepo).search(eq("PNDG"), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN"));
     }
 
     @Test
@@ -200,13 +203,21 @@ class AccountPostingServiceImplTest {
 
     @Test
     void search_noResults_returnsEmptyList() {
-        when(postingRepo.search(any(), any(), any(), any(), any(), any(), any(), anyInt(), any()))
+        when(postingRepo.search(any(), eq("UNKNOWN_SOURCE"), any(), any(), any(), any(), any(), anyInt(), any()))
                 .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
 
-        PostingSearchResponse results = service.search(new PostingSearchRequest());
+        PostingSearchRequest req = new PostingSearchRequest();
+        req.setSourceName("UNKNOWN_SOURCE");
+        PostingSearchResponse results = service.search(req);
 
         assertThat(results.getItems()).isEmpty();
         assertThat(results.getNextPageToken()).isNull();
+    }
+
+    @Test
+    void search_noFilter_throwsValidationException() {
+        assertThatThrownBy(() -> service.search(new PostingSearchRequest()))
+                .hasMessageContaining("At least one search criterion is required");
     }
 
     @Test

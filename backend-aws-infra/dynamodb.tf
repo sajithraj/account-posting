@@ -2,7 +2,7 @@
 # Table 1: account_posting
 # ─────────────────────────────────────────────
 resource "aws_dynamodb_table" "account_posting" {
-  name         = "${local.name_prefix}-posting"
+  name         = "account_posting"
   billing_mode = var.dynamodb_billing_mode
   hash_key     = "postingId"
 
@@ -93,11 +93,10 @@ resource "aws_dynamodb_table" "account_posting" {
     projection_type = "ALL"
   }
 
-  # GSI7: search by source reference sorted by last update
+  # GSI7: exact lookup by sourceReferenceId (unique, no date sort needed)
   global_secondary_index {
-    name            = "gsi-sourceReferenceId-updatedAt"
+    name            = "gsi-sourceReferenceId"
     hash_key        = "sourceReferenceId"
-    range_key       = "updatedAt"
     projection_type = "ALL"
   }
 
@@ -112,15 +111,15 @@ resource "aws_dynamodb_table" "account_posting" {
   }
 
   tags = {
-    Name = "${local.name_prefix}-posting"
+    Name = "account_posting"
   }
 }
 
 # ─────────────────────────────────────────────
-# Table 2: account_posting_leg
+# Table 2: account_posting_transaction
 # ─────────────────────────────────────────────
 resource "aws_dynamodb_table" "account_posting_leg" {
-  name         = "${local.name_prefix}-leg"
+  name         = "account_posting_transaction"
   billing_mode = var.dynamodb_billing_mode
   hash_key     = "postingId"
   range_key    = "transactionOrder"
@@ -135,6 +134,18 @@ resource "aws_dynamodb_table" "account_posting_leg" {
     type = "N"
   }
 
+  attribute {
+    name = "transactionId"
+    type = "S"
+  }
+
+  # GSI: lookup by UUID transactionId
+  global_secondary_index {
+    name            = "gsi-transactionId"
+    hash_key        = "transactionId"
+    projection_type = "ALL"
+  }
+
   # TTL: auto-delete after 60 days
   ttl {
     attribute_name = "ttl"
@@ -146,7 +157,7 @@ resource "aws_dynamodb_table" "account_posting_leg" {
   }
 
   tags = {
-    Name = "${local.name_prefix}-leg"
+    Name = "account_posting_transaction"
   }
 }
 
@@ -154,7 +165,7 @@ resource "aws_dynamodb_table" "account_posting_leg" {
 # Table 3: account_posting_config
 # ─────────────────────────────────────────────
 resource "aws_dynamodb_table" "account_posting_config" {
-  name         = "${local.name_prefix}-config"
+  name         = "account_posting_config"
   billing_mode = var.dynamodb_billing_mode
   hash_key     = "requestType"
   range_key    = "orderSeq"
@@ -169,7 +180,19 @@ resource "aws_dynamodb_table" "account_posting_config" {
     type = "N"
   }
 
+  attribute {
+    name = "configId"
+    type = "S"
+  }
+
+  # GSI: lookup by UUID configId for update/delete by ID
+  global_secondary_index {
+    name            = "gsi-configId"
+    hash_key        = "configId"
+    projection_type = "ALL"
+  }
+
   tags = {
-    Name = "${local.name_prefix}-config"
+    Name = "account_posting_config"
   }
 }

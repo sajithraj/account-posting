@@ -4,6 +4,7 @@ import com.sr.accountposting.entity.config.PostingConfigEntity;
 import com.sr.accountposting.infra.AwsClientFactory;
 import com.sr.accountposting.util.AppConfig;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
@@ -19,11 +20,13 @@ import java.util.Optional;
 public class PostingConfigRepository {
 
     private final DynamoDbTable<PostingConfigEntity> table;
+    private final DynamoDbIndex<PostingConfigEntity> configIdIndex;
 
     @Inject
     public PostingConfigRepository() {
         DynamoDbEnhancedClient enhanced = AwsClientFactory.enhancedClient();
         this.table = enhanced.table(AppConfig.CONFIG_TABLE, TableSchema.fromBean(PostingConfigEntity.class));
+        this.configIdIndex = table.index("gsi-configId");
     }
 
     public void save(PostingConfigEntity config) {
@@ -35,6 +38,24 @@ public class PostingConfigRepository {
                 .partitionValue(requestType)
                 .sortValue(orderSeq)
                 .build());
+    }
+
+    public void deleteByConfigId(String configId) {
+        findByConfigId(configId).ifPresent(entity ->
+                table.deleteItem(Key.builder()
+                        .partitionValue(entity.getRequestType())
+                        .sortValue(entity.getOrderSeq())
+                        .build())
+        );
+    }
+
+    public Optional<PostingConfigEntity> findByConfigId(String configId) {
+        QueryConditional condition = QueryConditional.keyEqualTo(
+                Key.builder().partitionValue(configId).build()
+        );
+        List<PostingConfigEntity> results = new ArrayList<>();
+        configIdIndex.query(condition).forEach(page -> results.addAll(page.items()));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public Optional<PostingConfigEntity> findByRequestTypeAndOrderSeq(String requestType, Integer orderSeq) {

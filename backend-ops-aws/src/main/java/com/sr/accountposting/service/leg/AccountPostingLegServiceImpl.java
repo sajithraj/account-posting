@@ -22,12 +22,15 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public void manualUpdateLeg(String postingId, int transactionOrder,
+    public void manualUpdateLeg(String postingId, String transactionId,
                                 String status, String reason, String requestedBy) {
-        AccountPostingLegEntity leg = legRepo.findByPostingIdAndOrder(postingId, transactionOrder)
+        AccountPostingLegEntity leg = legRepo.findByTransactionId(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Leg not found postingId=" + postingId + " order=" + transactionOrder));
-
+                        "Leg not found transactionId=" + transactionId));
+        if (!postingId.equals(leg.getPostingId())) {
+            throw new ResourceNotFoundException(
+                    "Leg transactionId=" + transactionId + " does not belong to postingId=" + postingId);
+        }
         leg.setStatus(status);
         leg.setReason(reason);
         leg.setMode("MANUAL");
@@ -43,16 +46,21 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
-    public LegResponse getLeg(String postingId, int transactionOrder) {
-        AccountPostingLegEntity leg = legRepo.findByPostingIdAndOrder(postingId, transactionOrder)
+    public LegResponse getLeg(String postingId, String transactionId) {
+        AccountPostingLegEntity leg = legRepo.findByTransactionId(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Leg not found postingId=" + postingId + " order=" + transactionOrder));
+                        "Leg not found transactionId=" + transactionId));
+        if (!postingId.equals(leg.getPostingId())) {
+            throw new ResourceNotFoundException(
+                    "Leg transactionId=" + transactionId + " does not belong to postingId=" + postingId);
+        }
         return toResponse(leg);
     }
 
     private LegResponse toResponse(AccountPostingLegEntity leg) {
         return LegResponse.builder()
                 .postingId(leg.getPostingId())
+                .transactionId(leg.getTransactionId())
                 .transactionOrder(leg.getTransactionOrder())
                 .targetSystem(leg.getTargetSystem())
                 .account(leg.getAccount())

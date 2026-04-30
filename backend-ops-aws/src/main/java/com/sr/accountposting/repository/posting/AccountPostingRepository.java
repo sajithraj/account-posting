@@ -66,6 +66,16 @@ public class AccountPostingRepository {
                 .findFirst();
     }
 
+    public Optional<AccountPostingEntity> findBySourceReferenceId(String sourceRefId) {
+        DynamoDbIndex<AccountPostingEntity> gsi = table.index("gsi-sourceReferenceId");
+        QueryConditional condition = QueryConditional.keyEqualTo(
+                Key.builder().partitionValue(sourceRefId).build()
+        );
+        return gsi.query(condition).stream()
+                .flatMap(page -> page.items().stream())
+                .findFirst();
+    }
+
     public boolean existsByEndToEndReferenceId(String e2eRef) {
         return findByEndToEndReferenceId(e2eRef).isPresent();
     }
@@ -116,8 +126,9 @@ public class AccountPostingRepository {
                     .map(List::of)
                     .orElseGet(List::of);
         } else if (sourceReferenceId != null) {
-            candidates = searchByUpdatedAtIndex("gsi-sourceReferenceId-updatedAt",
-                    sourceReferenceId, fromDate, toDate);
+            candidates = findBySourceReferenceId(sourceReferenceId)
+                    .map(List::of)
+                    .orElseGet(List::of);
         } else if (requestType != null) {
             candidates = searchByUpdatedAtIndex("gsi-requestType-updatedAt",
                     requestType, fromDate, toDate);
@@ -126,7 +137,8 @@ public class AccountPostingRepository {
         } else if (sourceName != null) {
             candidates = searchByUpdatedAtIndex("gsi-sourceName-updatedAt", sourceName, fromDate, toDate);
         } else {
-            candidates = scanAll();
+            throw new com.sr.accountposting.exception.ValidationException("SEARCH_REQUIRES_FILTER",
+                    "At least one search criterion is required");
         }
 
         List<AccountPostingEntity> sortedResults = candidates.stream()

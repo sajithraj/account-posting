@@ -30,7 +30,6 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -45,6 +44,8 @@ class ApiGatewayHandlerTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String POSTING_ID = "11111111-1111-1111-1111-111111111111";
     private static final String MISSING_POSTING_ID = "99999999-9999-9999-9999-999999999999";
+    private static final String TRANSACTION_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    private static final String CONFIG_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
 
     @Mock
     private AccountPostingService postingService;
@@ -200,32 +201,34 @@ class ApiGatewayHandlerTest {
     }
 
     @Test
-    void getLeg_specificOrder_returns200() throws Exception {
+    void getLeg_byTransactionId_returns200() throws Exception {
         LegResponse leg = LegResponse.builder()
                 .postingId(POSTING_ID)
+                .transactionId(TRANSACTION_ID)
                 .transactionOrder(1)
                 .targetSystem("GL")
                 .status("ACSP")
                 .referenceId("GL-TXN-001")
                 .build();
-        when(legService.getLeg(POSTING_ID, 1)).thenReturn(leg);
+        when(legService.getLeg(POSTING_ID, TRANSACTION_ID)).thenReturn(leg);
 
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("GET", BASE + "/" + POSTING_ID + "/transaction/1", null), null);
+                apiEvent("GET", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID, null), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
         Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
         assertThat(body.get("target_system")).isEqualTo("GL");
         assertThat(body.get("reference_id")).isEqualTo("GL-TXN-001");
+        assertThat(body.get("transaction_id")).isEqualTo(TRANSACTION_ID);
     }
 
     @Test
     void getLeg_missingLeg_returns404() {
-        when(legService.getLeg(anyString(), anyInt())).thenThrow(
-                new ResourceNotFoundException("Leg not found postingId=" + POSTING_ID + " order=99"));
+        when(legService.getLeg(anyString(), anyString())).thenThrow(
+                new ResourceNotFoundException("Leg not found transactionId=" + TRANSACTION_ID));
 
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("GET", BASE + "/" + POSTING_ID + "/transaction/99", null), null);
+                apiEvent("GET", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID, null), null);
 
         assertThat(response.getStatusCode()).isEqualTo(404);
     }
@@ -234,33 +237,34 @@ class ApiGatewayHandlerTest {
     void manualUpdateLeg_validRequest_returns200WithUpdatedLeg() throws Exception {
         LegResponse updated = LegResponse.builder()
                 .postingId(POSTING_ID)
+                .transactionId(TRANSACTION_ID)
                 .transactionOrder(1)
                 .status("SUCCESS")
                 .mode("MANUAL")
                 .reason("Manually resolved by ops")
                 .build();
-        doNothing().when(legService).manualUpdateLeg(anyString(), anyInt(), anyString(), anyString(), anyString());
-        when(legService.getLeg(POSTING_ID, 1)).thenReturn(updated);
+        doNothing().when(legService).manualUpdateLeg(anyString(), anyString(), anyString(), anyString(), anyString());
+        when(legService.getLeg(POSTING_ID, TRANSACTION_ID)).thenReturn(updated);
 
         String body = "{\"status\":\"SUCCESS\",\"reason\":\"Manually resolved by ops\",\"requested_by\":\"ops-admin\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/1", body), null);
+                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID, body), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
         Map<?, ?> responseBody = MAPPER.readValue(response.getBody(), Map.class);
         assertThat(responseBody.get("status")).isEqualTo("SUCCESS");
         assertThat(responseBody.get("mode")).isEqualTo("MANUAL");
-        verify(legService).manualUpdateLeg(eq(POSTING_ID), eq(1), eq("SUCCESS"),
+        verify(legService).manualUpdateLeg(eq(POSTING_ID), eq(TRANSACTION_ID), eq("SUCCESS"),
                 eq("Manually resolved by ops"), eq("ops-admin"));
     }
 
     @Test
     void manualUpdateLeg_legNotFound_returns404() {
         doThrow(new ResourceNotFoundException("Leg not found"))
-                .when(legService).manualUpdateLeg(anyString(), anyInt(), anyString(), anyString(), anyString());
+                .when(legService).manualUpdateLeg(anyString(), anyString(), anyString(), anyString(), anyString());
 
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/99",
+                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID,
                         "{\"status\":\"SUCCESS\",\"reason\":\"test\",\"requested_by\":\"admin\"}"), null);
 
         assertThat(response.getStatusCode()).isEqualTo(404);
@@ -324,47 +328,52 @@ class ApiGatewayHandlerTest {
     @Test
     void updateConfig_validRequest_returns200() throws Exception {
         PostingConfigEntity updated = buildConfig("IMX_CBS_GL", 1, "CBS");
+        updated.setConfigId(CONFIG_ID);
         updated.setOperation("POSTING_V2");
-        when(configService.update(eq("IMX_CBS_GL"), eq(1), any())).thenReturn(updated);
+        when(configService.update(eq(CONFIG_ID), any())).thenReturn(updated);
 
+        String body = "{\"config_id\":\"" + CONFIG_ID + "\",\"target_system\":\"CBS\",\"operation\":\"POSTING_V2\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PUT", BASE + "/config/IMX_CBS_GL/1", "{\"target_system\":\"CBS\",\"operation\":\"POSTING_V2\"}"), null);
+                apiEvent("PUT", BASE + "/config", body), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
         Map<?, ?> responseBody = MAPPER.readValue(response.getBody(), Map.class);
         assertThat(responseBody.get("operation")).isEqualTo("POSTING_V2");
-        verify(configService).update(eq("IMX_CBS_GL"), eq(1), any());
+        verify(configService).update(eq(CONFIG_ID), any());
     }
 
     @Test
     void updateConfig_notFound_returns404() {
-        when(configService.update(anyString(), anyInt(), any())).thenThrow(
-                new ResourceNotFoundException("Config not found: requestType=MISSING orderSeq=1"));
+        when(configService.update(anyString(), any())).thenThrow(
+                new ResourceNotFoundException("Config not found: configId=" + CONFIG_ID));
 
+        String body = "{\"config_id\":\"" + CONFIG_ID + "\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PUT", BASE + "/config/MISSING/1", "{}"), null);
+                apiEvent("PUT", BASE + "/config", body), null);
 
         assertThat(response.getStatusCode()).isEqualTo(404);
     }
 
     @Test
     void deleteConfig_existingConfig_returns204() {
-        doNothing().when(configService).delete("IMX_CBS_GL", 1);
+        doNothing().when(configService).delete(CONFIG_ID);
 
+        String body = "{\"config_id\":\"" + CONFIG_ID + "\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("DELETE", BASE + "/config/IMX_CBS_GL/1", null), null);
+                apiEvent("DELETE", BASE + "/config", body), null);
 
         assertThat(response.getStatusCode()).isEqualTo(204);
-        verify(configService).delete("IMX_CBS_GL", 1);
+        verify(configService).delete(CONFIG_ID);
     }
 
     @Test
     void deleteConfig_notFound_returns404() {
         doThrow(new ResourceNotFoundException("Config not found"))
-                .when(configService).delete(anyString(), anyInt());
+                .when(configService).delete(anyString());
 
+        String body = "{\"config_id\":\"" + CONFIG_ID + "\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("DELETE", BASE + "/config/MISSING/99", null), null);
+                apiEvent("DELETE", BASE + "/config", body), null);
 
         assertThat(response.getStatusCode()).isEqualTo(404);
     }

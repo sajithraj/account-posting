@@ -63,6 +63,11 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         if (limit < 1 || limit > 200) {
             throw new ValidationException("INVALID_LIMIT", "limit must be between 1 and 200");
         }
+        if (req.getStatus() == null && req.getSourceName() == null && req.getRequestType() == null
+                && req.getEndToEndReferenceId() == null && req.getSourceReferenceId() == null) {
+            throw new ValidationException("SEARCH_REQUIRES_FILTER",
+                    "At least one search criterion is required: status, source_name, request_type, end_to_end_reference_id, or source_reference_id");
+        }
         log.info("search status={} sourceName={} requestType={} e2eRef={} sourceRef={} fromDate={} toDate={} limit={} pageTokenPresent={}",
                 req.getStatus(), req.getSourceName(), req.getRequestType(), req.getEndToEndReferenceId(),
                 req.getSourceReferenceId(), req.getFromDate(), req.getToDate(), limit, req.getPageToken() != null);
@@ -85,31 +90,24 @@ public class AccountPostingServiceImpl implements AccountPostingService {
 
     @Override
     public RetryResponse retry(RetryRequest request) {
-        List<String> candidates;
+        List<AccountPostingEntity> candidates = new ArrayList<>();
 
         if (request.getPostingIds() != null && !request.getPostingIds().isEmpty()) {
-            candidates = request.getPostingIds();
+            for (String id : request.getPostingIds()) {
+                postingRepo.findById(id).ifPresent(candidates::add);
+            }
         } else {
-            List<AccountPostingEntity> pndg = postingRepo.findByStatus(PostingStatus.PNDG.name());
-            List<AccountPostingEntity> received = postingRepo.findByStatus("RCVD");
-            candidates = new ArrayList<>();
-            pndg.forEach(p -> candidates.add(p.getPostingId()));
-            received.forEach(p -> candidates.add(p.getPostingId()));
+            candidates.addAll(postingRepo.findByStatus(PostingStatus.PNDG.name()));
+            candidates.addAll(postingRepo.findByStatus("RCVD"));
         }
 
         int queued = 0;
         int skipped = 0;
+        long now = System.currentTimeMillis();
 
-        for (String postingId : candidates) {
-            AccountPostingEntity posting = postingRepo.findById(postingId).orElse(null);
-            if (posting == null) {
-                skipped++;
-                continue;
-            }
-
-            boolean locked = postingRepo.acquireRetryLock(
-                    postingId, System.currentTimeMillis() + AppConfig.RETRY_LOCK_TTL_MS);
-            if (!locked) {
+        for (AccountPostingEntity posting : candidates) {
+            Long lockedUntil = posting.getRetryLockedUntil();
+            if (lockedUntil != null && lockedUntil >= now) {
                 skipped++;
                 continue;
             }
@@ -118,7 +116,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                     JsonUtil.fromJson(posting.getRequestPayload(), IncomingPostingRequest.class);
 
             PostingJob job = PostingJob.builder()
-                    .postingId(postingId)
+                    .postingId(posting.getPostingId())
                     .requestPayload(originalRequest)
                     .requestMode(RequestMode.RETRY)
                     .build();
@@ -126,7 +124,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
             queued++;
         }
 
-        log.info("Retry request by '{}' Ã¢â‚¬â€ {} candidates, {} queued for processing, {} skipped (lock held)",
+        log.info("Retry request by '{}' - {} candidates, {} queued for processing, {} skipped (lock held)",
                 request.getRequestedBy(), candidates.size(), queued, skipped);
 
         return RetryResponse.builder()
@@ -172,6 +170,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
     private LegResponse toLegResponse(AccountPostingLegEntity leg) {
         return LegResponse.builder()
                 .postingId(leg.getPostingId())
+                .transactionId(leg.getTransactionId())
                 .transactionOrder(leg.getTransactionOrder())
                 .targetSystem(leg.getTargetSystem())
                 .account(leg.getAccount())

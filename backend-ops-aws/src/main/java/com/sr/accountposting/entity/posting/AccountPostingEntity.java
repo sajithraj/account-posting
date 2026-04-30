@@ -60,8 +60,7 @@ public class AccountPostingEntity {
     @DynamoDbSecondarySortKey(indexNames = {
             "gsi-status-updatedAt",
             "gsi-sourceName-updatedAt",
-            "gsi-requestType-updatedAt",
-            "gsi-sourceReferenceId-updatedAt"
+            "gsi-requestType-updatedAt"
     })
     public String getUpdatedAt() {
         return updatedAt;
@@ -77,7 +76,7 @@ public class AccountPostingEntity {
         return requestType;
     }
 
-    @DynamoDbSecondaryPartitionKey(indexNames = "gsi-sourceReferenceId-updatedAt")
+    @DynamoDbSecondaryPartitionKey(indexNames = "gsi-sourceReferenceId")
     public String getSourceReferenceId() {
         return sourceReferenceId;
     }
