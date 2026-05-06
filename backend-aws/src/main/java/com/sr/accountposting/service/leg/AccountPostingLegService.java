@@ -21,5 +21,7 @@ public interface AccountPostingLegService {
 
     LegResponse getLeg(String postingId, int transactionOrder);
 
+    List<AccountPostingLegEntity> listAllLegEntities(String postingId);
+
     List<AccountPostingLegEntity> listNonSuccessLegs(String postingId);
 }

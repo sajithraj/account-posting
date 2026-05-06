@@ -117,6 +117,11 @@ public class AccountPostingLegServiceImpl implements AccountPostingLegService {
     }
 
     @Override
+    public List<AccountPostingLegEntity> listAllLegEntities(String postingId) {
+        return legRepo.findByPostingId(postingId);
+    }
+
+    @Override
     public List<AccountPostingLegEntity> listNonSuccessLegs(String postingId) {
         return legRepo.findNonSuccessByPostingId(postingId);
     }

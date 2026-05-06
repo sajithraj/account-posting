@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 const localstackProxyTarget =
     process.env.VITE_LOCALSTACK_PROXY_TARGET
-    ?? 'http://localhost:4566/restapis/cal0ugljss/dev-local/_user_request_';
+    ?? 'http://localhost:4566/restapis/q81zemjzgp/dev-local/_user_request_';
 
 export default defineConfig({
     plugins: [react()],
