@@ -23,7 +23,7 @@ This project is split across three modules:
 |----------|--------------------------------------------------------|-----------------------------------------------|
 | `POST`   | `/v3/payment/account-posting/search`                   | Search postings by status, source, date range with pagination |
 | `GET`    | `/v3/payment/account-posting/search`                   | Search postings using query-string filters    |
-| `POST`   | `/v3/payment/account-posting/retry`                    | Re-queue PNDG/RECEIVED postings to SQS        |
+| `POST`   | `/v3/payment/account-posting/retry`                    | Re-queue specific PNDG/RECEIVED postings to SQS |
 | `GET`    | `/v3/payment/account-posting/{id}`                     | Fetch posting with all legs                   |
 | `GET`    | `/v3/payment/account-posting/{id}/transaction`         | List all legs for a posting                   |
 | `GET`    | `/v3/payment/account-posting/{id}/transaction/{order}` | Get a single leg                              |
@@ -101,12 +101,14 @@ com.sr.accountposting
 
 - **Search pagination** — `POST /search` accepts `limit` and optional `page_token`, and returns
   `{ "items": [...], "next_page_token": "..." }`. Pass `next_page_token` back as `page_token` to fetch the next page.
-  Results are filtered first, sorted by `updated_at` descending, then paginated. Supported filters are
-  `end_to_end_id`, `source_ref_id`, `source_name`, `posting_status`, `request_type`, `from_date`, and `to_date`.
-- **Retry locking** — `acquireRetryLock` performs a DynamoDB conditional write setting `retryLockedUntil`. If the lock
-  is already held, that posting is skipped (`skippedLocked++`) to prevent duplicate concurrent retries.
-- **Retry flow** — each candidate posting re-publishes its `requestPayload` to SQS with `requestMode=RETRY`.
-  `backend-aws` SQS consumer picks it up for processing.
+  Multiple filters can be combined; the repository queries one matching GSI first, then applies the remaining filters,
+  sorts by `updated_at` descending, and paginates. If no filters are provided, search defaults to postings updated in
+  the last 3 days. Supported filters are `end_to_end_id`, `source_ref_id`, `source_name`, `posting_status`,
+  `request_type`, `from_date`, and `to_date`.
+- **Retry request** — retry requires explicit `posting_ids`; bulk retry without IDs returns `400`.
+- **Retry flow** — each eligible `PNDG`/`RCVD` posting re-publishes its `requestPayload` to SQS with
+  `requestMode=RETRY`, then this Lambda updates only the posting `status` to `RTRY`. `backend-aws` owns retry
+  processing details and later moves the posting to `ACSP` or back to `PNDG`.
 - **Manual leg override** — `PATCH .../transaction/{order}` sets `mode=MANUAL`, updates `status`, `reason`, and
   `updatedBy`. `attemptNumber` is not incremented.
 - **Config CRUD** — routing configs control which external systems (CBS / GL / OBPM) receive legs and in which order.

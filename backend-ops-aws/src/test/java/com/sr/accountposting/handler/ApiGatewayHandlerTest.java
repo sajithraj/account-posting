@@ -148,23 +148,17 @@ class ApiGatewayHandlerTest {
     }
 
     @Test
-    void retry_allPending_returns200WithRetryResponse() throws Exception {
-        RetryResponse retryResp = RetryResponse.builder()
-                .totalPostings(5)
-                .queued(3)
-                .skippedLocked(2)
-                .message("Retry processing submitted.")
-                .build();
-        when(postingService.retry(any(RetryRequest.class))).thenReturn(retryResp);
+    void retry_missingPostingIds_returns400() throws Exception {
+        when(postingService.retry(any(RetryRequest.class))).thenThrow(
+                new ValidationException("POSTING_IDS_REQUIRED",
+                        "posting_ids must be provided for retry; bulk retry is not allowed"));
 
         APIGatewayV2HTTPResponse response = handler.handle(
                 apiEvent("POST", BASE + "/retry", "{\"requested_by\":\"ops-admin\"}"), null);
 
-        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(400);
         Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
-        assertThat(body.get("total_postings")).isEqualTo(5);
-        assertThat(body.get("queued")).isEqualTo(3);
-        assertThat(body.get("skipped_locked")).isEqualTo(2);
+        assertThat(body.get("name")).isEqualTo("POSTING_IDS_REQUIRED");
     }
 
     @Test
@@ -409,7 +403,8 @@ class ApiGatewayHandlerTest {
     @Test
     void validationException_returns400() {
         when(postingService.retry(any())).thenThrow(
-                new ValidationException("INVALID_FIELD", "posting_ids must not be empty"));
+                new ValidationException("POSTING_IDS_REQUIRED",
+                        "posting_ids must be provided for retry; bulk retry is not allowed"));
 
         APIGatewayV2HTTPResponse response = handler.handle(
                 apiEvent("POST", BASE + "/retry", "{}"), null);

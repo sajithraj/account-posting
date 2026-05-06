@@ -12,6 +12,7 @@ import com.sr.accountposting.entity.posting.AccountPostingEntity;
 import com.sr.accountposting.enums.PostingStatus;
 import com.sr.accountposting.enums.RequestMode;
 import com.sr.accountposting.exception.ResourceNotFoundException;
+import com.sr.accountposting.exception.ValidationException;
 import com.sr.accountposting.repository.leg.AccountPostingLegRepository;
 import com.sr.accountposting.repository.posting.AccountPostingRepository;
 import com.sr.accountposting.util.JsonUtil;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -31,11 +33,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -215,19 +216,52 @@ class AccountPostingServiceImplTest {
     }
 
     @Test
-    void search_noFilter_throwsValidationException() {
-        assertThatThrownBy(() -> service.search(new PostingSearchRequest()))
-                .hasMessageContaining("At least one search criterion is required");
+    void search_noFilter_defaultsToLastThreeDays() {
+        when(postingRepo.search(any(), any(), any(), any(), any(), anyString(), anyString(), eq(20), any()))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
+
+        PostingSearchResponse response = service.search(new PostingSearchRequest());
+
+        assertThat(response.getItems()).isEmpty();
+        verify(postingRepo).search(any(), any(), any(), any(), any(), anyString(), anyString(), eq(20), any());
     }
 
     @Test
-    void retry_withSpecificIds_locksAndPublishesJobForEach() throws Exception {
+    void search_noFilterWithPageToken_doesNotRecomputeDateWindow() {
+        when(postingRepo.search(any(), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN")))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
+
+        PostingSearchRequest req = new PostingSearchRequest();
+        req.setPageToken("TOKEN");
+
+        service.search(req);
+
+        verify(postingRepo).search(any(), any(), any(), any(), any(), any(), any(), eq(20), eq("TOKEN"));
+    }
+
+    @Test
+    void search_dateOnly_passedToRepository() {
+        when(postingRepo.search(any(), any(), any(), any(), any(), eq("2026-05-03T00:00:00Z"),
+                eq("2026-05-06T23:59:59Z"), eq(20), any()))
+                .thenReturn(new AccountPostingRepository.SearchResult(List.of(), null));
+
+        PostingSearchRequest req = new PostingSearchRequest();
+        req.setFromDate("2026-05-03T00:00:00Z");
+        req.setToDate("2026-05-06T23:59:59Z");
+
+        service.search(req);
+
+        verify(postingRepo).search(any(), any(), any(), any(), any(), eq("2026-05-03T00:00:00Z"),
+                eq("2026-05-06T23:59:59Z"), eq(20), any());
+    }
+
+    @Test
+    void retry_withSpecificIds_publishesThenUpdatesStatusToRtry() throws Exception {
         IncomingPostingRequest originalReq = buildRequest("IMX_CBS_GL", "E2E-001");
         AccountPostingEntity posting = buildPosting(POSTING_ID, PostingStatus.PNDG, "E2E-001", "IMX");
         posting.setRequestPayload(JsonUtil.toJson(originalReq));
 
         when(postingRepo.findById(POSTING_ID)).thenReturn(Optional.of(posting));
-        when(postingRepo.acquireRetryLock(eq(POSTING_ID), anyLong())).thenReturn(true);
 
         RetryRequest req = new RetryRequest();
         req.setPostingIds(List.of(POSTING_ID));
@@ -241,6 +275,9 @@ class AccountPostingServiceImplTest {
 
         ArgumentCaptor<SendMessageRequest> sqsCaptor = ArgumentCaptor.forClass(SendMessageRequest.class);
         verify(sqsClient).sendMessage(sqsCaptor.capture());
+        InOrder inOrder = inOrder(sqsClient, postingRepo);
+        inOrder.verify(sqsClient).sendMessage(any(SendMessageRequest.class));
+        inOrder.verify(postingRepo).updateStatus(POSTING_ID, PostingStatus.RTRY.name());
 
         PostingJob sentJob = JsonUtil.fromJson(sqsCaptor.getValue().messageBody(), PostingJob.class);
         assertThat(sentJob.getPostingId()).isEqualTo(POSTING_ID);
@@ -248,49 +285,24 @@ class AccountPostingServiceImplTest {
     }
 
     @Test
-    void retry_withNoIds_scansAllPndgAndReceived() {
-        AccountPostingEntity pndg1 = buildPosting(POSTING_ID, PostingStatus.PNDG, "E2E-001", "IMX");
-        AccountPostingEntity pndg2 = buildPosting(POSTING_ID_2, PostingStatus.PNDG, "E2E-002", "IMX");
-        AccountPostingEntity received = buildPosting(POSTING_ID_3, PostingStatus.RCVD, "E2E-003", "RMS");
-
-        for (AccountPostingEntity p : List.of(pndg1, pndg2, received)) {
-            p.setRequestPayload(JsonUtil.toJson(buildRequest("IMX_CBS_GL", p.getEndToEndReferenceId())));
-        }
-
-        when(postingRepo.findByStatus(PostingStatus.PNDG.name())).thenReturn(List.of(pndg1, pndg2));
-        when(postingRepo.findByStatus(PostingStatus.RCVD.name())).thenReturn(List.of(received));
-        when(postingRepo.findById(anyString())).thenAnswer(inv -> {
-            String id = inv.getArgument(0);
-            if (id.equals(POSTING_ID)) {
-                return Optional.of(pndg1);
-            }
-            if (id.equals(POSTING_ID_2)) {
-                return Optional.of(pndg2);
-            }
-            if (id.equals(POSTING_ID_3)) {
-                return Optional.of(received);
-            }
-            return Optional.empty();
-        });
-        when(postingRepo.acquireRetryLock(anyString(), anyLong())).thenReturn(true);
-
+    void retry_withNoIds_throwsValidationException() {
         RetryRequest req = new RetryRequest();
         req.setRequestedBy("ops-admin");
 
-        RetryResponse response = service.retry(req);
-
-        assertThat(response.getTotalPostings()).isEqualTo(3);
-        assertThat(response.getQueued()).isEqualTo(3);
-        assertThat(response.getSkippedLocked()).isEqualTo(0);
-        verify(sqsClient, times(3)).sendMessage(any(SendMessageRequest.class));
+        assertThatThrownBy(() -> service.retry(req))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("posting_ids must be provided");
+        verify(postingRepo, never()).findByStatus(anyString());
+        verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
     }
 
     @Test
-    void retry_lockNotAcquired_postingSkipped() {
+    void retry_receivedStatus_publishesAndUpdatesStatusToRtry() {
         AccountPostingEntity posting = buildPosting(POSTING_ID, PostingStatus.PNDG, "E2E-001", "IMX");
+        posting.setStatus(PostingStatus.RCVD.name());
+        posting.setRequestPayload(JsonUtil.toJson(buildRequest("IMX_CBS_GL", "E2E-001")));
 
         when(postingRepo.findById(POSTING_ID)).thenReturn(Optional.of(posting));
-        when(postingRepo.acquireRetryLock(eq(POSTING_ID), anyLong())).thenReturn(false);
 
         RetryRequest req = new RetryRequest();
         req.setPostingIds(List.of(POSTING_ID));
@@ -298,9 +310,10 @@ class AccountPostingServiceImplTest {
 
         RetryResponse response = service.retry(req);
 
-        assertThat(response.getQueued()).isEqualTo(0);
-        assertThat(response.getSkippedLocked()).isEqualTo(1);
-        verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
+        assertThat(response.getQueued()).isEqualTo(1);
+        assertThat(response.getSkippedLocked()).isEqualTo(0);
+        verify(sqsClient).sendMessage(any(SendMessageRequest.class));
+        verify(postingRepo).updateStatus(POSTING_ID, PostingStatus.RTRY.name());
     }
 
     @Test
@@ -315,6 +328,44 @@ class AccountPostingServiceImplTest {
 
         assertThat(response.getQueued()).isEqualTo(0);
         assertThat(response.getSkippedLocked()).isEqualTo(1);
+        verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
+    }
+
+    @Test
+    void retry_nonEligibleStatus_skippedWithoutPublish() {
+        AccountPostingEntity posting = buildPosting(POSTING_ID, PostingStatus.ACSP, "E2E-001", "IMX");
+
+        when(postingRepo.findById(POSTING_ID)).thenReturn(Optional.of(posting));
+
+        RetryRequest req = new RetryRequest();
+        req.setPostingIds(List.of(POSTING_ID));
+        req.setRequestedBy("ops-admin");
+
+        RetryResponse response = service.retry(req);
+
+        assertThat(response.getTotalPostings()).isEqualTo(1);
+        assertThat(response.getQueued()).isEqualTo(0);
+        assertThat(response.getSkippedLocked()).isEqualTo(1);
+        verify(postingRepo, never()).updateStatus(anyString(), anyString());
+        verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
+    }
+
+    @Test
+    void retry_retryLockedUntilInFuture_skippedWithoutPublish() {
+        AccountPostingEntity posting = buildPosting(POSTING_ID, PostingStatus.PNDG, "E2E-001", "IMX");
+        posting.setRetryLockedUntil(System.currentTimeMillis() + 60_000);
+
+        when(postingRepo.findById(POSTING_ID)).thenReturn(Optional.of(posting));
+
+        RetryRequest req = new RetryRequest();
+        req.setPostingIds(List.of(POSTING_ID));
+        req.setRequestedBy("ops-admin");
+
+        RetryResponse response = service.retry(req);
+
+        assertThat(response.getQueued()).isEqualTo(0);
+        assertThat(response.getSkippedLocked()).isEqualTo(1);
+        verify(postingRepo, never()).updateStatus(anyString(), anyString());
         verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
     }
 

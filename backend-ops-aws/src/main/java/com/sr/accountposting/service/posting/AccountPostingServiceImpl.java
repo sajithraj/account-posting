@@ -25,6 +25,8 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -63,10 +65,10 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         if (limit < 1 || limit > 200) {
             throw new ValidationException("INVALID_LIMIT", "limit must be between 1 and 200");
         }
-        if (req.getStatus() == null && req.getSourceName() == null && req.getRequestType() == null
-                && req.getEndToEndReferenceId() == null && req.getSourceReferenceId() == null) {
-            throw new ValidationException("SEARCH_REQUIRES_FILTER",
-                    "At least one search criterion is required: status, source_name, request_type, end_to_end_reference_id, or source_reference_id");
+        if (!hasSearchCriteria(req) && req.getPageToken() == null) {
+            Instant now = Instant.now();
+            req.setFromDate(now.minus(3, ChronoUnit.DAYS).toString());
+            req.setToDate(now.toString());
         }
         log.info("search status={} sourceName={} requestType={} e2eRef={} sourceRef={} fromDate={} toDate={} limit={} pageTokenPresent={}",
                 req.getStatus(), req.getSourceName(), req.getRequestType(), req.getEndToEndReferenceId(),
@@ -88,26 +90,41 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 .build();
     }
 
+    private boolean hasSearchCriteria(PostingSearchRequest req) {
+        return req.getStatus() != null || req.getSourceName() != null || req.getRequestType() != null
+                || req.getEndToEndReferenceId() != null || req.getSourceReferenceId() != null
+                || req.getFromDate() != null || req.getToDate() != null;
+    }
+
     @Override
     public RetryResponse retry(RetryRequest request) {
-        List<AccountPostingEntity> candidates = new ArrayList<>();
+        if (request == null || request.getPostingIds() == null || request.getPostingIds().isEmpty()) {
+            throw new ValidationException("POSTING_IDS_REQUIRED",
+                    "posting_ids must be provided for retry; bulk retry is not allowed");
+        }
 
-        if (request.getPostingIds() != null && !request.getPostingIds().isEmpty()) {
-            for (String id : request.getPostingIds()) {
-                postingRepo.findById(id).ifPresent(candidates::add);
+        List<AccountPostingEntity> candidates = new ArrayList<>();
+        int totalRequested = request.getPostingIds().size();
+        int skipped = 0;
+
+        for (String id : request.getPostingIds()) {
+            if (id == null || id.isBlank()) {
+                throw new ValidationException("INVALID_POSTING_ID", "posting_ids must not contain blank values");
             }
-        } else {
-            candidates.addAll(postingRepo.findByStatus(PostingStatus.PNDG.name()));
-            candidates.addAll(postingRepo.findByStatus("RCVD"));
+            java.util.Optional<AccountPostingEntity> posting = postingRepo.findById(id);
+            if (posting.isPresent()) {
+                candidates.add(posting.get());
+            } else {
+                log.warn("Posting not found for retry postingId={}", id);
+                skipped++;
+            }
         }
 
         int queued = 0;
-        int skipped = 0;
         long now = System.currentTimeMillis();
 
         for (AccountPostingEntity posting : candidates) {
-            Long lockedUntil = posting.getRetryLockedUntil();
-            if (lockedUntil != null && lockedUntil >= now) {
+            if (!isRetryEligible(posting, now)) {
                 skipped++;
                 continue;
             }
@@ -121,18 +138,26 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                     .requestMode(RequestMode.RETRY)
                     .build();
             publishJob(job);
+            postingRepo.updateStatus(posting.getPostingId(), PostingStatus.RTRY.name());
             queued++;
         }
 
-        log.info("Retry request by '{}' - {} candidates, {} queued for processing, {} skipped (lock held)",
-                request.getRequestedBy(), candidates.size(), queued, skipped);
+        log.info("Retry request by '{}' - {} requested, {} found, {} queued for processing, {} skipped",
+                request.getRequestedBy(), totalRequested, candidates.size(), queued, skipped);
 
         return RetryResponse.builder()
-                .totalPostings(candidates.size())
+                .totalPostings(totalRequested)
                 .queued(queued)
                 .skippedLocked(skipped)
                 .message("Retry processing submitted. Check dashboard for status updates.")
                 .build();
+    }
+
+    private boolean isRetryEligible(AccountPostingEntity posting, long now) {
+        boolean eligibleStatus = PostingStatus.PNDG.name().equals(posting.getStatus())
+                || PostingStatus.RCVD.name().equals(posting.getStatus());
+        Long lockedUntil = posting.getRetryLockedUntil();
+        return eligibleStatus && (lockedUntil == null || lockedUntil < now);
     }
 
     private void publishJob(PostingJob job) {

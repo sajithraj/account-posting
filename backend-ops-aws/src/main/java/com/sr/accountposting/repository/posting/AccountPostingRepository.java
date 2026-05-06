@@ -111,6 +111,18 @@ public class AccountPostingRepository {
         }
     }
 
+    public void updateStatus(String postingId, String status) {
+        rawClient.updateItem(UpdateItemRequest.builder()
+                .tableName(tableName)
+                .key(Map.of("postingId", AttributeValue.builder().s(postingId).build()))
+                .updateExpression("SET #status = :status")
+                .expressionAttributeNames(Map.of("#status", "status"))
+                .expressionAttributeValues(Map.of(
+                        ":status", AttributeValue.builder().s(status).build()
+                ))
+                .build());
+    }
+
     public void update(AccountPostingEntity posting) {
         table.updateItem(posting);
     }
@@ -118,7 +130,17 @@ public class AccountPostingRepository {
     public SearchResult search(String status, String sourceName, String requestType,
                                String endToEndReferenceId, String sourceReferenceId,
                                String fromDate, String toDate, int limit, String pageToken) {
-        int offset = decodePageToken(pageToken);
+        PageToken token = decodePageToken(pageToken);
+        int offset = token.getOffset() != null ? token.getOffset() : 0;
+        if (status == null && sourceName == null && requestType == null
+                && endToEndReferenceId == null && sourceReferenceId == null) {
+            if (fromDate == null && token.getFromDate() != null) {
+                fromDate = token.getFromDate();
+            }
+            if (toDate == null && token.getToDate() != null) {
+                toDate = token.getToDate();
+            }
+        }
         List<AccountPostingEntity> candidates;
 
         if (endToEndReferenceId != null) {
@@ -136,14 +158,19 @@ public class AccountPostingRepository {
             candidates = searchByUpdatedAtIndex("gsi-status-updatedAt", status, fromDate, toDate);
         } else if (sourceName != null) {
             candidates = searchByUpdatedAtIndex("gsi-sourceName-updatedAt", sourceName, fromDate, toDate);
+        } else if (fromDate != null || toDate != null) {
+            candidates = scanAll();
         } else {
-            throw new com.sr.accountposting.exception.ValidationException("SEARCH_REQUIRES_FILTER",
+            throw new ValidationException("SEARCH_REQUIRES_FILTER",
                     "At least one search criterion is required");
         }
 
+        final String effectiveFromDate = fromDate;
+        final String effectiveToDate = toDate;
+
         List<AccountPostingEntity> sortedResults = candidates.stream()
                 .filter(p -> matches(p, status, sourceName, requestType, endToEndReferenceId,
-                        sourceReferenceId, fromDate, toDate))
+                        sourceReferenceId, effectiveFromDate, effectiveToDate))
                 .sorted(Comparator.comparing(AccountPostingEntity::getUpdatedAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
@@ -153,7 +180,9 @@ public class AccountPostingRepository {
         }
 
         int endExclusive = Math.min(offset + limit, sortedResults.size());
-        String nextPageToken = endExclusive < sortedResults.size() ? encodePageToken(endExclusive) : null;
+        String nextPageToken = endExclusive < sortedResults.size()
+                ? encodePageToken(new PageToken(endExclusive, effectiveFromDate, effectiveToDate))
+                : null;
         return new SearchResult(sortedResults.subList(offset, endExclusive), nextPageToken);
     }
 
@@ -205,23 +234,26 @@ public class AccountPostingRepository {
         return toDate == null || updatedAt.compareTo(toDate) <= 0;
     }
 
-    private int decodePageToken(String pageToken) {
+    private PageToken decodePageToken(String pageToken) {
         if (pageToken == null || pageToken.isBlank()) {
-            return 0;
+            return new PageToken(0, null, null);
         }
 
         try {
             String json = new String(Base64.getUrlDecoder().decode(pageToken), StandardCharsets.UTF_8);
             PageToken token = JsonUtil.MAPPER.readValue(json, PageToken.class);
-            return token.getOffset() != null ? token.getOffset() : 0;
+            if (token.getOffset() == null) {
+                token.setOffset(0);
+            }
+            return token;
         } catch (Exception e) {
             throw new ValidationException("INVALID_PAGE_TOKEN", "page_token is invalid");
         }
     }
 
-    private String encodePageToken(int offset) {
+    private String encodePageToken(PageToken token) {
         try {
-            String json = JsonUtil.MAPPER.writeValueAsString(new PageToken(offset));
+            String json = JsonUtil.MAPPER.writeValueAsString(token);
             return Base64.getUrlEncoder().withoutPadding()
                     .encodeToString(json.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
@@ -231,12 +263,16 @@ public class AccountPostingRepository {
 
     public static class PageToken {
         private Integer offset;
+        private String fromDate;
+        private String toDate;
 
         public PageToken() {
         }
 
-        public PageToken(Integer offset) {
+        public PageToken(Integer offset, String fromDate, String toDate) {
             this.offset = offset;
+            this.fromDate = fromDate;
+            this.toDate = toDate;
         }
 
         public Integer getOffset() {
@@ -245,6 +281,22 @@ public class AccountPostingRepository {
 
         public void setOffset(Integer offset) {
             this.offset = offset;
+        }
+
+        public String getFromDate() {
+            return fromDate;
+        }
+
+        public void setFromDate(String fromDate) {
+            this.fromDate = fromDate;
+        }
+
+        public String getToDate() {
+            return toDate;
+        }
+
+        public void setToDate(String toDate) {
+            this.toDate = toDate;
         }
     }
 

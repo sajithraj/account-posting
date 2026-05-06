@@ -35,7 +35,7 @@
       "name": "Search",
       "item": [
         {
-          "name": "Search — All (no filters, latest 20)",
+          "name": "Search — All (no filters, latest 3 days)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -65,7 +65,7 @@
               "raw": "{\n  \"status\": \"PNDG\",\n  \"limit\": 20\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "Valid status values: RCVD, PNDG, ACSP, RJCT."
+            "description": "Valid status values: RCVD, PNDG, RTRY, ACSP, RJCT."
           }
         },
         {
@@ -155,7 +155,7 @@
       "name": "Retry",
       "item": [
         {
-          "name": "Retry — All PNDG/RCVD",
+          "name": "Retry — Missing Posting IDs (400)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -168,14 +168,14 @@
               "raw": "{\n  \"requested_by\": \"OPS-USER\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "Re-queues all postings with status PNDG or RCVD that are not retry-locked."
+            "description": "Bulk retry is not allowed. posting_ids must be provided."
           },
           "response": [
             {
-              "name": "200 OK",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"total_postings\": 3,\n  \"queued\": 2,\n  \"skipped_locked\": 1,\n  \"message\": \"Retry processing submitted. Check dashboard for status updates.\"\n}"
+              "name": "400 Bad Request",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"id\": \"generated-error-id\",\n  \"name\": \"POSTING_IDS_REQUIRED\",\n  \"message\": \"posting_ids must be provided for retry; bulk retry is not allowed\"\n}"
             }
           ]
         },

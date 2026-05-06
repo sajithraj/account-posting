@@ -35,7 +35,7 @@
       "post": {
         "operationId": "searchPostings",
         "summary": "Search postings",
-        "description": "Search the posting table with optional filters. All filter fields are optional. Results are sorted by updated_at descending before pagination and include legs for each posting. Use next_page_token as page_token on the next request. Filters may be supplied in the POST JSON body or as query parameters; GET /search is also exposed for query-string searches.",
+        "description": "Search the posting table with optional filters. Multiple filters can be combined; one matching GSI is queried first, then remaining filters are applied before sorting and pagination. If no filters are supplied, postings updated in the last 3 days are returned. Results are sorted by updated_at descending and include legs for each posting. Use next_page_token as page_token on the next request. Filters may be supplied in the POST JSON body or as query parameters; GET /search is also exposed for query-string searches.",
         "requestBody": {
           "required": true,
           "content": {
@@ -43,7 +43,7 @@
               "schema": { "$ref": "#/components/schemas/PostingSearchRequest" },
               "examples": {
                 "all": {
-                  "summary": "No filters — latest 20",
+                  "summary": "No filters - latest 3 days",
                   "value": { "limit": 20 }
                 },
                 "by_status": {
@@ -98,17 +98,13 @@
       "post": {
         "operationId": "retryPostings",
         "summary": "Retry pending postings",
-        "description": "Re-queues postings to SQS for reprocessing. If posting_ids is omitted, all PNDG and RCVD postings are retried. Uses DynamoDB conditional write for retry locking — already-locked postings are skipped.",
+        "description": "Re-queues explicit postings to SQS for reprocessing. posting_ids is required; bulk retry is not allowed. Eligible PNDG/RCVD postings are published to SQS first, then this Lambda updates only the posting status to RTRY. Retry processing details are handled by backend-aws.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/RetryRequest" },
               "examples": {
-                "all_pending": {
-                  "summary": "Retry all PNDG/RCVD",
-                  "value": { "requested_by": "OPS-USER" }
-                },
                 "specific": {
                   "summary": "Retry specific posting IDs",
                   "value": {
@@ -551,7 +547,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["RCVD", "PNDG", "ACSP", "RJCT"],
+            "enum": ["RCVD", "PNDG", "RTRY", "ACSP", "RJCT"],
             "description": "Filter by posting status. Alias accepted: posting_status."
           },
           "source_name": {
@@ -602,15 +598,16 @@
       },
       "RetryRequest": {
         "type": "object",
-        "required": ["requested_by"],
+        "required": ["posting_ids", "requested_by"],
         "properties": {
           "posting_ids": {
             "type": "array",
+            "minItems": 1,
             "items": {
               "type": "string",
               "format": "uuid"
             },
-            "description": "Specific posting IDs (UUIDs) to retry. Omit to retry all PNDG/RCVD."
+            "description": "Specific posting IDs (UUIDs) to retry. Required; bulk retry without posting IDs is not allowed."
           },
           "requested_by": {
             "type": "string",
@@ -645,7 +642,7 @@
           },
           "skipped_locked": {
             "type": "integer",
-            "description": "Postings skipped because retry lock was already held."
+            "description": "Requested postings skipped because they were missing or not in a retryable status."
           },
           "message": {
             "type": "string",
@@ -712,8 +709,8 @@
           },
           "posting_status": {
             "type": "string",
-            "enum": ["RCVD", "PNDG", "ACSP", "RJCT"],
-            "description": "RCVD — received and queued. PNDG — pending processing. ACSP — all legs succeeded. RJCT — one or more legs failed."
+            "enum": ["RCVD", "PNDG", "RTRY", "ACSP", "RJCT"],
+            "description": "RCVD — received and queued. PNDG — pending processing. RTRY — submitted for retry. ACSP — all legs succeeded. RJCT — one or more legs failed."
           },
           "target_systems": {
             "type": "string",
