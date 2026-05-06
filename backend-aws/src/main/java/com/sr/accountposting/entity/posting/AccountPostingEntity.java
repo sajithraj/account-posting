@@ -36,6 +36,7 @@ public class AccountPostingEntity {
     private String createdBy;
     private String updatedBy;
     private Long ttl;
+    private String entityType = "POSTING";
 
     @DynamoDbPartitionKey
     public String getPostingId() {

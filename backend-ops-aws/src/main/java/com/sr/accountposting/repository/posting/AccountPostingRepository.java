@@ -144,22 +144,28 @@ public class AccountPostingRepository {
         List<AccountPostingEntity> candidates;
 
         if (endToEndReferenceId != null) {
+            log.info("Executing DynamoDB Query using endToEndReferenceId index");
             candidates = findByEndToEndReferenceId(endToEndReferenceId)
                     .map(List::of)
                     .orElseGet(List::of);
         } else if (sourceReferenceId != null) {
+            log.info("Executing DynamoDB Query using sourceReferenceId index");
             candidates = findBySourceReferenceId(sourceReferenceId)
                     .map(List::of)
                     .orElseGet(List::of);
         } else if (requestType != null) {
+            log.info("Executing DynamoDB Query using requestType index with date filters");
             candidates = searchByUpdatedAtIndex("gsi-requestType-updatedAt",
                     requestType, fromDate, toDate);
         } else if (status != null) {
+            log.info("Executing DynamoDB Query using status index with date filters");
             candidates = searchByUpdatedAtIndex("gsi-status-updatedAt", status, fromDate, toDate);
         } else if (sourceName != null) {
+            log.info("Executing DynamoDB Query using sourceName index with date filters");
             candidates = searchByUpdatedAtIndex("gsi-sourceName-updatedAt", sourceName, fromDate, toDate);
         } else if (fromDate != null || toDate != null) {
-            candidates = scanAll();
+            log.info("Executing DynamoDB Query using entityType index with date filters");
+            candidates = searchByUpdatedAtIndex("gsi-entityType-updatedAt", "POSTING", fromDate, toDate);
         } else {
             throw new ValidationException("SEARCH_REQUIRES_FILTER",
                     "At least one search criterion is required");

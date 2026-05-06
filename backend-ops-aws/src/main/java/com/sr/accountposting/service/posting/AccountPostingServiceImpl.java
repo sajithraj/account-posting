@@ -66,9 +66,11 @@ public class AccountPostingServiceImpl implements AccountPostingService {
             throw new ValidationException("INVALID_LIMIT", "limit must be between 1 and 200");
         }
         if (!hasSearchCriteria(req) && req.getPageToken() == null) {
+            log.info("search: no criteria and no pageToken — defaulting to last 3 days");
             Instant now = Instant.now();
             req.setFromDate(now.minus(3, ChronoUnit.DAYS).toString());
             req.setToDate(now.toString());
+            log.info("search: applied default date range fromDate={} toDate={}", req.getFromDate(), req.getToDate());
         }
         log.info("search status={} sourceName={} requestType={} e2eRef={} sourceRef={} fromDate={} toDate={} limit={} pageTokenPresent={}",
                 req.getStatus(), req.getSourceName(), req.getRequestType(), req.getEndToEndReferenceId(),

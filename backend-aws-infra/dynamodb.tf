@@ -46,6 +46,11 @@ resource "aws_dynamodb_table" "account_posting" {
     type = "S"
   }
 
+  attribute {
+    name = "entityType"
+    type = "S"
+  }
+
   # GSI1: idempotency check on create + exact search
   global_secondary_index {
     name            = "gsi-endToEndReferenceId"
@@ -97,6 +102,14 @@ resource "aws_dynamodb_table" "account_posting" {
   global_secondary_index {
     name            = "gsi-sourceReferenceId"
     hash_key        = "sourceReferenceId"
+    projection_type = "ALL"
+  }
+
+  # GSI8: search by entity type sorted by last update (for pure date range queries)
+  global_secondary_index {
+    name            = "gsi-entityType-updatedAt"
+    hash_key        = "entityType"
+    range_key       = "updatedAt"
     projection_type = "ALL"
   }
 

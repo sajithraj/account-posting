@@ -36,6 +36,7 @@ public class AccountPostingEntity {
     private String createdBy;
     private String updatedBy;
     private Long ttl;
+    private String entityType = "POSTING";
 
     @DynamoDbPartitionKey
     public String getPostingId() {
@@ -60,7 +61,8 @@ public class AccountPostingEntity {
     @DynamoDbSecondarySortKey(indexNames = {
             "gsi-status-updatedAt",
             "gsi-sourceName-updatedAt",
-            "gsi-requestType-updatedAt"
+            "gsi-requestType-updatedAt",
+            "gsi-entityType-updatedAt"
     })
     public String getUpdatedAt() {
         return updatedAt;
@@ -83,5 +85,10 @@ public class AccountPostingEntity {
 
     public Long getVersion() {
         return version;
+    }
+
+    @DynamoDbSecondaryPartitionKey(indexNames = "gsi-entityType-updatedAt")
+    public String getEntityType() {
+        return entityType;
     }
 }
