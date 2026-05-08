@@ -5,7 +5,6 @@ import com.sr.accountposting.exception.BusinessException;
 import com.sr.accountposting.exception.ResourceNotFoundException;
 import com.sr.accountposting.repository.config.PostingConfigRepository;
 import com.sr.accountposting.util.IdGenerator;
-import com.sr.accountposting.util.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

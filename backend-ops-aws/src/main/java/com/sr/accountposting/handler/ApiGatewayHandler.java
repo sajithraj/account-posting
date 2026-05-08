@@ -161,8 +161,10 @@ public class ApiGatewayHandler {
     }
 
     private APIGatewayV2HTTPResponse rawError(int statusCode, String code, String message) {
+        String errorId = UUID.randomUUID().toString();
+        log.debug("Error response | errorId={} statusCode={} errorCode={}", errorId, statusCode, code);
         return response(statusCode, JsonUtil.toJson(Map.of(
-                "id", UUID.randomUUID().toString(),
+                "id", errorId,
                 "name", code,
                 "message", message
         )));

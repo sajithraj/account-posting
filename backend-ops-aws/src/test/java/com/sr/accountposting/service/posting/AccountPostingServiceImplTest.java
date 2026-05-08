@@ -289,7 +289,6 @@ class AccountPostingServiceImplTest {
         assertThatThrownBy(() -> service.retry(req))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("posting_ids must be provided");
-        verify(postingRepo, never()).findByStatus(anyString());
         verify(sqsClient, never()).sendMessage(any(SendMessageRequest.class));
     }
 

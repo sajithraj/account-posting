@@ -16,7 +16,6 @@ import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import javax.inject.Inject;
@@ -85,43 +84,6 @@ public class AccountPostingRepository {
                 .findFirst();
     }
 
-    public boolean existsByEndToEndReferenceId(String e2eRef) {
-        return findByEndToEndReferenceId(e2eRef).isPresent();
-    }
-
-    public List<AccountPostingEntity> findByStatus(String status) {
-        DynamoDbIndex<AccountPostingEntity> gsi = table.index("gsi-status-createdAt");
-        QueryConditional condition = QueryConditional.keyEqualTo(
-                Key.builder().partitionValue(status).build()
-        );
-        List<AccountPostingEntity> results = new ArrayList<>();
-        gsi.query(condition).forEach(page -> results.addAll(page.items()));
-        return results;
-    }
-
-    public boolean acquireRetryLock(String postingId, long lockUntilEpochMillis) {
-        long now = System.currentTimeMillis();
-        log.debug("Attempting to acquire retry lock | postingId={} lockUntil={}", postingId, lockUntilEpochMillis);
-        try {
-            rawClient.updateItem(UpdateItemRequest.builder()
-                    .tableName(tableName)
-                    .key(Map.of("postingId", AttributeValue.builder().s(postingId).build()))
-                    .updateExpression("SET retryLockedUntil = :lockVal")
-                    .conditionExpression(
-                            "attribute_not_exists(retryLockedUntil) OR retryLockedUntil < :now")
-                    .expressionAttributeValues(Map.of(
-                            ":lockVal", AttributeValue.builder().n(String.valueOf(lockUntilEpochMillis)).build(),
-                            ":now", AttributeValue.builder().n(String.valueOf(now)).build()
-                    ))
-                    .build());
-            log.debug("Retry lock acquired | postingId={}", postingId);
-            return true;
-        } catch (ConditionalCheckFailedException e) {
-            log.info("Retry lock already held — skipping | postingId={}", postingId);
-            return false;
-        }
-    }
-
     public void updateStatus(String postingId, String status) {
         log.debug("Updating posting status in DynamoDB | postingId={} newStatus={}", postingId, status);
         rawClient.updateItem(UpdateItemRequest.builder()
@@ -159,27 +121,30 @@ public class AccountPostingRepository {
         List<AccountPostingEntity> candidates;
 
         if (endToEndReferenceId != null) {
-            log.info("Executing DynamoDB Query using endToEndReferenceId index");
+            log.info("Search strategy | index=gsi-endToEndReferenceId e2eRef={}", endToEndReferenceId);
             candidates = findByEndToEndReferenceId(endToEndReferenceId)
                     .map(List::of)
                     .orElseGet(List::of);
         } else if (sourceReferenceId != null) {
-            log.info("Executing DynamoDB Query using sourceReferenceId index");
+            log.info("Search strategy | index=gsi-sourceReferenceId sourceRefId={}", sourceReferenceId);
             candidates = findBySourceReferenceId(sourceReferenceId)
                     .map(List::of)
                     .orElseGet(List::of);
         } else if (requestType != null) {
-            log.info("Executing DynamoDB Query using requestType index with date filters");
+            log.info("Search strategy | index=gsi-requestType-updatedAt requestType={} from={} to={}",
+                    requestType, fromDate, toDate);
             candidates = searchByUpdatedAtIndex("gsi-requestType-updatedAt",
                     requestType, fromDate, toDate);
         } else if (status != null) {
-            log.info("Executing DynamoDB Query using status index with date filters");
+            log.info("Search strategy | index=gsi-status-updatedAt status={} from={} to={}",
+                    status, fromDate, toDate);
             candidates = searchByUpdatedAtIndex("gsi-status-updatedAt", status, fromDate, toDate);
         } else if (sourceName != null) {
-            log.info("Executing DynamoDB Query using sourceName index with date filters");
+            log.info("Search strategy | index=gsi-sourceName-updatedAt sourceName={} from={} to={}",
+                    sourceName, fromDate, toDate);
             candidates = searchByUpdatedAtIndex("gsi-sourceName-updatedAt", sourceName, fromDate, toDate);
         } else if (fromDate != null || toDate != null) {
-            log.info("Executing DynamoDB Query using entityType index with date filters");
+            log.info("Search strategy | index=gsi-entityType-updatedAt from={} to={}", fromDate, toDate);
             candidates = searchByUpdatedAtIndex("gsi-entityType-updatedAt", "POSTING", fromDate, toDate);
         } else {
             throw new ValidationException("SEARCH_REQUIRES_FILTER",
