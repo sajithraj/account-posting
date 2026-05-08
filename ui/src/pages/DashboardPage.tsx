@@ -99,35 +99,33 @@ interface PanelProps {
 }
 
 function SourcePanel({name, color, range}: PanelProps) {
-    const base: PostingSearchRequest = {sourceName: name, fromDate: range.fromDate, toDate: range.toDate, limit: 100};
+    const base: PostingSearchRequest = {sourceName: name, fromDate: range.fromDate, toDate: range.toDate, limit: 200};
 
-    const total = useCount({...base});
-    const pending = useCount({...base, status: 'PNDG'});
-    const accepted = useCount({...base, status: 'ACSP'});
-    const rejected = useCount({...base, status: 'RJCT'});
+    const {data: allData} = useQuery({
+        queryKey: ['dashboard-count', base],
+        queryFn: () => postingApi.search(base),
+        staleTime: 30_000,
+    });
+
+    const items = allData?.items ?? [];
+    const total = items.length;
+    const pending = items.filter(p => p.postingStatus === 'PNDG').length;
+    const accepted = items.filter(p => p.postingStatus === 'ACSP').length;
+    const rejected = items.filter(p => p.postingStatus === 'RJCT').length;
 
     return (
         <div style={s.panel}>
             <div style={{...s.panelHeader, background: color}}>
                 <span style={s.panelTitle}>{name}</span>
-                <span style={s.panelTotal}>{total ?? '…'} total</span>
+                <span style={s.panelTotal}>{allData ? `${total} total` : '…'}</span>
             </div>
             <div style={s.counters}>
-                <Counter label="PNDG" value={pending} color="#856404" bg="#fffbeb"/>
-                <Counter label="ACSP" value={accepted} color="#0a3622" bg="#f0fdf4"/>
-                <Counter label="RJCT" value={rejected} color="#58151c" bg="#fff1f2"/>
+                <Counter label="PNDG" value={allData ? pending : undefined} color="#856404" bg="#fffbeb"/>
+                <Counter label="ACSP" value={allData ? accepted : undefined} color="#0a3622" bg="#f0fdf4"/>
+                <Counter label="RJCT" value={allData ? rejected : undefined} color="#58151c" bg="#fff1f2"/>
             </div>
         </div>
     );
-}
-
-function useCount(params: PostingSearchRequest): number | undefined {
-    const {data} = useQuery({
-        queryKey: ['dashboard-count', params],
-        queryFn: () => postingApi.search(params),
-        staleTime: 30_000,
-    });
-    return data?.items.length;
 }
 
 function Counter({label, value, color, bg}: { label: string; value: number | undefined; color: string; bg: string }) {

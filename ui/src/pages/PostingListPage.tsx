@@ -2,7 +2,7 @@ import {Fragment, useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useNavigate} from 'react-router-dom';
 import {getErrorMessage, postingApi} from '../api/postingApi';
-import type {PostingFilterDraft, PostingSearchRequest, PostingStatus} from '../types/posting';
+import type {LegResponse, PostingFilterDraft, PostingSearchRequest, PostingStatus} from '../types/posting';
 import StatusBadge from '../components/StatusBadge';
 import LegTable from '../components/LegTable';
 
@@ -32,6 +32,8 @@ export default function PostingListPage() {
         onSuccess: () => {
             alert('Retry triggered successfully');
             queryClient.invalidateQueries({queryKey: ['postings']});
+            setExpandedIds(new Set());
+            setExpandedLegs({});
         },
         onError: (err: unknown) => alert(`Retry failed: ${getErrorMessage(err)}`),
     });
@@ -41,6 +43,8 @@ export default function PostingListPage() {
         onSuccess: () => {
             setSelected(new Set());
             queryClient.invalidateQueries({queryKey: ['postings']});
+            setExpandedIds(new Set());
+            setExpandedLegs({});
         },
         onError: (err: unknown) => alert(`Retry failed: ${getErrorMessage(err)}`),
     });
@@ -73,15 +77,35 @@ export default function PostingListPage() {
     const hasSelectedPending = selectedPendingIds.length > 0;
 
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [expandedLegs, setExpandedLegs] = useState<Record<string, LegResponse[]>>({});
+    const [loadingLegs, setLoadingLegs] = useState<Set<string>>(new Set());
 
     const toggleExpand = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        const isExpanding = !expandedIds.has(id);
         setExpandedIds(prev => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
             return next;
         });
+        if (isExpanding && !expandedLegs[id]) {
+            setLoadingLegs(prev => new Set([...prev, id]));
+            postingApi.getById(id)
+                .then(posting => {
+                    setExpandedLegs(prev => ({...prev, [id]: posting.legs ?? []}));
+                })
+                .catch(() => {
+                    setExpandedLegs(prev => ({...prev, [id]: []}));
+                })
+                .finally(() => {
+                    setLoadingLegs(prev => {
+                        const next = new Set(prev);
+                        next.delete(id);
+                        return next;
+                    });
+                });
+        }
     };
 
     const toggleRow = (id: string) => {
@@ -320,7 +344,10 @@ export default function PostingListPage() {
                                         <tr style={{background: '#f4f7ff'}}>
                                             <td colSpan={12} style={s.expandedCell}>
                                                 <div style={s.expandedLabel}>Posting Legs</div>
-                                                <LegTable legs={p.legs ?? []}/>
+                                                {loadingLegs.has(p.postingId)
+                                                    ? <div style={{fontSize: 13, color: '#888', padding: '4px 0'}}>Loading legs...</div>
+                                                    : <LegTable legs={expandedLegs[p.postingId] ?? []}/>
+                                                }
                                             </td>
                                         </tr>
                                     )}

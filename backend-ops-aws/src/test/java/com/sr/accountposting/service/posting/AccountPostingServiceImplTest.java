@@ -113,8 +113,6 @@ class AccountPostingServiceImplTest {
 
         when(postingRepo.search(eq("PNDG"), any(), any(), any(), any(), any(), any(), eq(10), any()))
                 .thenReturn(new AccountPostingRepository.SearchResult(List.of(p1, p2), "NEXT"));
-        when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of());
-        when(legRepo.findByPostingId(POSTING_ID_2)).thenReturn(List.of());
 
         PostingSearchRequest req = new PostingSearchRequest();
         req.setStatus("PNDG");
@@ -134,7 +132,6 @@ class AccountPostingServiceImplTest {
 
         when(postingRepo.search(any(), eq("RMS"), any(), any(), any(), any(), any(), anyInt(), any()))
                 .thenReturn(new AccountPostingRepository.SearchResult(List.of(p), null));
-        when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of());
 
         PostingSearchRequest req = new PostingSearchRequest();
         req.setSourceName("RMS");

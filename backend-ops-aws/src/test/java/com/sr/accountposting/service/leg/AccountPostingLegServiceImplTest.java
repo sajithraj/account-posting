@@ -11,11 +11,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +25,7 @@ class AccountPostingLegServiceImplTest {
 
     private static final String POSTING_ID = "11111111-1111-1111-1111-111111111111";
     private static final String TRANSACTION_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    private static final Integer TRANSACTION_ORDER = 1;
 
     @Mock
     private AccountPostingLegRepository legRepo;
@@ -37,69 +38,17 @@ class AccountPostingLegServiceImplTest {
     }
 
     @Test
-    void listLegs_multipleLegs_returnsAllMappedToResponse() {
-        AccountPostingLegEntity cbs = buildLeg(POSTING_ID, 1, "CBS", "ACSP");
-        AccountPostingLegEntity gl = buildLeg(POSTING_ID, 2, "GL", "ACSP");
-        AccountPostingLegEntity obpm = buildLeg(POSTING_ID, 3, "OBPM", "FAILED");
-        when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of(cbs, gl, obpm));
-
-        List<LegResponse> legs = service.listLegs(POSTING_ID);
-
-        assertThat(legs).hasSize(3);
-        assertThat(legs).extracting(LegResponse::getTargetSystem)
-                .containsExactly("CBS", "GL", "OBPM");
-        assertThat(legs).extracting(LegResponse::getStatus)
-                .containsExactly("ACSP", "ACSP", "FAILED");
-    }
-
-    @Test
-    void listLegs_noLegs_returnsEmptyList() {
-        when(legRepo.findByPostingId(anyString())).thenReturn(List.of());
-
-        List<LegResponse> legs = service.listLegs(POSTING_ID);
-
-        assertThat(legs).isEmpty();
-    }
-
-    @Test
-    void listLegs_responseIncludesAllFields() {
-        AccountPostingLegEntity leg = buildLeg(POSTING_ID, 1, "CBS", "ACSP");
-        leg.setTransactionId(TRANSACTION_ID);
-        leg.setReferenceId("CBS-TXN-001");
-        leg.setReason(null);
-        leg.setAttemptNumber(2);
-        leg.setPostedTime("2026-04-21T10:00:00Z");
-        leg.setMode("RETRY");
-        leg.setOperation("POSTING");
-        leg.setCreatedAt("2026-04-21T09:00:00Z");
-        leg.setUpdatedAt("2026-04-21T10:00:00Z");
-
-        when(legRepo.findByPostingId(POSTING_ID)).thenReturn(List.of(leg));
-
-        LegResponse response = service.listLegs(POSTING_ID).get(0);
-
-        assertThat(response.getPostingId()).isEqualTo(POSTING_ID);
-        assertThat(response.getTransactionId()).isEqualTo(TRANSACTION_ID);
-        assertThat(response.getTransactionOrder()).isEqualTo(1);
-        assertThat(response.getReferenceId()).isEqualTo("CBS-TXN-001");
-        assertThat(response.getAttemptNumber()).isEqualTo(2);
-        assertThat(response.getPostedTime()).isEqualTo("2026-04-21T10:00:00Z");
-        assertThat(response.getMode()).isEqualTo("RETRY");
-        assertThat(response.getOperation()).isEqualTo("POSTING");
-    }
-
-    @Test
     void getLeg_existingLeg_returnsMappedResponse() {
-        AccountPostingLegEntity leg = buildLeg(POSTING_ID, 1, "GL", "ACSP");
+        AccountPostingLegEntity leg = buildLeg(POSTING_ID, TRANSACTION_ORDER, "GL", "ACSP");
         leg.setTransactionId(TRANSACTION_ID);
         leg.setReferenceId("GL-TXN-001");
-        when(legRepo.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.of(leg));
+        when(legRepo.findByPostingIdAndOrder(POSTING_ID, TRANSACTION_ORDER)).thenReturn(Optional.of(leg));
 
-        LegResponse response = service.getLeg(POSTING_ID, TRANSACTION_ID);
+        LegResponse response = service.getLeg(POSTING_ID, TRANSACTION_ORDER);
 
         assertThat(response.getPostingId()).isEqualTo(POSTING_ID);
         assertThat(response.getTransactionId()).isEqualTo(TRANSACTION_ID);
-        assertThat(response.getTransactionOrder()).isEqualTo(1);
+        assertThat(response.getTransactionOrder()).isEqualTo(TRANSACTION_ORDER);
         assertThat(response.getTargetSystem()).isEqualTo("GL");
         assertThat(response.getStatus()).isEqualTo("ACSP");
         assertThat(response.getReferenceId()).isEqualTo("GL-TXN-001");
@@ -107,32 +56,22 @@ class AccountPostingLegServiceImplTest {
 
     @Test
     void getLeg_notFound_throwsResourceNotFoundException() {
-        when(legRepo.findByTransactionId(anyString())).thenReturn(Optional.empty());
+        when(legRepo.findByPostingIdAndOrder(anyString(), anyInt())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getLeg(POSTING_ID, TRANSACTION_ID))
+        assertThatThrownBy(() -> service.getLeg(POSTING_ID, TRANSACTION_ORDER))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining(TRANSACTION_ID);
-    }
-
-    @Test
-    void getLeg_wrongPosting_throwsResourceNotFoundException() {
-        AccountPostingLegEntity leg = buildLeg("other-posting-id", 1, "CBS", "ACSP");
-        leg.setTransactionId(TRANSACTION_ID);
-        when(legRepo.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.of(leg));
-
-        assertThatThrownBy(() -> service.getLeg(POSTING_ID, TRANSACTION_ID))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining(TRANSACTION_ID);
+                .hasMessageContaining(POSTING_ID)
+                .hasMessageContaining(String.valueOf(TRANSACTION_ORDER));
     }
 
     @Test
     void manualUpdateLeg_updatesStatusReasonModeAndRequestedBy() {
-        AccountPostingLegEntity leg = buildLeg(POSTING_ID, 1, "CBS", "FAILED");
+        AccountPostingLegEntity leg = buildLeg(POSTING_ID, TRANSACTION_ORDER, "CBS", "FAILED");
         leg.setTransactionId(TRANSACTION_ID);
         leg.setUpdatedBy("SYSTEM");
-        when(legRepo.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.of(leg));
+        when(legRepo.findByPostingIdAndOrder(POSTING_ID, TRANSACTION_ORDER)).thenReturn(Optional.of(leg));
 
-        service.manualUpdateLeg(POSTING_ID, TRANSACTION_ID, "SUCCESS", "Manually resolved", "ops-admin");
+        service.manualUpdateLeg(POSTING_ID, TRANSACTION_ORDER, "SUCCESS", "Manually resolved", "ops-admin");
 
         ArgumentCaptor<AccountPostingLegEntity> captor = ArgumentCaptor.forClass(AccountPostingLegEntity.class);
         verify(legRepo).update(captor.capture());
@@ -147,12 +86,12 @@ class AccountPostingLegServiceImplTest {
 
     @Test
     void manualUpdateLeg_doesNotIncrementAttemptNumber() {
-        AccountPostingLegEntity leg = buildLeg(POSTING_ID, 1, "CBS", "FAILED");
+        AccountPostingLegEntity leg = buildLeg(POSTING_ID, TRANSACTION_ORDER, "CBS", "FAILED");
         leg.setTransactionId(TRANSACTION_ID);
         leg.setAttemptNumber(3);
-        when(legRepo.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.of(leg));
+        when(legRepo.findByPostingIdAndOrder(POSTING_ID, TRANSACTION_ORDER)).thenReturn(Optional.of(leg));
 
-        service.manualUpdateLeg(POSTING_ID, TRANSACTION_ID, "SUCCESS", "Manual fix", "admin");
+        service.manualUpdateLeg(POSTING_ID, TRANSACTION_ORDER, "SUCCESS", "Manual fix", "admin");
 
         ArgumentCaptor<AccountPostingLegEntity> captor = ArgumentCaptor.forClass(AccountPostingLegEntity.class);
         verify(legRepo).update(captor.capture());
@@ -162,22 +101,23 @@ class AccountPostingLegServiceImplTest {
 
     @Test
     void manualUpdateLeg_legNotFound_throwsResourceNotFoundException() {
-        when(legRepo.findByTransactionId(anyString())).thenReturn(Optional.empty());
+        when(legRepo.findByPostingIdAndOrder(anyString(), anyInt())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.manualUpdateLeg(POSTING_ID, TRANSACTION_ID, "SUCCESS", "reason", "admin"))
+        assertThatThrownBy(() -> service.manualUpdateLeg(POSTING_ID, TRANSACTION_ORDER, "SUCCESS", "reason", "admin"))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining(TRANSACTION_ID);
+                .hasMessageContaining(POSTING_ID)
+                .hasMessageContaining(String.valueOf(TRANSACTION_ORDER));
     }
 
     @Test
     void manualUpdateLeg_preservesUnchangedFields() {
-        AccountPostingLegEntity leg = buildLeg(POSTING_ID, 1, "CBS", "FAILED");
+        AccountPostingLegEntity leg = buildLeg(POSTING_ID, TRANSACTION_ORDER, "CBS", "FAILED");
         leg.setTransactionId(TRANSACTION_ID);
         leg.setReferenceId("CBS-TXN-ORIGINAL");
         leg.setPostedTime("2026-04-21T08:00:00Z");
-        when(legRepo.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.of(leg));
+        when(legRepo.findByPostingIdAndOrder(POSTING_ID, TRANSACTION_ORDER)).thenReturn(Optional.of(leg));
 
-        service.manualUpdateLeg(POSTING_ID, TRANSACTION_ID, "SUCCESS", "Manually resolved", "ops-admin");
+        service.manualUpdateLeg(POSTING_ID, TRANSACTION_ORDER, "SUCCESS", "Manually resolved", "ops-admin");
 
         ArgumentCaptor<AccountPostingLegEntity> captor = ArgumentCaptor.forClass(AccountPostingLegEntity.class);
         verify(legRepo).update(captor.capture());

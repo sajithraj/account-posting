@@ -27,6 +27,8 @@ export default function PostingListPage() {
         onSuccess: () => {
             alert('Retry triggered successfully');
             queryClient.invalidateQueries({ queryKey: ['postings'] });
+            setExpandedIds(new Set());
+            setExpandedLegs({});
         },
         onError: (err) => alert(`Retry failed: ${getErrorMessage(err)}`),
     });
@@ -35,6 +37,8 @@ export default function PostingListPage() {
         onSuccess: () => {
             setSelected(new Set());
             queryClient.invalidateQueries({ queryKey: ['postings'] });
+            setExpandedIds(new Set());
+            setExpandedLegs({});
         },
         onError: (err) => alert(`Retry failed: ${getErrorMessage(err)}`),
     });
@@ -68,8 +72,11 @@ export default function PostingListPage() {
     const selectedPendingIds = [...selected].filter(id => items.some(p => p.postingId === id && p.postingStatus === 'PNDG'));
     const hasSelectedPending = selectedPendingIds.length > 0;
     const [expandedIds, setExpandedIds] = useState(new Set());
+    const [expandedLegs, setExpandedLegs] = useState({});
+    const [loadingLegs, setLoadingLegs] = useState(new Set());
     const toggleExpand = (id, e) => {
         e.stopPropagation();
+        const isExpanding = !expandedIds.has(id);
         setExpandedIds(prev => {
             const next = new Set(prev);
             if (next.has(id))
@@ -78,6 +85,23 @@ export default function PostingListPage() {
                 next.add(id);
             return next;
         });
+        if (isExpanding && !expandedLegs[id]) {
+            setLoadingLegs(prev => new Set([...prev, id]));
+            postingApi.getById(id)
+                .then(posting => {
+                setExpandedLegs(prev => ({ ...prev, [id]: posting.legs ?? [] }));
+            })
+                .catch(() => {
+                setExpandedLegs(prev => ({ ...prev, [id]: [] }));
+            })
+                .finally(() => {
+                setLoadingLegs(prev => {
+                    const next = new Set(prev);
+                    next.delete(id);
+                    return next;
+                });
+            });
+        }
     };
     const toggleRow = (id) => {
         setSelected(prev => {
@@ -122,7 +146,9 @@ export default function PostingListPage() {
                                     setSelected(new Set());
                                 }, disabled: Object.values(draft).every(v => v === undefined || v === ''), children: "\u2715 CLEAR FILTERS" }), _jsx("button", { style: { ...s.outlineBtn, ...(hasSelectedPending ? {} : s.disabledBtn) }, onClick: () => retrySelectedMutation.mutate(selectedPendingIds), disabled: !hasSelectedPending || retrySelectedMutation.isPending, children: retrySelectedMutation.isPending ? 'Processing...' : '⟳ RETRY SELECTED' }), _jsx("button", { style: { ...s.solidBtn, ...(!hasPending || retryAllMutation.isPending ? s.disabledBtn : {}) }, onClick: () => retryAllMutation.mutate(), disabled: !hasPending || retryAllMutation.isPending, children: retryAllMutation.isPending ? 'Processing...' : '⟳ RETRY ALL PENDING' })] })] }), _jsxs("form", { onSubmit: handleSearch, style: s.filterBar, children: [_jsx("input", { style: s.filterInput, placeholder: "End to End Reference", value: draft.endToEndReferenceId ?? '', onChange: e => setDraft(d => ({ ...d, endToEndReferenceId: e.target.value || undefined })) }), _jsx("input", { style: s.filterInput, placeholder: "Source Reference", value: draft.sourceReferenceId ?? '', onChange: e => setDraft(d => ({ ...d, sourceReferenceId: e.target.value || undefined })) }), _jsxs("select", { style: s.filterSelect, value: draft.sourceName ?? '', onChange: e => setDraft(d => ({ ...d, sourceName: e.target.value || undefined })), children: [_jsx("option", { value: "", children: "Source Name" }), _jsx("option", { value: "IMX", children: "IMX" }), _jsx("option", { value: "RMS", children: "RMS" }), _jsx("option", { value: "STABLECOIN", children: "STABLECOIN" })] }), _jsxs("select", { style: s.filterSelect, value: draft.status ?? '', onChange: e => setDraft(d => ({ ...d, status: e.target.value || undefined })), children: [_jsx("option", { value: "", children: "Posting Status" }), _jsx("option", { value: "PNDG", children: "PNDG" }), _jsx("option", { value: "ACSP", children: "ACSP" }), _jsx("option", { value: "RCVD", children: "RCVD" }), _jsx("option", { value: "RJCT", children: "RJCT" })] }), _jsxs("select", { style: s.filterSelect, value: draft.requestType ?? '', onChange: e => setDraft(d => ({ ...d, requestType: e.target.value || undefined })), children: [_jsx("option", { value: "", children: "Request Type" }), _jsx("option", { value: "IMX_OBPM", children: "IMX_OBPM" }), _jsx("option", { value: "IMX_CBS_GL", children: "IMX_CBS_GL" }), _jsx("option", { value: "FED_RETURN", children: "FED_RETURN" }), _jsx("option", { value: "GL_RETURN", children: "GL_RETURN" }), _jsx("option", { value: "MCA_RETURN", children: "MCA_RETURN" }), _jsx("option", { value: "BUY_CUSTOMER_POSTING", children: "BUY_CUSTOMER_POSTING" }), _jsx("option", { value: "ADD_ACCOUNT_HOLD", children: "ADD_ACCOUNT_HOLD" }), _jsx("option", { value: "CUSTOMER_POSTING", children: "CUSTOMER_POSTING" })] }), _jsxs("div", { style: s.dateRange, children: [_jsx("input", { type: "date", style: s.filterInput, value: draft.fromDate ?? '', onChange: e => setDraft(d => ({ ...d, fromDate: e.target.value || undefined })) }), _jsx("span", { style: s.dateSep, children: "\u2013" }), _jsx("input", { type: "date", style: s.filterInput, value: draft.toDate ?? '', onChange: e => setDraft(d => ({ ...d, toDate: e.target.value || undefined })) })] }), _jsx("button", { type: "submit", style: s.searchIconBtn, title: "Search", children: "\uD83D\uDD0D" })] }), isLoading && _jsx("div", { style: s.statusMsg, children: "Loading..." }), isError && _jsx("div", { style: { ...s.statusMsg, color: '#c0392b' }, children: "Failed to load postings." }), data && (_jsxs(_Fragment, { children: [_jsxs("div", { style: s.resultBar, children: [_jsxs("div", { style: s.resultCount, children: ["Page ", pageIndex + 1, " \u00B7 ", items.length, " result", items.length !== 1 ? 's' : ''] }), _jsxs("div", { style: s.pager, children: [_jsx("button", { type: "button", style: { ...s.pagerBtn, ...(!hasPreviousPage ? s.disabledBtn : {}) }, onClick: goPrevious, disabled: !hasPreviousPage, children: "Previous" }), _jsx("button", { type: "button", style: { ...s.pagerBtn, ...(!hasNextPage ? s.disabledBtn : {}) }, onClick: goNext, disabled: !hasNextPage, children: "Next" })] })] }), _jsxs("table", { style: s.table, children: [_jsx("thead", { children: _jsxs("tr", { style: s.theadRow, children: [_jsx("th", { style: { ...s.th, width: 32 }, children: _jsx("input", { type: "checkbox", checked: items.length > 0 && items.every(p => selected.has(p.postingId)), onChange: toggleAll }) }), _jsx("th", { style: s.th, children: "Reference Number" }), _jsx("th", { style: s.th, children: "Source Reference" }), _jsx("th", { style: s.th, children: "Source Name" }), _jsx("th", { style: s.th, children: "Request Type" }), _jsx("th", { style: s.th, children: "Target Systems" }), _jsx("th", { style: s.th, children: "Exec. Date" }), _jsx("th", { style: s.th, children: "Amount" }), _jsx("th", { style: s.th, children: "Currency" }), _jsx("th", { style: s.th, children: "Payment Status" }), _jsx("th", { style: s.th, children: "Reason" }), _jsx("th", { style: { ...s.th, width: 48 } })] }) }), _jsx("tbody", { children: items.map(p => {
                                     const expanded = expandedIds.has(p.postingId);
-                                    return (_jsxs(Fragment, { children: [_jsxs("tr", { onClick: () => navigate(`/postings/${p.postingId}`), style: { ...s.tbodyRow, background: expanded ? '#eef2ff' : 'white' }, onMouseEnter: e => (e.currentTarget.style.background = '#f5f8ff'), onMouseLeave: e => (e.currentTarget.style.background = expanded ? '#eef2ff' : 'white'), children: [_jsx("td", { style: { ...s.td, width: 32 }, onClick: e => e.stopPropagation(), children: _jsx("input", { type: "checkbox", checked: selected.has(p.postingId), onChange: () => toggleRow(p.postingId) }) }), _jsx("td", { style: { ...s.td, ...s.linkCell }, children: p.endToEndReferenceId }), _jsx("td", { style: s.td, children: p.sourceReferenceId }), _jsx("td", { style: s.td, children: p.sourceName }), _jsx("td", { style: s.td, children: p.requestType }), _jsx("td", { style: s.td, children: p.targetSystems ?? '—' }), _jsx("td", { style: s.td, children: p.requestedExecutionDate }), _jsx("td", { style: s.td, children: p.amount }), _jsx("td", { style: s.td, children: p.currency }), _jsx("td", { style: s.td, children: _jsx(StatusBadge, { status: p.postingStatus }) }), _jsx("td", { style: { ...s.td, ...s.reasonCell }, title: p.reason ?? '', children: p.reason ?? '—' }), _jsx("td", { style: { ...s.td, width: 48 }, onClick: e => e.stopPropagation(), children: _jsx("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }, children: _jsx("button", { style: { ...s.expandBtn, ...(expanded ? s.expandBtnActive : {}) }, onClick: e => toggleExpand(p.postingId, e), title: expanded ? 'Collapse legs' : 'Expand legs', children: expanded ? '▲' : '▼' }) }) })] }), expanded && (_jsx("tr", { style: { background: '#f4f7ff' }, children: _jsxs("td", { colSpan: 12, style: s.expandedCell, children: [_jsx("div", { style: s.expandedLabel, children: "Posting Legs" }), _jsx(LegTable, { legs: p.legs ?? [] })] }) }))] }, p.postingId));
+                                    return (_jsxs(Fragment, { children: [_jsxs("tr", { onClick: () => navigate(`/postings/${p.postingId}`), style: { ...s.tbodyRow, background: expanded ? '#eef2ff' : 'white' }, onMouseEnter: e => (e.currentTarget.style.background = '#f5f8ff'), onMouseLeave: e => (e.currentTarget.style.background = expanded ? '#eef2ff' : 'white'), children: [_jsx("td", { style: { ...s.td, width: 32 }, onClick: e => e.stopPropagation(), children: _jsx("input", { type: "checkbox", checked: selected.has(p.postingId), onChange: () => toggleRow(p.postingId) }) }), _jsx("td", { style: { ...s.td, ...s.linkCell }, children: p.endToEndReferenceId }), _jsx("td", { style: s.td, children: p.sourceReferenceId }), _jsx("td", { style: s.td, children: p.sourceName }), _jsx("td", { style: s.td, children: p.requestType }), _jsx("td", { style: s.td, children: p.targetSystems ?? '—' }), _jsx("td", { style: s.td, children: p.requestedExecutionDate }), _jsx("td", { style: s.td, children: p.amount }), _jsx("td", { style: s.td, children: p.currency }), _jsx("td", { style: s.td, children: _jsx(StatusBadge, { status: p.postingStatus }) }), _jsx("td", { style: { ...s.td, ...s.reasonCell }, title: p.reason ?? '', children: p.reason ?? '—' }), _jsx("td", { style: { ...s.td, width: 48 }, onClick: e => e.stopPropagation(), children: _jsx("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }, children: _jsx("button", { style: { ...s.expandBtn, ...(expanded ? s.expandBtnActive : {}) }, onClick: e => toggleExpand(p.postingId, e), title: expanded ? 'Collapse legs' : 'Expand legs', children: expanded ? '▲' : '▼' }) }) })] }), expanded && (_jsx("tr", { style: { background: '#f4f7ff' }, children: _jsxs("td", { colSpan: 12, style: s.expandedCell, children: [_jsx("div", { style: s.expandedLabel, children: "Posting Legs" }), loadingLegs.has(p.postingId)
+                                                            ? _jsx("div", { style: { fontSize: 13, color: '#888', padding: '4px 0' }, children: "Loading legs..." })
+                                                            : _jsx(LegTable, { legs: expandedLegs[p.postingId] ?? [] })] }) }))] }, p.postingId));
                                 }) })] })] }))] }));
 }
 const s = {

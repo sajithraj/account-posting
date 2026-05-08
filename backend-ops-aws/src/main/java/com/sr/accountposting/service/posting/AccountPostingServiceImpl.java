@@ -82,7 +82,7 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                 limit, req.getPageToken());
 
         List<PostingResponse> results = postings.getItems().stream()
-                .map(p -> toResponse(p, legRepo.findByPostingId(p.getPostingId())))
+                .map(p -> toResponse(p, List.of()))
                 .collect(Collectors.toList());
         log.info("search returned {} results nextPageTokenPresent={}",
                 results.size(), postings.getNextPageToken() != null);
@@ -109,6 +109,8 @@ public class AccountPostingServiceImpl implements AccountPostingService {
         int totalRequested = request.getPostingIds().size();
         int skipped = 0;
 
+        log.info("Retry requested | requestedBy={} postingCount={}", request.getRequestedBy(), totalRequested);
+
         for (String id : request.getPostingIds()) {
             if (id == null || id.isBlank()) {
                 throw new ValidationException("INVALID_POSTING_ID", "posting_ids must not contain blank values");
@@ -116,21 +118,29 @@ public class AccountPostingServiceImpl implements AccountPostingService {
             java.util.Optional<AccountPostingEntity> posting = postingRepo.findById(id);
             if (posting.isPresent()) {
                 candidates.add(posting.get());
+                log.debug("Posting found for retry evaluation | postingId={} status={}",
+                        id, posting.get().getStatus());
             } else {
-                log.warn("Posting not found for retry postingId={}", id);
+                log.warn("Posting not found — skipping | postingId={}", id);
                 skipped++;
             }
         }
+
+        log.info("Retry candidates resolved | requested={} found={} notFound={}",
+                totalRequested, candidates.size(), skipped);
 
         int queued = 0;
         long now = System.currentTimeMillis();
 
         for (AccountPostingEntity posting : candidates) {
             if (!isRetryEligible(posting, now)) {
+                log.info("Posting skipped — not eligible for retry | postingId={} status={} retryLockedUntil={}",
+                        posting.getPostingId(), posting.getStatus(), posting.getRetryLockedUntil());
                 skipped++;
                 continue;
             }
 
+            log.info("Posting eligible for retry | postingId={} status={}", posting.getPostingId(), posting.getStatus());
             IncomingPostingRequest originalRequest =
                     JsonUtil.fromJson(posting.getRequestPayload(), IncomingPostingRequest.class);
 
@@ -141,10 +151,11 @@ public class AccountPostingServiceImpl implements AccountPostingService {
                     .build();
             publishJob(job);
             postingRepo.updateStatus(posting.getPostingId(), PostingStatus.RTRY.name());
+            log.info("Posting status updated to RTRY | postingId={}", posting.getPostingId());
             queued++;
         }
 
-        log.info("Retry request by '{}' - {} requested, {} found, {} queued for processing, {} skipped",
+        log.info("Retry request completed | requestedBy={} totalRequested={} found={} queued={} skipped={}",
                 request.getRequestedBy(), totalRequested, candidates.size(), queued, skipped);
 
         return RetryResponse.builder()

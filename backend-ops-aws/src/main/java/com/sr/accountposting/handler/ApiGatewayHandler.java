@@ -46,89 +46,109 @@ public class ApiGatewayHandler {
         String method = event.getRequestContext().getHttp().getMethod().toUpperCase();
         String path = event.getRawPath();
         String body = event.getBody();
-        log.info("--> {} {}  body={}", method, path, body);
+        String requestId = context != null ? context.getAwsRequestId() : "local";
+        int bodyLength = body != null ? body.length() : 0;
+
+        log.info("Request received | requestId={} method={} path={} bodyLength={}",
+                requestId, method, path, bodyLength);
+        if (body != null && !body.isBlank()) {
+            log.debug("Request body | requestId={} body={}", requestId, body);
+        }
 
         APIGatewayV2HTTPResponse response;
         try {
-            response = route(method, path, event);
+            response = route(method, path, event, requestId);
         } catch (ResourceNotFoundException e) {
-            log.warn("NOT_FOUND {} {}: {}", method, path, e.getMessage());
+            log.warn("Resource not found | requestId={} method={} path={} message={}",
+                    requestId, method, path, e.getMessage());
             response = rawError(404, "NOT_FOUND", e.getMessage());
         } catch (ValidationException e) {
-            log.warn("VALIDATION_ERROR {} {}: {}", method, path, e.getMessage());
+            log.warn("Validation error | requestId={} method={} path={} errorCode={} message={}",
+                    requestId, method, path, e.getErrorCode(), e.getMessage());
             response = rawError(400, e.getErrorCode(), e.getMessage());
         } catch (BusinessException e) {
-            log.warn("BUSINESS_ERROR {} {} [{}]: {}", method, path, e.getErrorCode(), e.getMessage());
+            log.warn("Business rule violation | requestId={} method={} path={} errorCode={} message={}",
+                    requestId, method, path, e.getErrorCode(), e.getMessage());
             response = rawError(422, e.getErrorCode(), e.getMessage());
         } catch (TechnicalException e) {
-            log.error("TECHNICAL_ERROR {} {}: {}", method, path, e.getMessage(), e);
-            response = rawError(500, "SERVICE_UNAVAILABLE", "A technical error occurred. Please try again or contact support.");
+            log.error("Technical error | requestId={} method={} path={} message={}",
+                    requestId, method, path, e.getMessage(), e);
+            response = rawError(500, "SERVICE_UNAVAILABLE",
+                    "A technical error occurred. Please try again or contact support.");
         } catch (Exception e) {
-            log.error("UNHANDLED_ERROR {} {}", method, path, e);
+            log.error("Unhandled error | requestId={} method={} path={}",
+                    requestId, method, path, e);
             response = rawError(500, "INTERNAL_ERROR", "An unexpected error occurred");
         }
 
-        log.info("<-- {} {} status={}", method, path, response.getStatusCode());
+        log.info("Response sent | requestId={} method={} path={} statusCode={}",
+                requestId, method, path, response.getStatusCode());
         return response;
     }
 
-    private APIGatewayV2HTTPResponse route(String method, String path, APIGatewayV2HTTPEvent event) {
+    private APIGatewayV2HTTPResponse route(String method, String path, APIGatewayV2HTTPEvent event,
+                                           String requestId) {
         String body = event.getBody();
 
-        if (("POST".equals(method) || "GET".equals(method)) && path.equals(BASE + "/search")) {
-            PostingSearchRequest req = "GET".equals(method)
-                    ? new PostingSearchRequest()
-                    : JsonUtil.fromJson(body != null && !body.isBlank() ? body : "{}", PostingSearchRequest.class);
-            applySearchQueryParams(req, event.getQueryStringParameters());
+        if ("POST".equals(method) && path.equals(BASE + "/search")) {
+            log.info("Route matched: search postings | requestId={}", requestId);
+            PostingSearchRequest req = JsonUtil.fromJson(
+                    body != null && !body.isBlank() ? body : "{}", PostingSearchRequest.class);
             return rawJson(200, postingService.search(req));
         }
         if ("POST".equals(method) && path.equals(BASE + "/retry")) {
+            log.info("Route matched: retry postings | requestId={}", requestId);
             RetryRequest req = JsonUtil.fromJson(body, RetryRequest.class);
             return rawJson(200, postingService.retry(req));
         }
         if ("GET".equals(method) && path.equals(BASE + "/config")) {
+            log.info("Route matched: list all configs | requestId={}", requestId);
             return rawJson(200, configService.getAll());
         }
-        if ("GET".equals(method) && path.matches(BASE + "/config/.+")) {
-            String requestType = path.substring(path.lastIndexOf('/') + 1);
+        if ("GET".equals(method) && path.matches(BASE + "/config/[^/]+")) {
+            String requestType = extractPathSegment(path, -1);
+            log.info("Route matched: get config by request type | requestId={} requestType={}",
+                    requestId, requestType);
             return rawJson(200, configService.getByRequestType(requestType));
         }
         if ("POST".equals(method) && path.equals(BASE + "/config")) {
+            log.info("Route matched: create config | requestId={}", requestId);
             PostingConfigEntity config = JsonUtil.fromJson(body, PostingConfigEntity.class);
             return rawJson(201, configService.create(config));
         }
-        if ("PUT".equals(method) && path.equals(BASE + "/config")) {
+        if ("PUT".equals(method) && path.matches(BASE + "/config/[^/]+/[^/]+")) {
+            String requestType = extractPathSegment(path, -2);
+            Integer orderSeq = parseOrderSeq(extractPathSegment(path, -1));
+            log.info("Route matched: update config | requestId={} requestType={} orderSeq={}",
+                    requestId, requestType, orderSeq);
             PostingConfigEntity updated = JsonUtil.fromJson(body, PostingConfigEntity.class);
-            return rawJson(200, configService.update(updated.getConfigId(), updated));
+            return rawJson(200, configService.update(requestType, orderSeq, updated));
         }
-        if ("DELETE".equals(method) && path.equals(BASE + "/config")) {
-            PostingConfigEntity req = JsonUtil.fromJson(body, PostingConfigEntity.class);
-            configService.delete(req.getConfigId());
+        if ("DELETE".equals(method) && path.matches(BASE + "/config/[^/]+/[^/]+")) {
+            String requestType = extractPathSegment(path, -2);
+            Integer orderSeq = parseOrderSeq(extractPathSegment(path, -1));
+            log.info("Route matched: delete config | requestId={} requestType={} orderSeq={}",
+                    requestId, requestType, orderSeq);
+            configService.delete(requestType, orderSeq);
             return noContent();
         }
         if ("GET".equals(method) && path.matches(BASE + "/[^/]+")) {
             String postingId = extractPathSegment(path, -1);
+            log.info("Route matched: get posting by ID | requestId={} postingId={}", requestId, postingId);
             return rawJson(200, postingService.findById(postingId));
-        }
-        if ("GET".equals(method) && path.matches(BASE + "/[^/]+/transaction")) {
-            String postingId = extractPathSegment(path, -2);
-            return rawJson(200, legService.listLegs(postingId));
-        }
-        if ("GET".equals(method) && path.matches(BASE + "/[^/]+/transaction/[^/]+")) {
-            String postingId = extractPathSegment(path, -3);
-            String transactionId = extractPathSegment(path, -1);
-            return rawJson(200, legService.getLeg(postingId, transactionId));
         }
         if ("PATCH".equals(method) && path.matches(BASE + "/[^/]+/transaction/[^/]+")) {
             String postingId = extractPathSegment(path, -3);
-            String transactionId = extractPathSegment(path, -1);
+            Integer transactionOrder = parseTransactionOrder(extractPathSegment(path, -1));
+            log.info("Route matched: manual leg update | requestId={} postingId={} transactionOrder={}",
+                    requestId, postingId, transactionOrder);
             ManualUpdateRequest req = JsonUtil.fromJson(body, ManualUpdateRequest.class);
-            legService.manualUpdateLeg(postingId, transactionId,
+            legService.manualUpdateLeg(postingId, transactionOrder,
                     req.getStatus(), req.getReason(), req.getRequestedBy());
-            return rawJson(200, legService.getLeg(postingId, transactionId));
+            return rawJson(200, legService.getLeg(postingId, transactionOrder));
         }
 
-        log.warn("ROUTE_NOT_FOUND: no handler for {} {}", method, path);
+        log.warn("No route matched | requestId={} method={} path={}", requestId, method, path);
         return rawError(404, "ROUTE_NOT_FOUND", "No handler for " + method + " " + path);
     }
 
@@ -161,40 +181,23 @@ public class ApiGatewayHandler {
         return parts[parts.length + offsetFromEnd];
     }
 
-    private void applySearchQueryParams(PostingSearchRequest req, Map<String, String> queryParams) {
-        if (queryParams == null || queryParams.isEmpty()) {
-            return;
-        }
-
-        applyIfPresent(firstNonBlank(queryParams, "end_to_end_id", "end_to_end_reference_id"), req::setEndToEndReferenceId);
-        applyIfPresent(firstNonBlank(queryParams, "source_ref_id", "source_reference_id"), req::setSourceReferenceId);
-        applyIfPresent(firstNonBlank(queryParams, "source_name"), req::setSourceName);
-        applyIfPresent(firstNonBlank(queryParams, "posting_status", "status"), req::setStatus);
-        applyIfPresent(firstNonBlank(queryParams, "request_type"), req::setRequestType);
-        applyIfPresent(firstNonBlank(queryParams, "from_date"), req::setFromDate);
-        applyIfPresent(firstNonBlank(queryParams, "to_date"), req::setToDate);
-        applyIfPresent(firstNonBlank(queryParams, "page_token"), req::setPageToken);
-
-        String limit = firstNonBlank(queryParams, "limit");
-        if (limit != null) {
-            req.setLimit(Integer.parseInt(limit));
+    private Integer parseOrderSeq(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new ValidationException("INVALID_ORDER_SEQ", "order_seq must be an integer, got: " + value);
         }
     }
 
-    private void applyIfPresent(String value, java.util.function.Consumer<String> setter) {
-        if (value != null) {
-            setter.accept(value);
+    private Integer parseTransactionOrder(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new ValidationException("INVALID_TRANSACTION_ORDER",
+                    "transaction order must be an integer, got: " + value);
         }
-    }
-
-    private String firstNonBlank(Map<String, String> values, String... keys) {
-        for (String key : keys) {
-            String value = values.get(key);
-            if (value != null && !value.isBlank()) {
-                return value;
-            }
-        }
-        return null;
     }
 
 }
+
+

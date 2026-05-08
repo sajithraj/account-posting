@@ -31,15 +31,32 @@ public class LambdaRequestHandler implements RequestHandler<Map<String, Object>,
 
     @Override
     public Object handleRequest(Map<String, Object> event, Context context) {
+        String requestId = context != null ? context.getAwsRequestId() : "local";
+        String functionName = context != null ? context.getFunctionName() : "local";
+        int remainingMs = context != null ? context.getRemainingTimeInMillis() : -1;
+
+        log.info("Lambda invocation started | requestId={} function={} remainingMs={}",
+                requestId, functionName, remainingMs);
         try {
-            log.info("Event detected: API Gateway");
+            log.debug("Normalizing API Gateway event | requestId={} eventVersion={}",
+                    requestId, event.get("version"));
             Map<String, Object> normalizedEvent = normalizeApiGatewayEvent(event);
             String json = EVENT_MAPPER.writeValueAsString(normalizedEvent);
             APIGatewayV2HTTPEvent apiEvent = EVENT_MAPPER.readValue(json, APIGatewayV2HTTPEvent.class);
+
+            String method = apiEvent.getRequestContext() != null
+                    && apiEvent.getRequestContext().getHttp() != null
+                    ? apiEvent.getRequestContext().getHttp().getMethod() : "UNKNOWN";
+            String path = apiEvent.getRawPath() != null ? apiEvent.getRawPath() : "UNKNOWN";
+            log.info("Routing request | requestId={} method={} path={}", requestId, method, path);
+
             APIGatewayV2HTTPResponse response = apiGatewayHandler.handle(apiEvent, context);
+
+            log.info("Lambda invocation completed | requestId={} method={} path={} statusCode={}",
+                    requestId, method, path, response.getStatusCode());
             return EVENT_MAPPER.convertValue(response, Map.class);
         } catch (Exception e) {
-            log.error("Failed to deserialize Lambda event", e);
+            log.error("Lambda invocation failed | requestId={} error={}", requestId, e.getMessage(), e);
             throw new RuntimeException("Event deserialization failed", e);
         }
     }

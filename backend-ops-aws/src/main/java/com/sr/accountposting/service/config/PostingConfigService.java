@@ -12,7 +12,7 @@ public interface PostingConfigService {
 
     PostingConfigEntity create(PostingConfigEntity config);
 
-    PostingConfigEntity update(String configId, PostingConfigEntity updated);
+    PostingConfigEntity update(String requestType, Integer orderSeq, PostingConfigEntity updated);
 
-    void delete(String configId);
+    void delete(String requestType, Integer orderSeq);
 }

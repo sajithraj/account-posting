@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "backend-ops-aws-collection",
     "name": "backend-ops-aws — Account Posting Operations",
-    "description": "API collection for the backend-ops-aws Lambda (ops dashboard).\n\nHandles: search, retry, fetch by ID, leg management, routing config CRUD.\n\nResponse format: raw JSON (no {success,data,error} wrapper).\nError format: {id, name, message}.\nAll posting IDs are UUID strings.\n\nVariables:\n- base_url — LocalStack or API Gateway URL\n- posting_id — replace with an actual UUID from a create response",
+    "description": "API collection for the backend-ops-aws Lambda (ops dashboard).\n\nHandles: search, retry, fetch by ID, manual leg override, routing config CRUD.\n\nResponse format: raw JSON (no {success,data,error} wrapper).\nError format: {id, name, message}.\n\nSearch results do NOT include legs. Use GET /{id} to get a posting with its legs.\nLeg PATCH uses transaction_order (integer, 1-based) in the path — not a UUID.\nConfig update/delete use {requestType}/{orderSeq} in the path.\n\nVariables:\n- base_url — LocalStack or API Gateway URL\n- posting_id — replace with an actual UUID from search/create",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -27,7 +27,7 @@
       "key": "posting_id",
       "value": "058be267-6679-475e-bbb7-e199fc4c9a32",
       "type": "string",
-      "description": "Posting UUID — replace with actual ID from create response"
+      "description": "Posting UUID — replace with actual ID from a posting response"
     }
   ],
   "item": [
@@ -48,7 +48,7 @@
               "raw": "{\n  \"limit\": 20\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "Returns up to 20 postings with no filters."
+            "description": "Returns up to 20 postings updated in the last 3 days with no filters."
           }
         },
         {
@@ -81,7 +81,8 @@
               "mode": "raw",
               "raw": "{\n  \"source_name\": \"IMX\",\n  \"limit\": 10\n}",
               "options": { "raw": { "language": "json" } }
-            }
+            },
+            "description": "Source names: IMX, RMS, STABLECOIN."
           }
         },
         {
@@ -168,7 +169,7 @@
               "raw": "{\n  \"requested_by\": \"OPS-USER\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "Bulk retry is not allowed. posting_ids must be provided."
+            "description": "Bulk retry is not allowed. posting_ids must be provided. Returns 400."
           },
           "response": [
             {
@@ -193,7 +194,7 @@
               "raw": "{\n  \"posting_ids\": [\"{{posting_id}}\"],\n  \"requested_by\": \"OPS-USER\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "posting_ids are UUID strings."
+            "description": "posting_ids are UUID strings. Only PNDG/RCVD postings are eligible."
           }
         }
       ]
@@ -210,14 +211,14 @@
               "raw": "{{base_url}}{{api_path}}/{{posting_id}}",
               "host": ["{{base_url}}{{api_path}}/{{posting_id}}"]
             },
-            "description": "Fetch a single posting with all its legs. posting_id is a UUID string."
+            "description": "Fetch a single posting with all its legs embedded. Each leg includes transaction_order (integer, 1-based) — use that integer in the PATCH leg endpoint."
           },
           "response": [
             {
               "name": "200 OK — full posting with legs",
               "status": "OK",
               "code": 200,
-              "body": "{\n  \"posting_id\": \"058be267-6679-475e-bbb7-e199fc4c9a32\",\n  \"source_reference_id\": \"SRC-001\",\n  \"end_to_end_reference_id\": \"E2E-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": \"5000.00\",\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1000123456\",\n  \"creditor_account\": \"1000654321\",\n  \"requested_execution_date\": \"2026-04-21\",\n  \"remittance_information\": \"Invoice payment\",\n  \"posting_status\": \"ACSP\",\n  \"target_systems\": \"CBS,GL\",\n  \"processed_at\": \"2026-04-21T10:00:05Z\",\n  \"created_at\": \"2026-04-21T10:00:00Z\",\n  \"updated_at\": \"2026-04-21T10:00:05Z\",\n  \"legs\": [\n    {\n      \"posting_id\": \"058be267-6679-475e-bbb7-e199fc4c9a32\",\n      \"transaction_order\": 1,\n      \"target_system\": \"CBS\",\n      \"account\": \"1000123456\",\n      \"status\": \"SUCCESS\",\n      \"reference_id\": \"6b9d8304-f09e-431f-a733-c28dc062039d\",\n      \"attempt_number\": 1,\n      \"posted_time\": \"2026-04-21T10:00:03Z\",\n      \"mode\": \"NORM\",\n      \"operation\": \"POSTING\",\n      \"created_at\": \"2026-04-21T10:00:01Z\",\n      \"updated_at\": \"2026-04-21T10:00:04Z\"\n    },\n    {\n      \"posting_id\": \"058be267-6679-475e-bbb7-e199fc4c9a32\",\n      \"transaction_order\": 2,\n      \"target_system\": \"GL\",\n      \"account\": \"1000123456\",\n      \"status\": \"SUCCESS\",\n      \"reference_id\": \"9f2a1c4d-b3e7-48d9-a012-cd5678901234\",\n      \"attempt_number\": 1,\n      \"posted_time\": \"2026-04-21T10:00:04Z\",\n      \"mode\": \"NORM\",\n      \"operation\": \"POSTING\",\n      \"created_at\": \"2026-04-21T10:00:01Z\",\n      \"updated_at\": \"2026-04-21T10:00:05Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"posting_id\": \"058be267-6679-475e-bbb7-e199fc4c9a32\",\n  \"source_reference_id\": \"SRC-001\",\n  \"end_to_end_reference_id\": \"E2E-001\",\n  \"source_name\": \"IMX\",\n  \"request_type\": \"IMX_CBS_GL\",\n  \"amount\": \"5000.00\",\n  \"currency\": \"USD\",\n  \"credit_debit_indicator\": \"DEBIT\",\n  \"debtor_account\": \"1000123456\",\n  \"creditor_account\": \"1000654321\",\n  \"requested_execution_date\": \"2026-04-21\",\n  \"remittance_information\": \"Invoice payment\",\n  \"posting_status\": \"ACSP\",\n  \"target_systems\": \"CBS,GL\",\n  \"processed_at\": \"2026-04-21T10:00:05Z\",\n  \"created_at\": \"2026-04-21T10:00:00Z\",\n  \"updated_at\": \"2026-04-21T10:00:05Z\",\n  \"legs\": [\n    {\n      \"posting_id\": \"058be267-6679-475e-bbb7-e199fc4c9a32\",\n      \"transaction_id\": \"6b9d8304-f09e-431f-a733-c28dc062039d\",\n      \"transaction_order\": 1,\n      \"target_system\": \"CBS\",\n      \"account\": \"1000123456\",\n      \"status\": \"SUCCESS\",\n      \"reference_id\": \"6b9d8304-f09e-431f-a733-c28dc062039d\",\n      \"attempt_number\": 1,\n      \"posted_time\": \"2026-04-21T10:00:03Z\",\n      \"mode\": \"NORM\",\n      \"operation\": \"POSTING\",\n      \"created_at\": \"2026-04-21T10:00:01Z\",\n      \"updated_at\": \"2026-04-21T10:00:04Z\"\n    },\n    {\n      \"posting_id\": \"058be267-6679-475e-bbb7-e199fc4c9a32\",\n      \"transaction_id\": \"9f2a1c4d-b3e7-48d9-a012-cd5678901234\",\n      \"transaction_order\": 2,\n      \"target_system\": \"GL\",\n      \"account\": \"1000123456\",\n      \"status\": \"SUCCESS\",\n      \"reference_id\": \"9f2a1c4d-b3e7-48d9-a012-cd5678901234\",\n      \"attempt_number\": 1,\n      \"posted_time\": \"2026-04-21T10:00:04Z\",\n      \"mode\": \"NORM\",\n      \"operation\": \"POSTING\",\n      \"created_at\": \"2026-04-21T10:00:01Z\",\n      \"updated_at\": \"2026-04-21T10:00:05Z\"\n    }\n  ]\n}"
             },
             {
               "name": "404 Not Found",
@@ -233,31 +234,7 @@
       "name": "Legs",
       "item": [
         {
-          "name": "List Legs for Posting",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction",
-              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction"]
-            },
-            "description": "Returns all legs for the given posting ID."
-          }
-        },
-        {
-          "name": "Get Single Leg",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}{{api_path}}/{{posting_id}}/transaction/1",
-              "host": ["{{base_url}}{{api_path}}/{{posting_id}}/transaction/1"]
-            },
-            "description": "Fetch the leg at transactionOrder=1."
-          }
-        },
-        {
-          "name": "Manual Leg Status Override — SUCCESS",
+          "name": "Manual Leg Status Override — SUCCESS (order=1)",
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -270,11 +247,11 @@
               "raw": "{\n  \"status\": \"SUCCESS\",\n  \"reason\": \"Manually confirmed by ops team\",\n  \"requested_by\": \"OPS-USER\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "Overrides leg status. Sets mode=MANUAL. Does NOT increment attemptNumber. Valid statuses: SUCCESS, FAILED, PNDG."
+            "description": "Overrides leg status. Sets mode=MANUAL. Does NOT increment attemptNumber. Valid statuses: SUCCESS, FAILED, PNDG. Replace '1' in the URL with the actual transaction_order from the posting response."
           }
         },
         {
-          "name": "Manual Leg Status Override — FAILED",
+          "name": "Manual Leg Status Override — FAILED (order=1)",
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -286,7 +263,8 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"FAILED\",\n  \"reason\": \"Target system confirmed rejection via phone\",\n  \"requested_by\": \"OPS-USER\"\n}",
               "options": { "raw": { "language": "json" } }
-            }
+            },
+            "description": "Replace '1' in the URL with the actual transaction_order from the posting response."
           }
         }
       ]
@@ -303,7 +281,7 @@
               "raw": "{{base_url}}{{api_path}}/config",
               "host": ["{{base_url}}{{api_path}}/config"]
             },
-            "description": "Returns all routing config entries."
+            "description": "Returns all routing config entries across all request types."
           }
         },
         {
@@ -315,7 +293,7 @@
               "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL",
               "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL"]
             },
-            "description": "Returns all ordered config entries for IMX_CBS_GL."
+            "description": "Returns all ordered config entries for IMX_CBS_GL. Substitute any request_type in the URL."
           }
         },
         {
@@ -331,7 +309,8 @@
               "mode": "raw",
               "raw": "{\n  \"request_type\": \"IMX_CBS_GL\",\n  \"order_seq\": 1,\n  \"source_name\": \"IMX\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"processing_mode\": \"ASYNC\"\n}",
               "options": { "raw": { "language": "json" } }
-            }
+            },
+            "description": "Server assigns a config_id. The entry is identified by request_type + order_seq for update/delete."
           }
         },
         {
@@ -367,7 +346,7 @@
           }
         },
         {
-          "name": "Update Config",
+          "name": "Update Config — IMX_CBS_GL/1",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -377,14 +356,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"request_type\": \"IMX_CBS_GL\",\n  \"order_seq\": 1,\n  \"source_name\": \"IMX\",\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"processing_mode\": \"SYNC\"\n}",
+              "raw": "{\n  \"target_system\": \"CBS\",\n  \"operation\": \"POSTING\",\n  \"source_name\": \"IMX\",\n  \"processing_mode\": \"SYNC\",\n  \"updated_by\": \"OPS-USER\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "Update config at path {type}/{order}. Full config body required."
+            "description": "Updates config identified by {requestType}/{orderSeq} in the URL path. Substitute IMX_CBS_GL and 1 as needed. Only target_system, operation, source_name, processing_mode, and updated_by are modified."
           }
         },
         {
-          "name": "Delete Config",
+          "name": "Delete Config — IMX_CBS_GL/1",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -392,7 +371,7 @@
               "raw": "{{base_url}}{{api_path}}/config/IMX_CBS_GL/1",
               "host": ["{{base_url}}{{api_path}}/config/IMX_CBS_GL/1"]
             },
-            "description": "Deletes config entry at {type}/{order}. Returns HTTP 204 No Content."
+            "description": "Deletes config identified by {requestType}/{orderSeq} in the URL path. Returns HTTP 204 No Content. Substitute IMX_CBS_GL and 1 as needed."
           },
           "response": [
             {

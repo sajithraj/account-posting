@@ -30,6 +30,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -45,7 +46,7 @@ class ApiGatewayHandlerTest {
     private static final String POSTING_ID = "11111111-1111-1111-1111-111111111111";
     private static final String MISSING_POSTING_ID = "99999999-9999-9999-9999-999999999999";
     private static final String TRANSACTION_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-    private static final String CONFIG_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    private static final int TRANSACTION_ORDER = 1;
 
     @Mock
     private AccountPostingService postingService;
@@ -81,6 +82,19 @@ class ApiGatewayHandlerTest {
     }
 
     @Test
+    void search_emptyBody_returns200WithEmptyList() throws Exception {
+        when(postingService.search(any())).thenReturn(
+                PostingSearchResponse.builder().items(List.of()).build());
+
+        APIGatewayV2HTTPResponse response = handler.handle(
+                apiEvent("POST", BASE + "/search", "{}"), null);
+
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat((List<?>) body.get("items")).isEmpty();
+    }
+
+    @Test
     void search_noResults_returns200WithEmptyList() throws Exception {
         when(postingService.search(any())).thenReturn(
                 PostingSearchResponse.builder().items(List.of()).build());
@@ -94,23 +108,15 @@ class ApiGatewayHandlerTest {
     }
 
     @Test
-    void search_getQueryParams_mapsSupportedAliases() throws Exception {
+    void search_requestBodyMapsToSearchRequest() throws Exception {
         when(postingService.search(any())).thenReturn(
                 PostingSearchResponse.builder().items(List.of()).build());
 
-        APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("GET", BASE + "/search", null, Map.of(
-                        "end_to_end_id", "E2E-001",
-                        "source_ref_id", "SRC-001",
-                        "source_name", "IMX",
-                        "posting_status", "ACSP",
-                        "request_type", "IMX_CBS_GL",
-                        "from_date", "2026-04-01T00:00:00Z",
-                        "to_date", "2026-04-30T23:59:59Z",
-                        "limit", "10"
-                )), null);
+        String body = "{\"end_to_end_id\":\"E2E-001\",\"source_ref_id\":\"SRC-001\","
+                + "\"source_name\":\"IMX\",\"status\":\"ACSP\",\"request_type\":\"IMX_CBS_GL\","
+                + "\"from_date\":\"2026-04-01T00:00:00Z\",\"to_date\":\"2026-04-30T23:59:59Z\",\"limit\":10}";
+        handler.handle(apiEvent("POST", BASE + "/search", body), null);
 
-        assertThat(response.getStatusCode()).isEqualTo(200);
         ArgumentCaptor<PostingSearchRequest> captor = ArgumentCaptor.forClass(PostingSearchRequest.class);
         verify(postingService).search(captor.capture());
         assertThat(captor.getValue().getEndToEndReferenceId()).isEqualTo("E2E-001");
@@ -176,89 +182,37 @@ class ApiGatewayHandlerTest {
     }
 
     @Test
-    void listLegs_existingPosting_returns200WithLegList() throws Exception {
-        LegResponse leg = LegResponse.builder()
-                .postingId(POSTING_ID)
-                .transactionOrder(1)
-                .targetSystem("CBS")
-                .status("ACSP")
-                .build();
-        when(legService.listLegs(POSTING_ID)).thenReturn(List.of(leg));
-
-        APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("GET", BASE + "/" + POSTING_ID + "/transaction", null), null);
-
-        assertThat(response.getStatusCode()).isEqualTo(200);
-        List<?> data = MAPPER.readValue(response.getBody(), List.class);
-        assertThat(data).hasSize(1);
-        verify(legService).listLegs(POSTING_ID);
-    }
-
-    @Test
-    void getLeg_byTransactionId_returns200() throws Exception {
-        LegResponse leg = LegResponse.builder()
-                .postingId(POSTING_ID)
-                .transactionId(TRANSACTION_ID)
-                .transactionOrder(1)
-                .targetSystem("GL")
-                .status("ACSP")
-                .referenceId("GL-TXN-001")
-                .build();
-        when(legService.getLeg(POSTING_ID, TRANSACTION_ID)).thenReturn(leg);
-
-        APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("GET", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID, null), null);
-
-        assertThat(response.getStatusCode()).isEqualTo(200);
-        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
-        assertThat(body.get("target_system")).isEqualTo("GL");
-        assertThat(body.get("reference_id")).isEqualTo("GL-TXN-001");
-        assertThat(body.get("transaction_id")).isEqualTo(TRANSACTION_ID);
-    }
-
-    @Test
-    void getLeg_missingLeg_returns404() {
-        when(legService.getLeg(anyString(), anyString())).thenThrow(
-                new ResourceNotFoundException("Leg not found transactionId=" + TRANSACTION_ID));
-
-        APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("GET", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID, null), null);
-
-        assertThat(response.getStatusCode()).isEqualTo(404);
-    }
-
-    @Test
     void manualUpdateLeg_validRequest_returns200WithUpdatedLeg() throws Exception {
         LegResponse updated = LegResponse.builder()
                 .postingId(POSTING_ID)
                 .transactionId(TRANSACTION_ID)
-                .transactionOrder(1)
+                .transactionOrder(TRANSACTION_ORDER)
                 .status("SUCCESS")
                 .mode("MANUAL")
                 .reason("Manually resolved by ops")
                 .build();
-        doNothing().when(legService).manualUpdateLeg(anyString(), anyString(), anyString(), anyString(), anyString());
-        when(legService.getLeg(POSTING_ID, TRANSACTION_ID)).thenReturn(updated);
+        doNothing().when(legService).manualUpdateLeg(anyString(), anyInt(), anyString(), anyString(), anyString());
+        when(legService.getLeg(POSTING_ID, TRANSACTION_ORDER)).thenReturn(updated);
 
         String body = "{\"status\":\"SUCCESS\",\"reason\":\"Manually resolved by ops\",\"requested_by\":\"ops-admin\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID, body), null);
+                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ORDER, body), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
         Map<?, ?> responseBody = MAPPER.readValue(response.getBody(), Map.class);
         assertThat(responseBody.get("status")).isEqualTo("SUCCESS");
         assertThat(responseBody.get("mode")).isEqualTo("MANUAL");
-        verify(legService).manualUpdateLeg(eq(POSTING_ID), eq(TRANSACTION_ID), eq("SUCCESS"),
+        verify(legService).manualUpdateLeg(eq(POSTING_ID), eq(TRANSACTION_ORDER), eq("SUCCESS"),
                 eq("Manually resolved by ops"), eq("ops-admin"));
     }
 
     @Test
     void manualUpdateLeg_legNotFound_returns404() {
         doThrow(new ResourceNotFoundException("Leg not found"))
-                .when(legService).manualUpdateLeg(anyString(), anyString(), anyString(), anyString(), anyString());
+                .when(legService).manualUpdateLeg(anyString(), anyInt(), anyString(), anyString(), anyString());
 
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ID,
+                apiEvent("PATCH", BASE + "/" + POSTING_ID + "/transaction/" + TRANSACTION_ORDER,
                         "{\"status\":\"SUCCESS\",\"reason\":\"test\",\"requested_by\":\"admin\"}"), null);
 
         assertThat(response.getStatusCode()).isEqualTo(404);
@@ -322,52 +276,60 @@ class ApiGatewayHandlerTest {
     @Test
     void updateConfig_validRequest_returns200() throws Exception {
         PostingConfigEntity updated = buildConfig("IMX_CBS_GL", 1, "CBS");
-        updated.setConfigId(CONFIG_ID);
         updated.setOperation("POSTING_V2");
-        when(configService.update(eq(CONFIG_ID), any())).thenReturn(updated);
+        when(configService.update(eq("IMX_CBS_GL"), eq(1), any())).thenReturn(updated);
 
-        String body = "{\"config_id\":\"" + CONFIG_ID + "\",\"target_system\":\"CBS\",\"operation\":\"POSTING_V2\"}";
+        String body = "{\"target_system\":\"CBS\",\"operation\":\"POSTING_V2\",\"processing_mode\":\"ASYNC\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PUT", BASE + "/config", body), null);
+                apiEvent("PUT", BASE + "/config/IMX_CBS_GL/1", body), null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
         Map<?, ?> responseBody = MAPPER.readValue(response.getBody(), Map.class);
         assertThat(responseBody.get("operation")).isEqualTo("POSTING_V2");
-        verify(configService).update(eq(CONFIG_ID), any());
+        verify(configService).update(eq("IMX_CBS_GL"), eq(1), any());
     }
 
     @Test
     void updateConfig_notFound_returns404() {
-        when(configService.update(anyString(), any())).thenThrow(
-                new ResourceNotFoundException("Config not found: configId=" + CONFIG_ID));
+        when(configService.update(anyString(), anyInt(), any())).thenThrow(
+                new ResourceNotFoundException("Config not found: requestType=IMX_CBS_GL orderSeq=1"));
 
-        String body = "{\"config_id\":\"" + CONFIG_ID + "\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("PUT", BASE + "/config", body), null);
+                apiEvent("PUT", BASE + "/config/IMX_CBS_GL/1",
+                        "{\"target_system\":\"CBS\",\"operation\":\"POSTING\",\"processing_mode\":\"ASYNC\"}"), null);
 
         assertThat(response.getStatusCode()).isEqualTo(404);
     }
 
     @Test
-    void deleteConfig_existingConfig_returns204() {
-        doNothing().when(configService).delete(CONFIG_ID);
-
-        String body = "{\"config_id\":\"" + CONFIG_ID + "\"}";
+    void updateConfig_nonIntegerOrderSeq_returns400() throws Exception {
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("DELETE", BASE + "/config", body), null);
+                apiEvent("PUT", BASE + "/config/IMX_CBS_GL/not-a-number",
+                        "{\"target_system\":\"CBS\",\"operation\":\"POSTING\",\"processing_mode\":\"ASYNC\"}"), null);
+
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        Map<?, ?> body = MAPPER.readValue(response.getBody(), Map.class);
+        assertThat(body.get("name")).isEqualTo("INVALID_ORDER_SEQ");
+    }
+
+    @Test
+    void deleteConfig_existingConfig_returns204() {
+        doNothing().when(configService).delete("IMX_CBS_GL", 1);
+
+        APIGatewayV2HTTPResponse response = handler.handle(
+                apiEvent("DELETE", BASE + "/config/IMX_CBS_GL/1", null), null);
 
         assertThat(response.getStatusCode()).isEqualTo(204);
-        verify(configService).delete(CONFIG_ID);
+        verify(configService).delete("IMX_CBS_GL", 1);
     }
 
     @Test
     void deleteConfig_notFound_returns404() {
         doThrow(new ResourceNotFoundException("Config not found"))
-                .when(configService).delete(anyString());
+                .when(configService).delete(anyString(), anyInt());
 
-        String body = "{\"config_id\":\"" + CONFIG_ID + "\"}";
         APIGatewayV2HTTPResponse response = handler.handle(
-                apiEvent("DELETE", BASE + "/config", body), null);
+                apiEvent("DELETE", BASE + "/config/IMX_CBS_GL/1", null), null);
 
         assertThat(response.getStatusCode()).isEqualTo(404);
     }
@@ -413,11 +375,6 @@ class ApiGatewayHandlerTest {
     }
 
     private static APIGatewayV2HTTPEvent apiEvent(String method, String path, String body) {
-        return apiEvent(method, path, body, null);
-    }
-
-    private static APIGatewayV2HTTPEvent apiEvent(String method, String path, String body,
-                                                  Map<String, String> queryParams) {
         APIGatewayV2HTTPEvent.RequestContext.Http http = APIGatewayV2HTTPEvent.RequestContext.Http.builder()
                 .withMethod(method)
                 .withPath(path)
@@ -428,7 +385,6 @@ class ApiGatewayHandlerTest {
         return APIGatewayV2HTTPEvent.builder()
                 .withRequestContext(requestContext)
                 .withRawPath(path)
-                .withQueryStringParameters(queryParams)
                 .withBody(body)
                 .build();
     }

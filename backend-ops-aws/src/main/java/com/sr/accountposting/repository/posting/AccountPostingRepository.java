@@ -45,14 +45,23 @@ public class AccountPostingRepository {
         DynamoDbEnhancedClient enhanced = AwsClientFactory.enhancedClient();
         this.table = enhanced.table(tableName, TableSchema.fromBean(AccountPostingEntity.class));
         this.rawClient = AwsClientFactory.dynamoDbClient();
+        log.info("AccountPostingRepository initialized | table={}", tableName);
     }
 
     public void save(AccountPostingEntity posting) {
+        log.debug("Saving posting to DynamoDB | postingId={} status={}", posting.getPostingId(), posting.getStatus());
         table.putItem(posting);
+        log.debug("Posting saved to DynamoDB | postingId={}", posting.getPostingId());
     }
 
     public Optional<AccountPostingEntity> findById(String postingId) {
+        log.debug("Querying DynamoDB for posting | postingId={}", postingId);
         AccountPostingEntity result = table.getItem(Key.builder().partitionValue(postingId).build());
+        if (result == null) {
+            log.debug("Posting not found in DynamoDB | postingId={}", postingId);
+        } else {
+            log.debug("Posting found in DynamoDB | postingId={} status={}", postingId, result.getStatus());
+        }
         return Optional.ofNullable(result);
     }
 
@@ -92,6 +101,7 @@ public class AccountPostingRepository {
 
     public boolean acquireRetryLock(String postingId, long lockUntilEpochMillis) {
         long now = System.currentTimeMillis();
+        log.debug("Attempting to acquire retry lock | postingId={} lockUntil={}", postingId, lockUntilEpochMillis);
         try {
             rawClient.updateItem(UpdateItemRequest.builder()
                     .tableName(tableName)
@@ -104,14 +114,16 @@ public class AccountPostingRepository {
                             ":now", AttributeValue.builder().n(String.valueOf(now)).build()
                     ))
                     .build());
+            log.debug("Retry lock acquired | postingId={}", postingId);
             return true;
         } catch (ConditionalCheckFailedException e) {
-            log.info("Retry lock already held for postingId={}", postingId);
+            log.info("Retry lock already held — skipping | postingId={}", postingId);
             return false;
         }
     }
 
     public void updateStatus(String postingId, String status) {
+        log.debug("Updating posting status in DynamoDB | postingId={} newStatus={}", postingId, status);
         rawClient.updateItem(UpdateItemRequest.builder()
                 .tableName(tableName)
                 .key(Map.of("postingId", AttributeValue.builder().s(postingId).build()))
@@ -121,10 +133,13 @@ public class AccountPostingRepository {
                         ":status", AttributeValue.builder().s(status).build()
                 ))
                 .build());
+        log.debug("Posting status updated in DynamoDB | postingId={} status={}", postingId, status);
     }
 
     public void update(AccountPostingEntity posting) {
+        log.debug("Updating posting in DynamoDB | postingId={} status={}", posting.getPostingId(), posting.getStatus());
         table.updateItem(posting);
+        log.debug("Posting updated in DynamoDB | postingId={}", posting.getPostingId());
     }
 
     public SearchResult search(String status, String sourceName, String requestType,
@@ -181,7 +196,11 @@ public class AccountPostingRepository {
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
+        log.debug("Search filter applied | candidateCount={} matchedCount={} offset={} limit={}",
+                candidates.size(), sortedResults.size(), offset, limit);
+
         if (offset >= sortedResults.size()) {
+            log.debug("Search result: offset beyond results | offset={} total={}", offset, sortedResults.size());
             return new SearchResult(List.of(), null);
         }
 
@@ -189,6 +208,7 @@ public class AccountPostingRepository {
         String nextPageToken = endExclusive < sortedResults.size()
                 ? encodePageToken(new PageToken(endExclusive, effectiveFromDate, effectiveToDate))
                 : null;
+        log.debug("Search result page | returning={} hasMore={}", endExclusive - offset, nextPageToken != null);
         return new SearchResult(sortedResults.subList(offset, endExclusive), nextPageToken);
     }
 
@@ -206,12 +226,6 @@ public class AccountPostingRepository {
                         .scanIndexForward(false)
                         .build())
                 .forEach(page -> results.addAll(page.items()));
-        return results;
-    }
-
-    private List<AccountPostingEntity> scanAll() {
-        List<AccountPostingEntity> results = new ArrayList<>();
-        table.scan().forEach(page -> results.addAll(page.items()));
         return results;
     }
 

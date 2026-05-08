@@ -47,20 +47,18 @@ export default function DashboardPage() {
                 : (_jsx("div", { style: s.grid, children: sourcePanels.map(p => (_jsx(SourcePanel, { name: p.name, color: p.color, range: range }, p.name))) }))] }));
 }
 function SourcePanel({ name, color, range }) {
-    const base = { sourceName: name, fromDate: range.fromDate, toDate: range.toDate, limit: 100 };
-    const total = useCount({ ...base });
-    const pending = useCount({ ...base, status: 'PNDG' });
-    const accepted = useCount({ ...base, status: 'ACSP' });
-    const rejected = useCount({ ...base, status: 'RJCT' });
-    return (_jsxs("div", { style: s.panel, children: [_jsxs("div", { style: { ...s.panelHeader, background: color }, children: [_jsx("span", { style: s.panelTitle, children: name }), _jsxs("span", { style: s.panelTotal, children: [total ?? '…', " total"] })] }), _jsxs("div", { style: s.counters, children: [_jsx(Counter, { label: "PNDG", value: pending, color: "#856404", bg: "#fffbeb" }), _jsx(Counter, { label: "ACSP", value: accepted, color: "#0a3622", bg: "#f0fdf4" }), _jsx(Counter, { label: "RJCT", value: rejected, color: "#58151c", bg: "#fff1f2" })] })] }));
-}
-function useCount(params) {
-    const { data } = useQuery({
-        queryKey: ['dashboard-count', params],
-        queryFn: () => postingApi.search(params),
+    const base = { sourceName: name, fromDate: range.fromDate, toDate: range.toDate, limit: 200 };
+    const { data: allData } = useQuery({
+        queryKey: ['dashboard-count', base],
+        queryFn: () => postingApi.search(base),
         staleTime: 30000,
     });
-    return data?.items.length;
+    const items = allData?.items ?? [];
+    const total = items.length;
+    const pending = items.filter(p => p.postingStatus === 'PNDG').length;
+    const accepted = items.filter(p => p.postingStatus === 'ACSP').length;
+    const rejected = items.filter(p => p.postingStatus === 'RJCT').length;
+    return (_jsxs("div", { style: s.panel, children: [_jsxs("div", { style: { ...s.panelHeader, background: color }, children: [_jsx("span", { style: s.panelTitle, children: name }), _jsx("span", { style: s.panelTotal, children: allData ? `${total} total` : '…' })] }), _jsxs("div", { style: s.counters, children: [_jsx(Counter, { label: "PNDG", value: allData ? pending : undefined, color: "#856404", bg: "#fffbeb" }), _jsx(Counter, { label: "ACSP", value: allData ? accepted : undefined, color: "#0a3622", bg: "#f0fdf4" }), _jsx(Counter, { label: "RJCT", value: allData ? rejected : undefined, color: "#58151c", bg: "#fff1f2" })] })] }));
 }
 function Counter({ label, value, color, bg }) {
     return (_jsxs("div", { style: { ...s.counter, background: bg, color }, children: [_jsx("div", { style: s.counterValue, children: value ?? '—' }), _jsx("div", { style: s.counterLabel, children: label })] }));
